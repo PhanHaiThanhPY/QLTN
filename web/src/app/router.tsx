@@ -29,6 +29,7 @@ const BuildingSettingsPage = lazy(() => import('@/features/buildings'));
 const LocationsPage = lazy(() => import('@/features/buildings/LocationsPage'));
 const WorkflowRulesPage = lazy(() => import('@/features/workflow'));
 const AssistantPage = lazy(() => import('@/features/assistant'));
+const SpacePage = lazy(() => import('@/features/space'));
 
 const page = (node: ReactNode) => <Suspense fallback={<LoadingState />}>{node}</Suspense>;
 
@@ -64,6 +65,7 @@ export const router = createBrowserRouter([
       { path: 'settings/workflow', element: page(<WorkflowRulesPage />) },
       { path: 'settings/locations', element: page(<LocationsPage />) },
       { path: 'assistant', element: page(<AssistantPage />) },
+      { path: 'space', element: page(<SpacePage />) },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

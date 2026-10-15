@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import type { FormEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { FormEvent, PointerEvent as ReactPointerEvent } from 'react';
 import { Activity, CircleHelp, Minimize2, RotateCcw, Send, ShieldCheck, Sparkles, Trash2, X } from 'lucide-react';
 import { useLocation } from 'react-router';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +26,156 @@ const AssistantAvatar = ({ small = false }: { small?: boolean }) => (
     <Sparkles className={`absolute -right-1 -top-1 ${small ? 'size-3' : 'size-3.5'} rounded-full bg-[#d4f6ec] p-0.5 text-[#0d6871]`} />
   </span>
 );
+
+type DockEdge = 'left' | 'right' | 'top' | 'bottom';
+interface DockPosition {
+  edge: DockEdge;
+  /** Vị trí dọc theo cạnh, 0..1 (left/right: theo trục dọc; top/bottom: theo trục ngang). */
+  ratio: number;
+}
+
+const DOCK_KEY = 'qltn-demo-assistant-dock';
+const DOCK_MARGIN = 18;
+const DRAG_THRESHOLD = 6;
+const DEFAULT_DOCK: DockPosition = { edge: 'right', ratio: 0.9 };
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+const readDock = (): DockPosition => {
+  if (typeof window === 'undefined') return DEFAULT_DOCK;
+  try {
+    const raw = window.localStorage.getItem(DOCK_KEY);
+    if (!raw) return DEFAULT_DOCK;
+    const parsed = JSON.parse(raw) as Partial<DockPosition>;
+    if (parsed && (parsed.edge === 'left' || parsed.edge === 'right' || parsed.edge === 'top' || parsed.edge === 'bottom') && typeof parsed.ratio === 'number') {
+      return { edge: parsed.edge, ratio: clamp(parsed.ratio, 0, 1) };
+    }
+    return DEFAULT_DOCK;
+  } catch (error) {
+    console.error('Read assistant dock failed:', error);
+    return DEFAULT_DOCK;
+  }
+};
+
+const saveDock = (dock: DockPosition): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(DOCK_KEY, JSON.stringify(dock));
+  } catch (error) {
+    console.error('Save assistant dock failed:', error);
+  }
+};
+
+/** Nút nổi mở trợ lý: kéo-thả được, khi thả sẽ bám vào cạnh gần nhất và lưu lại vị trí. */
+const FloatingAssistantButton = ({ onOpen }: { onOpen: () => void }) => {
+  const [dock, setDock] = useState<DockPosition>(readDock);
+  const [size, setSize] = useState({ w: 96, h: 44 });
+  const [dragTopLeft, setDragTopLeft] = useState<{ x: number; y: number } | null>(null);
+  const [, forceResize] = useState(0);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const pointer = useRef<{ id: number; dx: number; dy: number; sx: number; sy: number; moved: boolean } | null>(null);
+
+  useLayoutEffect(() => {
+    const el = buttonRef.current;
+    if (!el) return;
+    const measure = () => {
+      const rect = el.getBoundingClientRect();
+      setSize({ w: rect.width, h: rect.height });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const onResize = () => forceResize((value) => value + 1);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  const dockedTopLeft = (): { x: number; y: number } => {
+    const vw = typeof window === 'undefined' ? 0 : window.innerWidth;
+    const vh = typeof window === 'undefined' ? 0 : window.innerHeight;
+    const maxX = Math.max(DOCK_MARGIN, vw - size.w - DOCK_MARGIN);
+    const maxY = Math.max(DOCK_MARGIN, vh - size.h - DOCK_MARGIN);
+    const alongX = DOCK_MARGIN + dock.ratio * (maxX - DOCK_MARGIN);
+    const alongY = DOCK_MARGIN + dock.ratio * (maxY - DOCK_MARGIN);
+    switch (dock.edge) {
+      case 'left': return { x: DOCK_MARGIN, y: alongY };
+      case 'right': return { x: maxX, y: alongY };
+      case 'top': return { x: alongX, y: DOCK_MARGIN };
+      case 'bottom': return { x: alongX, y: maxY };
+    }
+  };
+
+  const onPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    const el = buttonRef.current;
+    if (!el) return;
+    el.setPointerCapture(event.pointerId);
+    const rect = el.getBoundingClientRect();
+    pointer.current = { id: event.pointerId, dx: event.clientX - rect.left, dy: event.clientY - rect.top, sx: event.clientX, sy: event.clientY, moved: false };
+    setDragTopLeft({ x: rect.left, y: rect.top });
+  };
+
+  const onPointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    const state = pointer.current;
+    if (!state || state.id !== event.pointerId) return;
+    if (!state.moved && Math.hypot(event.clientX - state.sx, event.clientY - state.sy) > DRAG_THRESHOLD) {
+      state.moved = true;
+    }
+    const x = clamp(event.clientX - state.dx, 0, window.innerWidth - size.w);
+    const y = clamp(event.clientY - state.dy, 0, window.innerHeight - size.h);
+    setDragTopLeft({ x, y });
+  };
+
+  const onPointerUp = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    const state = pointer.current;
+    if (!state || state.id !== event.pointerId) return;
+    pointer.current = null;
+    setDragTopLeft(null);
+    if (!state.moved) {
+      onOpen();
+      return;
+    }
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const tlx = clamp(event.clientX - state.dx, 0, vw - size.w);
+    const tly = clamp(event.clientY - state.dy, 0, vh - size.h);
+    const cx = tlx + size.w / 2;
+    const cy = tly + size.h / 2;
+    const distances: Record<DockEdge, number> = { left: cx, right: vw - cx, top: cy, bottom: vh - cy };
+    const edge = (Object.keys(distances) as DockEdge[]).reduce((best, current) => (distances[current] < distances[best] ? current : best), 'right');
+    const maxX = Math.max(DOCK_MARGIN, vw - size.w - DOCK_MARGIN);
+    const maxY = Math.max(DOCK_MARGIN, vh - size.h - DOCK_MARGIN);
+    const ratio = edge === 'left' || edge === 'right'
+      ? (maxY > DOCK_MARGIN ? clamp((tly - DOCK_MARGIN) / (maxY - DOCK_MARGIN), 0, 1) : 0)
+      : (maxX > DOCK_MARGIN ? clamp((tlx - DOCK_MARGIN) / (maxX - DOCK_MARGIN), 0, 1) : 0);
+    const next: DockPosition = { edge, ratio };
+    setDock(next);
+    saveDock(next);
+  };
+
+  const position = dragTopLeft ?? dockedTopLeft();
+  const dragging = dragTopLeft !== null;
+
+  return (
+    <button
+      ref={buttonRef}
+      type="button"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+      style={{ left: position.x, top: position.y, touchAction: 'none' }}
+      className={`fixed z-40 flex touch-none select-none items-center gap-2 rounded-full border border-accent/20 bg-surface px-2 py-2 pr-3 text-sm font-semibold text-ink shadow-[0_10px_30px_-12px_rgb(7_26_48_/_0.5)] ${dragging ? 'cursor-grabbing' : 'cursor-grab transition-transform hover:-translate-y-0.5'}`}
+      aria-label="Mở trợ lý AI (kéo để di chuyển)"
+    >
+      <AssistantAvatar small />
+      <span>AI</span>
+    </button>
+  );
+};
 
 const scheduleFiltersFromSearch = (search: string): OccurrenceFilters => {
   const params = new URLSearchParams(search);
@@ -179,12 +329,7 @@ export const AssistantPanel = () => {
   }, [clearQueuedPrompt, isCollapsed, isOpen, queuedPrompt]);
 
   if (!isOpen || isCollapsed) {
-    return (
-      <button type="button" onClick={() => setCollapsed(false)} className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full border border-accent/20 bg-surface px-2 py-2 pr-3 text-sm font-semibold text-ink shadow-[0_10px_30px_-12px_rgb(7_26_48_/_0.5)] transition-transform hover:-translate-y-0.5 lg:bottom-6 lg:right-7" aria-label="Mở trợ lý AI">
-        <AssistantAvatar small />
-        <span className="hidden sm:inline">An Nhi · AI</span>
-      </button>
-    );
+    return <FloatingAssistantButton onOpen={() => setCollapsed(false)} />;
   }
 
   return (
