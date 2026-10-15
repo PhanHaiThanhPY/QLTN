@@ -15,7 +15,7 @@ interface AssistantInsightProps {
 
 /** Compact, non-intrusive AI note tied to the visible screen and its current data. */
 export const AssistantInsight = ({ context, summary, details, sourceHref, sourceLabel, suggestions }: AssistantInsightProps) => {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   const setAssistantOpen = useUiStore((state) => state.setAssistantOpen);
   const queueAssistantPrompt = useUiStore((state) => state.queueAssistantPrompt);
   const askMore = (suggestion: string) => {

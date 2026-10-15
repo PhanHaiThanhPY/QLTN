@@ -9,15 +9,16 @@ interface SheetProps {
   description?: ReactNode;
   /** Actions shown under the title (links, export…). */
   actions?: ReactNode;
+  placement?: 'right' | 'bottom';
   children: ReactNode;
 }
 
 /** Side panel from the right on desktop (full width on phones); keeps the page behind it in place. */
-export const Sheet = ({ open, onOpenChange, title, description, actions, children }: SheetProps) => (
+export const Sheet = ({ open, onOpenChange, title, description, actions, placement = 'right', children }: SheetProps) => (
   <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-overlay backdrop-blur-[2px]" />
-      <DialogPrimitive.Content className="fixed inset-y-0 right-0 z-50 flex w-full max-w-2xl animate-fade-in flex-col border-l border-line bg-surface shadow-pop focus-visible:outline-none">
+      <DialogPrimitive.Content className={placement === 'bottom' ? 'fixed inset-x-0 bottom-0 z-50 flex max-h-[88vh] w-full animate-fade-in flex-col rounded-t-2xl border-t border-line bg-surface shadow-pop focus-visible:outline-none' : 'fixed inset-y-0 right-0 z-50 flex w-full max-w-2xl animate-fade-in flex-col border-l border-line bg-surface shadow-pop focus-visible:outline-none'}>
         <div className="flex items-start justify-between gap-4 border-b border-line px-4 pb-4 pt-5 sm:px-6">
           <div className="min-w-0 space-y-1">
             <DialogPrimitive.Title className="text-lg font-semibold text-ink">{title}</DialogPrimitive.Title>

@@ -59,10 +59,6 @@ export const EquipmentReportPanel = ({ filters }: { filters: ReportFilters }) =>
 
   return (
     <div className="space-y-4">
-      <Notice tone="info" title="Cách tính" className="rounded-lg px-3 py-2.5">
-        Lượt sửa tính theo ngày báo hỏng trong kỳ lọc (không tính hồ sơ đóng không sửa hoặc đã rút). Chi phí là giá trị tờ trình đã duyệt. “Hỏng lặp lại” theo
-        ngưỡng cấu hình của từng tòa trong 12 tháng gần nhất.
-      </Notice>
       {report.unlinkedRecordCount > 0 ? (
         <Notice tone="warning" title={`${report.unlinkedRecordCount} hồ sơ sửa chữa chưa gắn thiết bị`}>
           Các hồ sơ này không được tính vào lịch sử thiết bị.{' '}
@@ -70,10 +66,10 @@ export const EquipmentReportPanel = ({ filters }: { filters: ReportFilters }) =>
         </Notice>
       ) : null}
       <StatCardRow className="lg:grid-cols-4 xl:grid-cols-4">
-        <StatCard icon={Boxes} value={report.itemCount} label="thiết bị" tone="accent" hint={`${report.buildings.length} tòa nhà`} />
-        <StatCard icon={Wrench} value={report.repairCount} label="lượt sửa chữa" tone="info" hint={`${report.itemsWithRepairs} thiết bị có sửa`} />
-        <StatCard icon={Receipt} value={formatVnd(report.cost)} label="chi phí sửa đã duyệt" tone="good" />
-        <StatCard icon={AlertTriangle} value={report.repeatedCount} label="thiết bị hỏng lặp lại" tone={report.repeatedCount > 0 ? 'crit' : 'neutral'} hint="12 tháng gần nhất" />
+        <StatCard compact icon={Boxes} value={report.itemCount} label="thiết bị" tone="accent" hint={`${report.buildings.length} tòa nhà`} />
+        <StatCard compact icon={Wrench} value={report.repairCount} label="lượt sửa chữa" tone="info" hint={`${report.itemsWithRepairs} thiết bị có sửa`} />
+        <StatCard compact icon={Receipt} value={formatVnd(report.cost)} label="chi phí sửa đã duyệt" tone="good" />
+        <StatCard compact icon={AlertTriangle} value={report.repeatedCount} label="thiết bị hỏng lặp lại" tone={report.repeatedCount > 0 ? 'crit' : 'neutral'} hint="12 tháng gần nhất" />
       </StatCardRow>
 
       {filters.buildingId ? null : (

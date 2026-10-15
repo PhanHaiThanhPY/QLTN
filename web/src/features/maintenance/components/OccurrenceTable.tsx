@@ -7,7 +7,6 @@ import { subjectPath } from '@/utils/subject-link';
 import { OccurrenceDate } from './OccurrenceDate';
 import { OccurrenceFlags } from './OccurrenceFlags';
 import { MaintenanceLocationTrail } from './MaintenanceLocationTrail';
-import { MaintenanceTypeBadge } from './MaintenanceTypeBadge';
 
 interface OccurrenceTableProps {
   rows: OccurrenceListItem[];
@@ -43,7 +42,6 @@ export const OccurrenceTable = ({ rows, showItem = true, showLocation = true }: 
               </Td>
               {showLocation ? (
                 <Td>
-                  <div className="mb-1.5"><MaintenanceTypeBadge kind={occurrence.occurrenceKind} /></div>
                   <MaintenanceLocationTrail data={data} buildingId={occurrence.buildingId} itemId={occurrence.itemId} />
                 </Td>
               ) : null}
@@ -78,7 +76,6 @@ export const OccurrenceTable = ({ rows, showItem = true, showLocation = true }: 
               </div>
               {showLocation ? (
                 <div className="mt-2 rounded-md bg-accent-soft/45 px-2.5 py-2">
-                  <div className="mb-1.5"><MaintenanceTypeBadge kind={occurrence.occurrenceKind} /></div>
                   <MaintenanceLocationTrail data={data} buildingId={occurrence.buildingId} itemId={occurrence.itemId} />
                 </div>
               ) : null}

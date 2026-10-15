@@ -8,17 +8,17 @@ import { currentScheduleVersion } from '@/domain/schedule';
 export const ItemPlanList = ({ plans }: { plans: MaintenancePlan[] }) => {
   if (plans.length === 0) return <p className="text-sm text-ink-2">Thiết bị chưa có kế hoạch bảo trì.</p>;
   return (
-    <ul className="divide-y divide-line">
+      <ul className="divide-y divide-line">
       {plans.map((plan) => (
-        <li key={plan.id} className="flex items-center justify-between gap-3 py-2.5">
+        <li key={plan.id} className="flex items-center justify-between gap-2.5 rounded-lg px-1 py-2 hover:bg-surface-2">
           <div className="min-w-0">
-            <Link to={`/maintenance/plans/${plan.id}`} className="text-[0.8125rem] font-semibold text-accent hover:underline">
-              {plan.code}
-            </Link>
-            <p className="text-[0.8125rem] text-ink">{plan.title}</p>
-            <p className="text-xs text-ink-2">Chu kỳ: {FREQUENCY_LABEL[currentScheduleVersion(plan).frequency]}</p>
+            <div className="flex min-w-0 items-center gap-2">
+              <Link to={`/maintenance/plans/${plan.id}`} className="shrink-0 text-xs font-semibold text-accent hover:underline">{plan.code}</Link>
+              <p className="truncate text-xs font-medium text-ink">{plan.title}</p>
+            </div>
+            <p className="mt-0.5 text-[0.6875rem] text-ink-2">Chu kỳ {FREQUENCY_LABEL[currentScheduleVersion(plan).frequency]}</p>
           </div>
-          <PlanStatusBadge status={plan.status} />
+          <span className="shrink-0 text-[0.625rem]"><PlanStatusBadge status={plan.status} /></span>
         </li>
       ))}
     </ul>

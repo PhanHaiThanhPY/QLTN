@@ -1,20 +1,28 @@
-import { useSearchParams } from 'react-router';
-import { CalendarDays, CalendarRange, List } from 'lucide-react';
+import { useMemo } from 'react';
+import { Link, useSearchParams } from 'react-router';
+import { AlertTriangle, CalendarDays, CalendarRange, CheckCircle2, Clock3, List } from 'lucide-react';
 import { PageHeader } from '@/components/common/PageHeader';
 import { AssistantInsight } from '@/components/assistant/AssistantInsight';
 import { Card, CardBody } from '@/components/ui/card';
+import { StatCard, StatCardRow } from '@/components/ui/stat-card';
 import { ViewSwitch } from '@/components/ui/view-switch';
 import type { ViewOption } from '@/components/ui/view-switch';
 import type { OccurrenceStatus } from '@/domain/constants';
 import type { IsoDate } from '@/domain/types';
 import { OCCURRENCE_STATUS_LABEL } from '@/domain/constants';
 import { todayVn } from '@/services/runtime';
+import { listOccurrences } from '@/services/maintenance-service';
+import { useServiceQuery } from '@/hooks/useServiceQuery';
 import { RefreshScheduleButton } from './components/RefreshScheduleButton';
 import { ScheduleCalendarView } from './components/ScheduleCalendarView';
 import { EMPTY_SCHEDULE_FILTERS, ScheduleFilters } from './components/ScheduleFilters';
 import type { ScheduleFilterValues } from './components/ScheduleFilters';
 import { ScheduleListView } from './components/ScheduleListView';
 import { ScheduleWeekView } from './components/ScheduleWeekView';
+import { MaintenanceLocationTrail } from './components/MaintenanceLocationTrail';
+import { OccurrenceFlags } from './components/OccurrenceFlags';
+import { OccurrenceStatusBadge } from '@/components/common/StatusBadge';
+import { subjectPath } from '@/utils/subject-link';
 import { useMaintenanceScreen } from './hooks/useMaintenanceScreen';
 
 type ScheduleView = 'list' | 'month' | 'week';
@@ -63,7 +71,7 @@ const filtersFromParams = (params: URLSearchParams): ScheduleFilterValues => {
 };
 
 const SchedulePage = () => {
-  const { data } = useMaintenanceScreen();
+  const { data, itemName } = useMaintenanceScreen();
   const [params, setParams] = useSearchParams();
   const viewParam = params.get('view');
   const view: ScheduleView = VIEW_BY_PARAM.get(viewParam ?? '') ?? 'list';
@@ -73,6 +81,20 @@ const SchedulePage = () => {
   const month = MONTH_RE.test(monthParam) ? monthParam : todayVn().slice(0, 7);
   const weekParam = params.get('week') ?? '';
   const week = (DATE_RE.test(weekParam) ? weekParam : todayVn()) as IsoDate;
+  const summaryQuery = useServiceQuery(['maintenance', 'occurrences', 'summary', filters], () => listOccurrences({ ...filters, page: 1, pageSize: 5000 }));
+  const summaryRows = summaryQuery.data?.items ?? [];
+  const summary = useMemo(() => {
+    const attention = summaryRows
+      .filter(({ occurrence, indicator, needsReassignment }) => indicator === 'OVERDUE' || occurrence.status === 'PENDING_REVIEW' || needsReassignment)
+      .slice(0, 4);
+    return {
+      overdue: summaryRows.filter(({ indicator }) => indicator === 'OVERDUE').length,
+      today: summaryRows.filter(({ occurrence }) => occurrence.scheduledDate === todayVn() && occurrence.status !== 'COMPLETED').length,
+      upcoming: summaryRows.filter(({ indicator }) => indicator === 'UPCOMING').length,
+      pendingReview: summaryRows.filter(({ occurrence }) => occurrence.status === 'PENDING_REVIEW').length,
+      attention,
+    };
+  }, [summaryRows]);
 
   const update = (mutate: (next: URLSearchParams) => void) => {
     const next = new URLSearchParams(params);
@@ -94,11 +116,6 @@ const SchedulePage = () => {
 
   return (
     <div>
-      <PageHeader
-        title="Lịch bảo trì"
-        description="Theo dõi các lượt bảo trì theo kế hoạch tại các block / tòa nhà của bạn."
-        actions={<RefreshScheduleButton viewer={data?.viewer} />}
-      />
       <div className="mb-4">
         <AssistantInsight
           context="Lịch bảo trì"
@@ -109,6 +126,44 @@ const SchedulePage = () => {
           suggestions={['Kiểm tra lịch trùng', 'Tóm tắt tuần này']}
         />
       </div>
+      <PageHeader
+        title="Lịch bảo trì"
+        description="Theo dõi các lượt bảo trì theo kế hoạch tại các block / tòa nhà của bạn."
+        actions={<RefreshScheduleButton viewer={data?.viewer} />}
+      />
+      <StatCardRow className="mb-4 xl:grid-cols-4">
+        <StatCard compact icon={AlertTriangle} value={summaryQuery.isLoading ? '—' : summary.overdue} label="Quá hạn" tone="crit" hint="Cần xử lý trước" />
+        <StatCard compact icon={Clock3} value={summaryQuery.isLoading ? '—' : summary.today} label="Cần làm hôm nay" tone="warn" hint="Chưa hoàn tất" />
+        <StatCard compact icon={CalendarDays} value={summaryQuery.isLoading ? '—' : summary.upcoming} label="7 ngày tới" tone="info" hint="Đã lên lịch" />
+        <StatCard compact icon={CheckCircle2} value={summaryQuery.isLoading ? '—' : summary.pendingReview} label="Chờ kiểm tra" tone="accent" hint="Cần xác nhận kết quả" />
+      </StatCardRow>
+      {summary.attention.length > 0 ? (
+        <Card className="mb-4 border-warn/30 shadow-none">
+          <CardBody className="p-3.5 sm:p-4">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold text-ink">Cần xử lý ngay ({summary.attention.length})</h2>
+                <p className="text-xs text-ink-2">Ưu tiên các lượt quá hạn, chờ kiểm tra hoặc cần phân công lại.</p>
+              </div>
+              <span className="text-xs text-ink-3">Trong phạm vi đang lọc</span>
+            </div>
+            <div className="grid gap-2 md:grid-cols-2">
+              {summary.attention.map(({ occurrence, indicator, needsReassignment, pendingSince }) => (
+                <Link key={occurrence.id} to={subjectPath('MAINTENANCE_OCCURRENCE', occurrence.id)} className="flex min-h-12 items-center justify-between gap-3 rounded-lg border border-line bg-surface-2 px-3 py-2 hover:border-accent">
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold text-ink">{occurrence.code} · {itemName(occurrence.itemId)}</span>
+                    <span className="mt-0.5 block truncate text-xs text-ink-2"><MaintenanceLocationTrail data={data} buildingId={occurrence.buildingId} itemId={occurrence.itemId} compact /></span>
+                  </span>
+                  <span className="flex shrink-0 flex-col items-end gap-1">
+                    <OccurrenceStatusBadge status={occurrence.status} />
+                    <OccurrenceFlags occurrence={occurrence} indicator={indicator} needsReassignment={needsReassignment} pendingSince={pendingSince} />
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </CardBody>
+        </Card>
+      ) : null}
       <Card className="mb-4 shadow-none">
         <CardBody id="schedule-filters" className="space-y-3 p-3.5 sm:p-4">
           <ScheduleFilters value={filters} onChange={handleFilters} showDates={view === 'list'} />

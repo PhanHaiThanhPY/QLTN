@@ -31,6 +31,7 @@ export const ItemKpiRow = ({ insights, repairCount, today }: ItemKpiRowProps) =>
   return (
     <div className="grid grid-cols-2 gap-2.5 sm:gap-3 xl:grid-cols-4">
       <StatCard
+        compact
         icon={CalendarClock}
         label="Bảo trì kế tiếp"
         value={next ? formatDate(next.scheduledDate) : '—'}
@@ -39,6 +40,7 @@ export const ItemKpiRow = ({ insights, repairCount, today }: ItemKpiRowProps) =>
         to={next ? `/maintenance/occurrences/${next.id}` : undefined}
       />
       <StatCard
+        compact
         icon={CalendarCheck2}
         label="Bảo trì gần nhất"
         value={last ? formatDate(completedDateOf(last)) : '—'}
@@ -47,6 +49,7 @@ export const ItemKpiRow = ({ insights, repairCount, today }: ItemKpiRowProps) =>
         to={last ? `/maintenance/occurrences/${last.id}` : undefined}
       />
       <StatCard
+        compact
         icon={Wrench}
         label="Sửa chữa đang mở"
         value={insights.openRepairs.length}
@@ -55,6 +58,7 @@ export const ItemKpiRow = ({ insights, repairCount, today }: ItemKpiRowProps) =>
         to="?tab=repairs"
       />
       <StatCard
+        compact
         icon={Receipt}
         label="Chi phí sửa chữa"
         value={formatVnd(insights.repairCostTotal)}

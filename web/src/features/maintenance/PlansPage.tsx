@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router';
-import { Plus } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router';
+import { AlertTriangle, CalendarClock, CheckCircle2, PauseCircle, Plus } from 'lucide-react';
 import { PageHeader } from '@/components/common/PageHeader';
 import { EmptyState, ErrorState, LoadingState } from '@/components/common/States';
 import { Button } from '@/components/ui/button';
-import { Card, CardBody } from '@/components/ui/card';
+import { Card, CardBody, CardHeader } from '@/components/ui/card';
+import { StatCard, StatCardRow } from '@/components/ui/stat-card';
 import { Field } from '@/components/ui/field';
 import { NativeSelect } from '@/components/ui/input';
 import { PLAN_STATUS_LABEL } from '@/domain/constants';
@@ -16,6 +17,8 @@ import type { PlanFilters } from '@/services/maintenance-service';
 import { PlanTable } from './components/PlanTable';
 import { locationOptionLabel } from './components/MaintenanceLocationTrail';
 import { useMaintenanceScreen } from './hooks/useMaintenanceScreen';
+import { addDays, formatDate } from '@/utils/date';
+import { todayVn } from '@/services/runtime';
 
 const STATUS_OPTIONS = Object.entries(PLAN_STATUS_LABEL) as [PlanStatus, string][];
 
@@ -25,6 +28,17 @@ const PlansPage = () => {
   const [filters, setFilters] = useState<PlanFilters>({ buildingId: '', locationId: '', status: '', itemId: '' });
   const query = useServiceQuery(['maintenance', 'plans', filters], () => listPlans(filters));
   const canCreate = Boolean(data?.viewer && hasCapability(data.viewer, 'MAINTENANCE_MANAGE'));
+  const today = todayVn();
+  const summary = useMemo(() => {
+    const rows = query.data ?? [];
+    return {
+      active: rows.filter(({ plan }) => plan.status === 'ACTIVE').length,
+      dueSoon: rows.filter(({ plan, nextDueDate }) => plan.status === 'ACTIVE' && Boolean(nextDueDate) && (nextDueDate as string) <= addDays(today, 7)).length,
+      paused: rows.filter(({ plan }) => plan.status === 'PAUSED').length,
+      draft: rows.filter(({ plan }) => plan.status === 'DRAFT').length,
+      attention: rows.filter(({ plan, nextDueDate }) => plan.status === 'ACTIVE' && Boolean(nextDueDate) && (nextDueDate as string) <= addDays(today, 7)).slice(0, 4),
+    };
+  }, [query.data, today]);
   const items = (data?.items ?? []).filter(
     (item) => (!filters.buildingId || item.buildingId === filters.buildingId) && (!filters.locationId || item.locationId === filters.locationId),
   );
@@ -53,6 +67,28 @@ const PlansPage = () => {
           ) : null
         }
       />
+      <StatCardRow className="mb-4 xl:grid-cols-4">
+        <StatCard compact icon={CheckCircle2} value={query.isLoading ? '—' : summary.active} label="Đang hoạt động" tone="good" hint="Đang phát sinh lịch" />
+        <StatCard compact icon={CalendarClock} value={query.isLoading ? '—' : summary.dueSoon} label="Sắp đến hạn" tone="warn" hint="Trong 7 ngày tới" />
+        <StatCard compact icon={PauseCircle} value={query.isLoading ? '—' : summary.paused} label="Tạm dừng" tone="neutral" hint="Chưa phát sinh lượt" />
+        <StatCard compact icon={AlertTriangle} value={query.isLoading ? '—' : summary.draft} label="Cần cấu hình" tone="info" hint="Đang ở trạng thái nháp" />
+      </StatCardRow>
+      {summary.attention.length > 0 ? (
+        <Card className="mb-4 border-warn/30 shadow-none">
+          <CardHeader title={`Kế hoạch sắp đến hạn (${summary.dueSoon})`} description="Rà soát người phụ trách và hạng mục trước khi lượt bảo trì được tạo." />
+          <CardBody className="grid gap-2 pt-0 md:grid-cols-2">
+            {summary.attention.map(({ plan, nextDueDate }) => (
+              <Link key={plan.id} to={`/maintenance/plans/${plan.id}`} className="flex min-h-12 items-center justify-between gap-3 rounded-lg border border-line bg-surface-2 px-3 py-2 hover:border-accent">
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold text-ink">{plan.code} · {plan.title}</span>
+                  <span className="block truncate text-xs text-ink-2">Kỳ tới {formatDate(nextDueDate)}</span>
+                </span>
+                <span className="shrink-0 text-xs font-semibold text-warn">Sắp đến hạn</span>
+              </Link>
+            ))}
+          </CardBody>
+        </Card>
+      ) : null}
       <Card className="mb-4 shadow-none">
         <CardBody className="grid grid-cols-1 gap-2.5 p-4 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="Tòa nhà" htmlFor="p-building">
@@ -69,7 +105,7 @@ const PlansPage = () => {
               ))}
             </NativeSelect>
           </Field>
-          <Field label="Block / tòa nhà" htmlFor="p-location">
+          <Field label="Tầng / vị trí" htmlFor="p-location">
             <NativeSelect id="p-location" value={filters.locationId} onChange={(event) => setFilters({ ...filters, locationId: event.target.value, itemId: '' })}>
               <option value="">Tất cả vị trí</option>
               {locations.map((location) => (

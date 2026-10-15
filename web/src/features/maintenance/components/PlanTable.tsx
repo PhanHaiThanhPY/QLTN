@@ -17,9 +17,9 @@ export const PlanTable = ({ rows }: { rows: PlanListItem[] }) => {
         <thead>
           <tr>
             <Th className="w-20">Mã</Th>
-            <Th>Nơi bảo trì</Th>
-            <Th className="min-w-64">Kế hoạch</Th>
-            <Th className="min-w-56">Phụ trách</Th>
+            <Th className="min-w-72">Nơi bảo trì</Th>
+            <Th className="min-w-80">Kế hoạch</Th>
+            <Th className="min-w-64">Phụ trách</Th>
             <Th>Chu kỳ</Th>
             <Th>Ngày gốc hiện hành</Th>
             <Th>Kỳ tới</Th>
@@ -36,14 +36,14 @@ export const PlanTable = ({ rows }: { rows: PlanListItem[] }) => {
                     {plan.code}
                   </Link>
                 </Td>
-                <Td>
+                <Td className="min-w-72">
                   <MaintenanceLocationTrail data={data} buildingId={plan.buildingId} itemId={plan.itemId} />
                 </Td>
-                <Td className="min-w-64">
+                <Td className="min-w-80">
                   <div className="font-medium text-ink">{plan.title}</div>
                   <div className="text-xs text-ink-2">{itemName(plan.itemId)}</div>
                 </Td>
-                <Td className="min-w-56 text-xs text-ink-2">
+                <Td className="min-w-64 text-xs text-ink-2">
                   <div>BQL: {userName(plan.managerUserId)}</div>
                   <div>KT: {userName(plan.confirmationUserId)}</div>
                 </Td>

@@ -1,7 +1,7 @@
+import { useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router';
 import { AuditTimeline } from '@/components/common/AuditTimeline';
 import { Notice } from '@/components/common/Notice';
-import { PageHeader } from '@/components/common/PageHeader';
 import { EmptyState, ErrorState, LoadingState } from '@/components/common/States';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { TabPanel, Tabs } from '@/components/ui/tabs';
@@ -15,7 +15,6 @@ import { ItemDocumentsCard } from './components/ItemDocumentsCard';
 import { OccurrenceTable } from './components/OccurrenceTable';
 import { ItemAttentionPanel } from './components/item/ItemAttentionPanel';
 import { ItemDetailHeader } from './components/item/ItemDetailHeader';
-import { ItemHealthCard } from './components/item/ItemHealthCard';
 import { ItemKpiRow } from './components/item/ItemKpiRow';
 import { ItemOverviewTab } from './components/item/ItemOverviewTab';
 import { ItemPlanList } from './components/item/ItemPlanList';
@@ -53,11 +52,13 @@ const ItemDetailPage = () => {
     setParams(updated, { replace: true });
   };
 
-  const breadcrumbs = [{ label: 'Thiết bị', to: '/maintenance/items' }, { label: query.data?.item.code ?? itemId }];
-  const header = <PageHeader isCompact title={`Thiết bị ${query.data?.item.code ?? itemId}`} breadcrumbs={breadcrumbs} />;
-  if (query.isLoading) return <>{header}<LoadingState /></>;
-  if (query.error) return <>{header}<ErrorState error={query.error} onRetry={() => void query.refetch()} /></>;
-  if (!query.data || !data?.viewer) return <>{header}<LoadingState /></>;
+  useEffect(() => {
+    if (query.data?.item.code) document.title = `Thiết bị ${query.data.item.code} · QLTN`;
+  }, [query.data?.item.code]);
+
+  if (query.isLoading) return <LoadingState />;
+  if (query.error) return <ErrorState error={query.error} onRetry={() => void query.refetch()} />;
+  if (!query.data || !data?.viewer) return <LoadingState />;
 
   const detail = query.data;
   const { item, plans, rows, repairs, repairCosts, documents, audit } = detail;
@@ -67,7 +68,6 @@ const ItemDetailPage = () => {
 
   return (
     <div className="space-y-4">
-      {header}
       <ItemDetailHeader
         item={item}
         viewer={data.viewer}
@@ -128,7 +128,6 @@ const ItemDetailPage = () => {
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-20" aria-label="Thông tin thiết bị">
-          <ItemHealthCard item={item} warranty={insights.warranty} />
           <ItemSpecCard
             item={item}
             ageLabel={insights.ageLabel}

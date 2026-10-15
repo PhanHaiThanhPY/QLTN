@@ -26,11 +26,11 @@ export const ItemSpecCard = ({ item, ageLabel, ownerLabel, updatedByLabel }: Ite
   ];
   return (
     <Card>
-      <CardHeader title="Thông tin kỹ thuật" />
-      <CardBody className="pt-0">
+      <CardHeader title="Thông tin kỹ thuật" className="px-3.5 pb-2 pt-3.5 sm:px-4 sm:pt-4" />
+      <CardBody className="px-3.5 pb-3 pt-0 sm:px-4 sm:pb-4">
         <dl className="divide-y divide-line">
           {rows.map((row) => (
-            <div key={row.label} className="grid grid-cols-[7.5rem_1fr] gap-3 py-2.5 text-[0.8125rem]">
+            <div key={row.label} className="grid grid-cols-[6.75rem_1fr] gap-2.5 py-2 text-xs">
               <dt className="text-ink-3">{row.label}</dt>
               <dd className="min-w-0 break-words font-medium text-ink">
                 {row.value}
@@ -41,11 +41,11 @@ export const ItemSpecCard = ({ item, ageLabel, ownerLabel, updatedByLabel }: Ite
         </dl>
         {item.description ? (
           <div className="mt-2 rounded-lg bg-surface-2 p-3 text-[0.8125rem] text-ink-2">
-            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-3">Mô tả</p>
-            <p className="whitespace-pre-line">{item.description}</p>
+            <p className="mb-1 text-[0.6875rem] font-semibold uppercase tracking-wide text-ink-3">Mô tả</p>
+            <p className="whitespace-pre-line text-xs leading-5">{item.description}</p>
           </div>
         ) : null}
-        <p className="mt-3 text-xs text-ink-3">
+        <p className="mt-2.5 text-[0.6875rem] text-ink-3">
           Cập nhật {formatDateTime(item.updatedAt)} · {updatedByLabel}
         </p>
       </CardBody>

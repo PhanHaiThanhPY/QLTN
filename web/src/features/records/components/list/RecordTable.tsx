@@ -14,7 +14,7 @@ export const RecordTable = ({ items }: { items: RecordListItem[] }) => {
       <thead>
         <tr>
           <Th>Mã</Th>
-          <Th>Hồ sơ</Th>
+          <Th className="min-w-72">Hồ sơ / nơi sửa chữa</Th>
           <Th>Trạng thái</Th>
           <Th>BQL quản lý</Th>
           <Th>Cập nhật</Th>
@@ -32,9 +32,8 @@ export const RecordTable = ({ items }: { items: RecordListItem[] }) => {
               <Link to={`/records/${record.id}`} className="font-medium text-ink hover:text-accent">
                 {record.title || '(Chưa đặt tên)'}
               </Link>
-              <p className="text-xs text-ink-3">
-                {buildingName(record.buildingId)} · {locationName(record.locationId)}
-              </p>
+              <p className="mt-1 text-xs font-semibold text-accent">{buildingName(record.buildingId)}</p>
+              <p className="text-xs text-ink-2">{locationName(record.locationId)}</p>
             </Td>
             <Td>
               <div className="flex flex-col items-start gap-1">

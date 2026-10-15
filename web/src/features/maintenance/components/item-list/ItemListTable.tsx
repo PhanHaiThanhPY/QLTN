@@ -28,7 +28,7 @@ export const ItemListTable = ({ rows, today, locationName, buildingName, userNam
       <thead>
         <tr>
           <Th className="min-w-64">Thiết bị</Th>
-          <Th className="min-w-52">Vị trí</Th>
+          <Th className="min-w-64">Nơi đặt thiết bị</Th>
           <Th>Tình trạng</Th>
           <Th className="min-w-44">Bảo trì kế tiếp</Th>
           <Th>Sửa chữa</Th>
@@ -51,8 +51,8 @@ export const ItemListTable = ({ rows, today, locationName, buildingName, userNam
               </div>
             </Td>
             <Td>
-              <span className="block text-ink">{locationName(row.item.locationId)}</span>
-              <span className="block text-xs text-ink-3">{buildingName(row.item.buildingId)}</span>
+              <span className="block text-xs font-semibold uppercase tracking-wide text-accent">{buildingName(row.item.buildingId)}</span>
+              <span className="mt-0.5 block font-medium text-ink">{locationName(row.item.locationId)}</span>
             </Td>
             <Td>
               <div className="flex flex-col items-start gap-1">

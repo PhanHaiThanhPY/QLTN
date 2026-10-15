@@ -28,20 +28,20 @@ export const ItemOverviewTab = ({ insights, plans, repairs, repairCosts, today, 
         Thiết bị không có việc quá hạn hay sự cố đang mở.
       </div>
     ) : null}
-    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+    <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
       <Card>
         <CardHeader
           title="Lịch bảo trì sắp tới"
-          description="Các lượt đang mở, sớm nhất trước."
+          className="px-3.5 pb-2 pt-3.5 sm:px-4 sm:pt-4"
           actions={<Button variant="ghost" size="sm" onClick={() => onOpenTab('maintenance')}>Tất cả lượt</Button>}
         />
-        <CardBody className="pt-0">
+        <CardBody className="px-3.5 pb-3 pt-0 sm:px-4 sm:pb-4">
           <UpcomingMaintenanceList rows={insights.upcoming} today={today} userName={userName} />
         </CardBody>
       </Card>
       <Card>
-        <CardHeader title="Kế hoạch bảo trì" description="Kế hoạch sinh lịch định kỳ cho thiết bị." />
-        <CardBody className="pt-0">
+        <CardHeader title="Kế hoạch bảo trì" className="px-3.5 pb-2 pt-3.5 sm:px-4 sm:pt-4" />
+        <CardBody className="px-3.5 pb-3 pt-0 sm:px-4 sm:pb-4">
           <ItemPlanList plans={plans} />
         </CardBody>
       </Card>

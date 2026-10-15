@@ -1,4 +1,4 @@
-import { APPROVAL_STATUSES, OCCURRENCE_STATUS_LABEL, REPAIR_FINAL_STATUSES, REPAIR_STATUS_LABEL } from '@/domain/constants';
+import { APPROVAL_STATUSES, OCCURRENCE_STATUS_LABEL, REPAIR_FINAL_STATUSES, REPAIR_STATUS_GROUP_BY_STATUS, REPAIR_STATUS_LABEL } from '@/domain/constants';
 import { approvalStepsFor } from '@/domain/actions';
 import type { OccurrenceStatus, RepairStatus } from '@/domain/constants';
 import { forbidden } from '@/domain/errors';
@@ -14,6 +14,8 @@ export interface ReportFilters {
   buildingId?: string;
   dateFrom?: IsoDate;
   dateTo?: IsoDate;
+  repairStatus?: RepairStatus;
+  maintenanceStatus?: OccurrenceStatus;
 }
 
 const inPeriod = (date: IsoDate | undefined, filters: ReportFilters): boolean => {
@@ -40,9 +42,13 @@ export interface RepairReportRow {
 export interface RepairReport {
   byStatus: { status: RepairStatus; label: string; count: number }[];
   createdCount: number;
+  openCount: number;
+  overdueCount: number;
+  attentionCount: number;
   approvedTotal: number;
   approvedCount: number;
   paidTotal: number;
+  attentionRows: RepairReportRow[];
   rows: RepairReportRow[];
 }
 
@@ -75,13 +81,26 @@ export const getRepairReport = async (filters: ReportFilters = {}): Promise<Repa
       paidDate: recordPayments[recordPayments.length - 1]?.paidDate,
     };
   });
-  const created = records.filter((record) => inPeriod(toVnDate(record.createdAt), filters));
-  const approvedRows = rows.filter((row) => row.approvedAmount !== undefined && inPeriod(row.approvedAt && toVnDate(row.approvedAt), filters));
-  const paidRows = payments.filter((row) => inPeriod(row.paidDate, filters));
+  const filteredRows = rows.filter((row) => !filters.repairStatus || row.record.status === filters.repairStatus);
+  const filteredRecordIds = new Set(filteredRows.map((row) => row.record.id));
+  const created = records.filter(
+    (record) => inPeriod(toVnDate(record.createdAt), filters) && (!filters.repairStatus || record.status === filters.repairStatus),
+  );
+  const approvedRows = filteredRows.filter((row) => row.approvedAmount !== undefined && inPeriod(row.approvedAt && toVnDate(row.approvedAt), filters));
+  const paidRows = payments.filter((row) => inPeriod(row.paidDate, filters) && (!filters.repairStatus || filteredRecordIds.has(row.recordId)));
   const statuses = Object.keys(REPAIR_STATUS_LABEL) as RepairStatus[];
   const createdSet = new Set(created);
   const approvedSet = new Set(approvedRows);
   const paidRecordIds = new Set(paidRows.map((payment) => payment.recordId));
+  const createdRows = filteredRows.filter((row) => createdSet.has(row.record));
+  const attentionRows = createdRows.filter(
+    (row) =>
+      (row.record.dueAt !== undefined && new Date(row.record.dueAt) < now() && !REPAIR_FINAL_STATUSES.includes(row.record.status)) ||
+      REPAIR_STATUS_GROUP_BY_STATUS[row.record.status] === 'NEEDS_ACTION',
+  );
+  const overdueRows = attentionRows.filter(
+    (row) => row.record.dueAt !== undefined && new Date(row.record.dueAt) < now() && !REPAIR_FINAL_STATUSES.includes(row.record.status),
+  );
   return {
     byStatus: statuses.map((status) => ({
       status,
@@ -89,11 +108,15 @@ export const getRepairReport = async (filters: ReportFilters = {}): Promise<Repa
       count: created.filter((record) => record.status === status).length,
     })),
     createdCount: created.length,
+    openCount: created.filter((record) => !REPAIR_FINAL_STATUSES.includes(record.status)).length,
+    overdueCount: overdueRows.length,
+    attentionCount: attentionRows.length,
     approvedTotal: approvedRows.reduce((sum, row) => sum + (row.approvedAmount ?? 0), 0),
     approvedCount: approvedRows.length,
     paidTotal: paidRows.reduce((sum, row) => sum + row.amountVnd, 0),
+    attentionRows,
     // A row belongs to the period when any indicator counts it, so the export matches every total.
-    rows: rows
+    rows: filteredRows
       .filter(
         (row) =>
           createdSet.has(row.record) ||
@@ -116,6 +139,8 @@ export interface MaintenanceReport {
   activePlanCount: number;
   issueCount: number;
   linkedRepairCount: number;
+  attentionCount: number;
+  attentionRows: MaintenanceOccurrence[];
   byStatus: { status: OccurrenceStatus; label: string; count: number }[];
   rows: MaintenanceOccurrence[];
 }
@@ -129,18 +154,23 @@ export const getMaintenanceReport = async (filters: ReportFilters = {}): Promise
     db.occurrences.where('buildingId').anyOf(buildingIds).toArray(),
     db.maintenancePlans.where('buildingId').anyOf(buildingIds).toArray(),
   ]);
-  const rows = all.filter((row) => inPeriod(row.scheduledDate, filters));
+  const rows = all.filter(
+    (row) => inPeriod(row.scheduledDate, filters) && (!filters.maintenanceStatus || row.status === filters.maintenanceStatus),
+  );
   const submissionIds = rows.map((row) => row.currentSubmissionId).filter((id): id is string => Boolean(id));
   const submissions = await db.maintenanceSubmissions.bulkGet(submissionIds);
   const issueOccurrences = new Set(
     submissions
-      .filter((row) => row?.checklistSnapshot.some((entry) => entry.result === 'ISSUE'))
+      .filter((row) => row?.checklistSnapshot?.some((entry) => entry.result === 'ISSUE'))
       .map((row) => row?.occurrenceId),
   );
   const today = todayVn();
   const count = (status: OccurrenceStatus) => rows.filter((row) => row.status === status).length;
   const notCancelled = rows.length - count('CANCELLED');
   const statuses = Object.keys(OCCURRENCE_STATUS_LABEL) as OccurrenceStatus[];
+  const attentionRows = rows.filter(
+    (row) => occurrenceIndicator(row, today) === 'OVERDUE' || row.status === 'PENDING_REVIEW' || issueOccurrences.has(row.id),
+  );
   return {
     dueCount: rows.length,
     completedCount: count('COMPLETED'),
@@ -151,7 +181,9 @@ export const getMaintenanceReport = async (filters: ReportFilters = {}): Promise
     completionRate: notCancelled === 0 ? null : count('COMPLETED') / notCancelled,
     activePlanCount: plans.filter((plan) => plan.status === 'ACTIVE').length,
     issueCount: issueOccurrences.size,
-    linkedRepairCount: new Set(rows.flatMap((row) => row.repairRecordIds)).size,
+    linkedRepairCount: new Set(rows.flatMap((row) => row.repairRecordIds ?? [])).size,
+    attentionCount: attentionRows.length,
+    attentionRows,
     byStatus: statuses.map((status) => ({ status, label: OCCURRENCE_STATUS_LABEL[status], count: count(status) })),
     rows: rows.sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate)),
   };

@@ -67,15 +67,6 @@ export const ItemListFilters = ({ values, buildings, types, onChange }: ItemList
           ))}
         </NativeSelect>
       </Field>
-      <label className="flex items-center gap-2 text-[0.8125rem] text-ink-2 sm:col-span-2 lg:col-span-4">
-        <input
-          type="checkbox"
-          className="size-4 accent-accent"
-          checked={values.includeInactive}
-          onChange={(event) => onChange({ includeInactive: event.target.checked })}
-        />
-        Hiện cả thiết bị đã vô hiệu hóa
-      </label>
     </CardBody>
   </Card>
 );
