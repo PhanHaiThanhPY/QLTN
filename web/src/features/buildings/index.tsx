@@ -12,6 +12,7 @@ import { useServiceQuery } from '@/hooks/useServiceQuery';
 import { getBuildingSettings } from '@/services/building-service';
 import { BuildingFormDialog } from './components/BuildingFormDialog';
 import { BuildingDetailDialog } from './components/BuildingDetailDialog';
+import { BuildingHistoryDialog } from './components/BuildingHistoryDialog';
 
 const TITLE = 'Tòa nhà và cấu hình';
 const linkClass = 'inline-flex min-h-8 items-center gap-1 rounded-lg px-2.5 text-xs font-semibold text-ink-2 hover:bg-accent-soft hover:text-accent';
@@ -25,10 +26,15 @@ const BuildingSettingsPage = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [historyId, setHistoryId] = useState<string | null>(null);
   const select = (id: string) => setParams({ b: id }, { replace: true });
   const openDetail = (id: string) => {
     select(id);
     setDetailId(id);
+  };
+  const openHistory = (id: string) => {
+    select(id);
+    setHistoryId(id);
   };
 
   if (query.isLoading || reference.isLoading) return <LoadingState rows={6} />;
@@ -36,7 +42,9 @@ const BuildingSettingsPage = () => {
   const { buildings, building, config, locations, audit, canConfigure, canManage } = query.data;
   const editingBuilding = buildings.find((row) => row.id === editingId);
   const detailBuilding = buildings.find((row) => row.id === detailId);
-  const detailIsReady = detailBuilding?.id === building.id && detailBuilding ? { building: detailBuilding, config, locations, audit } : undefined;
+  const detailIsReady = detailBuilding?.id === building.id && detailBuilding ? { building: detailBuilding, config, locations } : undefined;
+  const historyBuilding = buildings.find((row) => row.id === historyId);
+  const historyIsReady = historyBuilding?.id === building.id && historyBuilding ? { building: historyBuilding, audit } : undefined;
   const locationCount = (id: string): number | undefined => {
     if (reference.data) return reference.data.locations.filter((row) => row.buildingId === id && row.active !== false).length;
     return id === building.id ? locations.filter((row) => row.active !== false).length : undefined;
@@ -54,7 +62,6 @@ const BuildingSettingsPage = () => {
         <CardHeader
           title={`Danh sách tòa nhà (${buildings.length})`}
           description="Chọn một tòa để xem chi tiết hoặc thao tác trực tiếp ở từng dòng."
-          actions={canManage ? <Button size="sm" onClick={() => setIsCreating(true)}><Plus className="h-4 w-4" />Thêm</Button> : null}
         />
         <CardBody className="pt-0">
           <Table>
@@ -88,7 +95,7 @@ const BuildingSettingsPage = () => {
                       <div className="flex flex-wrap items-center gap-1">
                         <button type="button" className={linkClass} onClick={() => openDetail(row.id)}><Settings2 className="size-3.5" aria-hidden />Chi tiết</button>
                         <Link to={`/settings/locations?b=${row.id}`} className={linkClass}><MapPin className="size-3.5" aria-hidden />Vị trí</Link>
-                        <button type="button" className={linkClass} onClick={() => openDetail(row.id)}><History className="size-3.5" aria-hidden />Lịch sử</button>
+                        <button type="button" className={linkClass} onClick={() => openHistory(row.id)}><History className="size-3.5" aria-hidden />Lịch sử</button>
                         {canManage ? <button type="button" className={linkClass} onClick={() => setEditingId(row.id)}><Pencil className="size-3.5" aria-hidden />Sửa</button> : null}
                       </div>
                     </Td>
@@ -113,7 +120,7 @@ const BuildingSettingsPage = () => {
                   <p className="mt-1 text-xs text-ink-3">{locationCount(row.id) ?? '—'} vị trí đang dùng</p>
                   <div className="mt-3 flex flex-wrap gap-1 border-t border-line pt-2">
                     <Link to={`/settings/locations?b=${row.id}`} className={linkClass}><MapPin className="size-3.5" aria-hidden />Vị trí</Link>
-                    <button type="button" className={linkClass} onClick={() => openDetail(row.id)}><History className="size-3.5" aria-hidden />Lịch sử</button>
+                    <button type="button" className={linkClass} onClick={() => openHistory(row.id)}><History className="size-3.5" aria-hidden />Lịch sử</button>
                     {canManage ? <button type="button" className={linkClass} onClick={() => setEditingId(row.id)}><Pencil className="size-3.5" aria-hidden />Sửa</button> : null}
                   </div>
                 </li>
@@ -126,6 +133,7 @@ const BuildingSettingsPage = () => {
       {isCreating ? <BuildingFormDialog onClose={(createdId) => { setIsCreating(false); if (createdId) select(createdId); }} /> : null}
       {editingBuilding ? <BuildingFormDialog building={editingBuilding} onClose={() => setEditingId(null)} /> : null}
       {detailIsReady ? <BuildingDetailDialog {...detailIsReady} buildings={buildings} canConfigure={canConfigure} onClose={() => setDetailId(null)} /> : null}
+      {historyIsReady ? <BuildingHistoryDialog {...historyIsReady} onClose={() => setHistoryId(null)} /> : null}
     </div>
   );
 };

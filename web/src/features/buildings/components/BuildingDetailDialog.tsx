@@ -1,25 +1,22 @@
 import { Link } from 'react-router';
 import { Building2, MapPin } from 'lucide-react';
-import { AuditTimeline } from '@/components/common/AuditTimeline';
 import { Button } from '@/components/ui/button';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
-import type { AuditEvent, Building, BuildingConfig, Location } from '@/domain/types';
+import type { Building, BuildingConfig, Location } from '@/domain/types';
 import { ConfigCard } from './ConfigCard';
-import { LOCATION_ACTIONS } from '../location-filters';
 
 interface BuildingDetailDialogProps {
   building: Building;
   buildings: Building[];
   config: BuildingConfig;
   locations: Location[];
-  audit: AuditEvent[];
   canConfigure: boolean;
   onClose: () => void;
 }
 
 /** Building detail stays in a modal so the building list remains compact and scannable. */
-export const BuildingDetailDialog = ({ building, buildings, config, locations, audit, canConfigure, onClose }: BuildingDetailDialogProps) => {
+export const BuildingDetailDialog = ({ building, buildings, config, locations, canConfigure, onClose }: BuildingDetailDialogProps) => {
   const activeLocations = locations.filter((row) => row.active !== false);
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()} title={`Chi tiết ${building.name}`} description={`Tòa ${building.code} · ${building.address}`} size="xl" footer={<Button variant="secondary" onClick={onClose}>Đóng</Button>}>
@@ -33,10 +30,6 @@ export const BuildingDetailDialog = ({ building, buildings, config, locations, a
           </CardBody>
         </Card>
         <ConfigCard key={`${building.id}-${config.version}`} building={building} buildings={buildings} config={config} canEdit={canConfigure} />
-        <Card className="shadow-none">
-          <CardHeader title="Lịch sử thay đổi" description="Theo dõi các cập nhật thông tin và cấu hình của tòa." />
-          <CardBody><AuditTimeline events={audit.filter((event) => !LOCATION_ACTIONS.includes(event.action))} /></CardBody>
-        </Card>
       </div>
     </Dialog>
   );
