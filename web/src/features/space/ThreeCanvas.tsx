@@ -630,6 +630,8 @@ export function ThreeCanvas({ block, floor, view, assets, zones, onPickBlock, on
       }
 
       if (isFloor) {
+        // Remove campus block labels from the DOM so Block A/B/C/D tags don't linger over the floor view.
+        for (const l of campusLabels) l.element.remove();
         const key = newBlock + newFloor + newAssets.map(a => a.stage).join('');
         if (key !== floorKey) {
           buildFloor(newFloor, newBlock, newAssets, newZones);
