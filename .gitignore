@@ -1,0 +1,16 @@
+.DS_Store
+
+# Frontend dependencies and generated output
+web/node_modules/
+web/dist/
+web/.vercel/
+
+# Local environment and tooling files
+*.local
+.env
+.env.*
+coverage/
+*.log
+
+# Generated business exports
+outputs/
