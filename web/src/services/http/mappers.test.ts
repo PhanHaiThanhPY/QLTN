@@ -1,6 +1,7 @@
 import { AppError, ERROR_CODE } from '@/domain/errors';
 import { CAPABILITY } from '@/domain/permissions';
 import {
+  MISSING_VERSION_MESSAGE,
   PASSWORD_LENGTH_MESSAGE,
   mapBuilding,
   mapDepartment,
@@ -11,7 +12,11 @@ import {
   mapUser,
   mapUserProfile,
   passwordError,
+  toCreateDepartmentBody,
+  toCreateRoleBody,
   toCreateUserBody,
+  toUpdateDepartmentBody,
+  toUpdateRoleBody,
   toUpdateUserBody,
 } from './mappers';
 import type { ApiDepartment, ApiReferenceLocation, ApiReferenceUser, ApiRole, ApiUserProfile } from './mappers';
@@ -126,13 +131,14 @@ const department = (overrides: Partial<ApiDepartment> = {}): ApiDepartment => ({
 });
 
 describe('mapDepartment', () => {
-  it('should map the backend department and drop memberCount/version', () => {
+  it('should map the backend department, keep version and drop memberCount', () => {
     expect(mapDepartment(department())).toEqual({
       id: 'dep-1',
       code: 'KT',
       name: 'Kỹ thuật',
       description: 'Sửa chữa và bảo trì',
       buildingIds: ['bld-a', 'bld-b'],
+      version: 7,
     });
   });
 
@@ -141,6 +147,10 @@ describe('mapDepartment', () => {
     const mapped = mapDepartment(source);
     expect(mapped.description).toBeUndefined();
     expect(mapped.buildingIds).not.toBe(source.buildingIds);
+  });
+
+  it('should leave the version undefined when the backend row has none (reference list)', () => {
+    expect(mapDepartment(department({ version: undefined })).version).toBeUndefined();
   });
 });
 
@@ -328,6 +338,106 @@ describe('user payload mappers', () => {
   it('should refuse an update without expectedVersion', () => {
     try {
       toUpdateUserBody(webPayload, undefined);
+      throw new Error('Expected a conflict');
+    } catch (error) {
+      expect((error as AppError).code).toBe(ERROR_CODE.CONFLICT);
+    }
+  });
+});
+
+describe('department payload mappers', () => {
+  const webPayload = {
+    code: ' kt-moi ',
+    name: '  Kỹ thuật mới ',
+    description: '   ',
+    buildingIds: ['bld-a', 7, 'bld-a', 'bld-b'],
+  };
+
+  it('should build a CreateDepartmentDto with an upper-cased code, null empty description and unique buildings', () => {
+    expect(toCreateDepartmentBody(webPayload)).toEqual({
+      code: 'KT-MOI',
+      name: 'Kỹ thuật mới',
+      description: null,
+      buildingIds: ['bld-a', 'bld-b'],
+    });
+  });
+
+  it('should keep a real description and carry version = expectedVersion on update', () => {
+    const body = toUpdateDepartmentBody({ ...webPayload, description: ' Phụ trách sửa chữa ' }, 4);
+    expect(body).toEqual({
+      code: 'KT-MOI',
+      name: 'Kỹ thuật mới',
+      description: 'Phụ trách sửa chữa',
+      buildingIds: ['bld-a', 'bld-b'],
+      version: 4,
+    });
+  });
+
+  it('should refuse an update without expectedVersion', () => {
+    try {
+      toUpdateDepartmentBody(webPayload, undefined);
+      throw new Error('Expected a conflict');
+    } catch (error) {
+      expect((error as AppError).code).toBe(ERROR_CODE.CONFLICT);
+      expect((error as AppError).message).toBe(MISSING_VERSION_MESSAGE);
+    }
+  });
+});
+
+describe('role payload mappers', () => {
+  it('should build a CreateRoleDto from a base role with known, unique capabilities', () => {
+    expect(
+      toCreateRoleBody({
+        name: ' Kỹ thuật tòa A ',
+        baseRole: 'TECH_CONFIRMER',
+        capabilities: [CAPABILITY.VIEW, 'NOT_A_CAPABILITY', CAPABILITY.VIEW, CAPABILITY.RECORD_CONFIRM],
+      }),
+    ).toEqual({
+      name: 'Kỹ thuật tòa A',
+      baseRole: 'TECH_CONFIRMER',
+      capabilities: [CAPABILITY.VIEW, CAPABILITY.RECORD_CONFIRM],
+    });
+  });
+
+  it('should copy a role by sending sourceRoleId and no baseRole', () => {
+    const body = toCreateRoleBody({
+      sourceRoleId: 'role-bql',
+      baseRole: 'TECH_CONFIRMER',
+      name: 'Bản sao BQL',
+      capabilities: [CAPABILITY.VIEW, CAPABILITY.RECORD_EDIT],
+    });
+    expect(body).toEqual({
+      name: 'Bản sao BQL',
+      sourceRoleId: 'role-bql',
+      capabilities: [CAPABILITY.VIEW, CAPABILITY.RECORD_EDIT],
+    });
+    expect(body).not.toHaveProperty('baseRole');
+  });
+
+  it('should omit an unknown base role so the backend answers with its own field error', () => {
+    expect(toCreateRoleBody({ name: 'Vai trò lạ', baseRole: 'SUPER_USER', capabilities: [] })).toEqual({
+      name: 'Vai trò lạ',
+      capabilities: [],
+    });
+  });
+
+  it('should build an UpdateRoleDto with version and no base/source role fields', () => {
+    const body = toUpdateRoleBody(
+      { name: 'Kỹ thuật tòa A', baseRole: 'TECH_CONFIRMER', sourceRoleId: 'role-kt', capabilities: [CAPABILITY.VIEW, CAPABILITY.RECORD_CONFIRM] },
+      5,
+    );
+    expect(body).toEqual({
+      name: 'Kỹ thuật tòa A',
+      capabilities: [CAPABILITY.VIEW, CAPABILITY.RECORD_CONFIRM],
+      version: 5,
+    });
+    expect(body).not.toHaveProperty('baseRole');
+    expect(body).not.toHaveProperty('sourceRoleId');
+  });
+
+  it('should refuse an update without expectedVersion', () => {
+    try {
+      toUpdateRoleBody({ name: 'Kỹ thuật tòa A', capabilities: [] }, undefined);
       throw new Error('Expected a conflict');
     } catch (error) {
       expect((error as AppError).code).toBe(ERROR_CODE.CONFLICT);

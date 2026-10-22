@@ -102,13 +102,17 @@ export interface ApiDepartment {
   version?: number;
 }
 
-/** Backend-only `memberCount`/`version` are dropped: the web department has no optimistic lock. */
+/**
+ * Backend-only `memberCount` is dropped. `version` is kept because `PATCH /departments/:id` requires the
+ * version the screen loaded (T2b); reference departments (no version) still map without it.
+ */
 export const mapDepartment = (row: ApiDepartment): Department => ({
   id: row.id,
   code: row.code,
   name: row.name,
   description: optionalText(row.description),
   buildingIds: [...row.buildingIds],
+  version: row.version,
 });
 
 /** `GET /roles` row (`RoleView` on the backend). */
@@ -292,9 +296,11 @@ export const toCreateUserBody = (payload: unknown): ApiCreateUserBody => {
  * Web `updateUser` payload → `UpdateUserDto`. `expectedVersion` is the optimistic lock the screen loaded
  * and is mandatory; `active` is forwarded only when the caller sets it explicitly.
  */
+export const MISSING_VERSION_MESSAGE = 'Thiếu phiên bản dữ liệu (expectedVersion). Vui lòng tải lại.';
+
 export const toUpdateUserBody = (payload: unknown, expectedVersion: number | undefined): ApiUpdateUserBody => {
   if (expectedVersion === undefined) {
-    throw new AppError(ERROR_CODE.CONFLICT, 'Thiếu phiên bản dữ liệu (expectedVersion). Vui lòng tải lại.');
+    throw new AppError(ERROR_CODE.CONFLICT, MISSING_VERSION_MESSAGE);
   }
   const row = asRecord(payload);
   const body: ApiUpdateUserBody = {
@@ -310,4 +316,92 @@ export const toUpdateUserBody = (payload: unknown, expectedVersion: number | und
   };
   if (typeof row.active === 'boolean') body.active = row.active;
   return body;
+};
+
+// ---------- Web payload → backend DTO (`api-qltn/src/modules/organization/dto/department.dto.ts`) ----------
+
+export interface ApiCreateDepartmentBody {
+  code: string;
+  name: string;
+  description: string | null;
+  buildingIds: string[];
+}
+
+export interface ApiUpdateDepartmentBody extends ApiCreateDepartmentBody {
+  version: number;
+}
+
+/** Known capability values, deduplicated: the backend rejects unknown values (`IsIn`) and duplicates (`ArrayUnique`). */
+const knownCapabilities = (values: readonly string[]): Capability[] => {
+  const kept = values.filter((value): value is Capability => CAPABILITIES.has(value));
+  return [...new Set(kept)];
+};
+
+const uniqueStrings = (values: readonly string[]): string[] => [...new Set(values)];
+
+/**
+ * Web `createDepartment` payload → `CreateDepartmentDto`. The code is upper-cased like the mock handler and
+ * the backend `TrimUpper`; an empty description becomes `null` (backend `TrimToNull`).
+ */
+export const toCreateDepartmentBody = (payload: unknown): ApiCreateDepartmentBody => {
+  const row = asRecord(payload);
+  return {
+    code: asString(row.code).toUpperCase(),
+    name: asString(row.name),
+    description: asOptionalString(row.description) ?? null,
+    buildingIds: uniqueStrings(asStringArray(row.buildingIds)),
+  };
+};
+
+/** Web `updateDepartment` payload → `UpdateDepartmentDto`; `version` is the optimistic lock the screen loaded. */
+export const toUpdateDepartmentBody = (payload: unknown, expectedVersion: number | undefined): ApiUpdateDepartmentBody => {
+  if (expectedVersion === undefined) throw new AppError(ERROR_CODE.CONFLICT, MISSING_VERSION_MESSAGE);
+  return { ...toCreateDepartmentBody(payload), version: expectedVersion };
+};
+
+// ---------- Web payload → backend DTO (`api-qltn/src/modules/roles/dto/role.dto.ts`) ----------
+
+export interface ApiCreateRoleBody {
+  name: string;
+  baseRole?: Role;
+  sourceRoleId?: string;
+  capabilities: Capability[];
+}
+
+export interface ApiUpdateRoleBody {
+  name: string;
+  capabilities: Capability[];
+  version: number;
+}
+
+const isRoleValue = (value: string): value is Role => (Object.values(ROLE) as string[]).includes(value);
+
+/**
+ * Web `createRoleDef` payload → `CreateRoleDto`. The backend copies from `sourceRoleId` (it derives the base role
+ * and initial capabilities itself), so `baseRole` is sent only when there is no source role; `capabilities` are
+ * always forwarded because the screen shows the exact narrowed set. Unknown base roles are omitted so the backend
+ * answers with its own Vietnamese field error.
+ */
+export const toCreateRoleBody = (payload: unknown): ApiCreateRoleBody => {
+  const row = asRecord(payload);
+  const body: ApiCreateRoleBody = {
+    name: asString(row.name),
+    capabilities: knownCapabilities(asStringArray(row.capabilities)),
+  };
+  const sourceRoleId = asOptionalString(row.sourceRoleId);
+  const baseRole = asOptionalString(row.baseRole);
+  if (sourceRoleId) body.sourceRoleId = sourceRoleId;
+  else if (baseRole && isRoleValue(baseRole)) body.baseRole = baseRole;
+  return body;
+};
+
+/** Web `updateRoleDef` payload → `UpdateRoleDto`: only the editable fields plus the loaded version. */
+export const toUpdateRoleBody = (payload: unknown, expectedVersion: number | undefined): ApiUpdateRoleBody => {
+  if (expectedVersion === undefined) throw new AppError(ERROR_CODE.CONFLICT, MISSING_VERSION_MESSAGE);
+  const row = asRecord(payload);
+  return {
+    name: asString(row.name),
+    capabilities: knownCapabilities(asStringArray(row.capabilities)),
+    version: expectedVersion,
+  };
 };
