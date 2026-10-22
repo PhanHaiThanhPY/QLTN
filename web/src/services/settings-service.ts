@@ -3,7 +3,8 @@ import { validationError } from '@/domain/errors';
 import { getDb } from '@/storage/db';
 
 const SETTINGS_KEY = 'settings';
-const DEFAULT_SETTINGS: DemoSettings = { latencyMs: 0, failNextCommand: false };
+/** Demo knobs shown in the admin screen; `mock` stores them, `api` always shows these defaults. */
+export const DEFAULT_SETTINGS: DemoSettings = { latencyMs: 0, failNextCommand: false };
 export const LATENCY_LIMITS = { MIN: 0, MAX: 5000 } as const;
 
 const isSettings = (value: unknown): value is DemoSettings =>
