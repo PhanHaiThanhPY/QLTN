@@ -4,7 +4,7 @@ import { assertNoFieldErrors, forbidden, validationError } from '@/domain/errors
 import type { FieldErrors } from '@/domain/errors';
 import { hasCapability } from '@/domain/permissions';
 import type { ChecklistTemplateItem, MaintenancePlan } from '@/domain/types';
-import { FieldErrorCollector, asOptionalString, asRecord, asString } from '@/domain/validation';
+import { FieldErrorCollector, asNumber, asOptionalString, asRecord, asString } from '@/domain/validation';
 import { addDays, toVnDate } from '@/utils/date';
 import type { CommandHandler } from '../command-engine';
 import { assertBuildingScope, assertLocationScope, nextCode } from '../command-context';
@@ -15,6 +15,7 @@ import { commitOccurrence, commitSimple, loadPlanFor } from './maintenance-helpe
 import { isActiveUserInRole } from './repair-helpers';
 
 const isFrequency = (value: unknown): value is Frequency => typeof value === 'string' && Object.hasOwn(FREQUENCY_MONTHS, value);
+const isChecklistInputType = (value: unknown): value is ChecklistTemplateItem['inputType'] => value === 'CHECK' || value === 'MEASUREMENT';
 
 const parseChecklist = (value: unknown, errors: FieldErrorCollector): ChecklistTemplateItem[] => {
   const rows = Array.isArray(value) ? value.map(asRecord) : [];
@@ -22,10 +23,17 @@ const parseChecklist = (value: unknown, errors: FieldErrorCollector): ChecklistT
     id: asString(row.id) || newId('chk'),
     label: asString(row.label),
     required: row.required === true,
+    inputType: isChecklistInputType(row.inputType) ? row.inputType : 'CHECK',
+    unit: asOptionalString(row.unit),
+    minValue: asNumber(row.minValue),
+    maxValue: asNumber(row.maxValue),
   }));
   errors.when(!items.some((item) => item.required), 'checklistTemplate', 'Checklist cần ít nhất 1 mục bắt buộc.');
   items.forEach((item, index) => {
     errors.text(`checklistTemplate.${index}.label`, `Nhãn mục ${index + 1}`, item.label, LIMITS.CHECKLIST_LABEL_MIN, LIMITS.CHECKLIST_LABEL_MAX);
+    errors.when(item.unit !== undefined && item.unit.length > LIMITS.CHECKLIST_UNIT_MAX, `checklistTemplate.${index}.unit`, `Đơn vị tối đa ${LIMITS.CHECKLIST_UNIT_MAX} ký tự.`);
+    errors.when(item.inputType === 'MEASUREMENT' && !item.unit, `checklistTemplate.${index}.unit`, 'Mục đo cần có đơn vị.');
+    errors.when(item.minValue !== undefined && item.maxValue !== undefined && item.minValue > item.maxValue, `checklistTemplate.${index}.maxValue`, 'Giá trị tối đa phải lớn hơn hoặc bằng tối thiểu.');
   });
   errors.when(new Set(items.map((item) => item.id)).size !== items.length, 'checklistTemplate', 'Mã mục checklist bị trùng.');
   return items;

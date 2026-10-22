@@ -11,6 +11,7 @@ export const ChecklistTemplateCard = ({ items }: { items: ChecklistTemplateItem[
           <li key={item.id} className="flex items-start gap-2 text-sm">
             <span className="w-5 shrink-0 text-ink-2">{index + 1}.</span>
             <span className="flex-1 text-ink">{item.label}</span>
+            {item.inputType === 'MEASUREMENT' ? <Badge tone="neutral">Số đo{item.unit ? ` · ${item.unit}` : ''}</Badge> : null}
             {item.required ? <Badge tone="accent">Bắt buộc</Badge> : <Badge tone="outline">Tùy chọn</Badge>}
           </li>
         ))}

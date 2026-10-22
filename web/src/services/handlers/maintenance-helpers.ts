@@ -45,9 +45,9 @@ export const loadPlanFor = async (ctx: CommandContext, command: Command, action:
   return current;
 };
 
-/** Work tasks are due at the end of the scheduled day; the review step has no due time. */
+/** Work tasks are due at the end of the scheduled day; review uses its submission deadline snapshot. */
 export const occurrenceTaskDueAt = (occurrence: MaintenanceOccurrence): string | undefined =>
-  occurrence.status === 'PENDING_REVIEW' ? undefined : vnEndOfDayIso(occurrence.scheduledDate);
+  occurrence.status === 'PENDING_REVIEW' ? occurrence.reviewDueAt : vnEndOfDayIso(occurrence.scheduledDate);
 
 interface CommitOptions {
   reason?: string;

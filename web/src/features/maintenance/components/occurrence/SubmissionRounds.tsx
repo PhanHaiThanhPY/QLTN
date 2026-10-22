@@ -24,6 +24,14 @@ export const SubmissionRounds = ({ submissions, reviews, currentSubmissionId, at
     <div className="space-y-4">
       {ordered.map((submission) => {
         const roundReviews = reviews.filter((review) => review.submissionId === submission.id);
+        const previous = submissions.find((row) => row.roundNo === submission.roundNo - 1);
+        const changes = previous
+          ? submission.checklistSnapshot.flatMap((entry) => {
+              const oldEntry = previous.checklistSnapshot.find((row) => row.templateItemId === entry.templateItemId);
+              if (!oldEntry || oldEntry.result === entry.result && oldEntry.note === entry.note && oldEntry.attachmentIds.length === entry.attachmentIds.length) return [];
+              return [{ label: entry.label, before: oldEntry.result, after: entry.result, note: entry.note }];
+            })
+          : [];
         return (
           <Card key={submission.id}>
             <CardHeader
@@ -36,6 +44,14 @@ export const SubmissionRounds = ({ submissions, reviews, currentSubmissionId, at
               description={`${formatDateTime(submission.submittedAt)} · ${userName(submission.submittedBy)}`}
             />
             <CardBody className="space-y-4">
+              {changes.length > 0 ? (
+                <div className="rounded-lg border border-info/30 bg-info-soft px-3 py-2 text-sm">
+                  <p className="font-medium text-ink">So với lần gửi {previous?.roundNo}: {changes.length} mục đã thay đổi</p>
+                  <ul className="mt-1 list-disc pl-5 text-ink-2">
+                    {changes.map((change) => <li key={change.label}>{change.label}: {change.before} → {change.after}{change.note ? ` · ${change.note}` : ''}</li>)}
+                  </ul>
+                </div>
+              ) : null}
               <ChecklistEntriesView entries={submission.checklistSnapshot} attachmentsById={attachmentsById} />
               <InfoGrid
                 items={[
@@ -62,6 +78,14 @@ export const SubmissionRounds = ({ submissions, reviews, currentSubmissionId, at
                       {review.outcome === 'CONFIRMED' ? 'Hướng xử lý: ' : 'Lý do: '}
                       {review.reason}
                     </p>
+                  ) : null}
+                  {review.itemReviews?.length ? (
+                    <div className="mt-2 space-y-1 border-t border-current/10 pt-2 text-xs text-ink-2">
+                      {review.itemReviews.map((item) => {
+                        const entry = submission.checklistSnapshot.find((row) => row.templateItemId === item.templateItemId);
+                        return <p key={item.templateItemId}>{entry?.label ?? item.templateItemId}: {item.outcome === 'REWORK' ? 'Cần làm lại' : 'Đạt'}{item.reason ? ` · ${item.reason}` : ''}</p>;
+                      })}
+                    </div>
                   ) : null}
                   {review.itemConditionAfter ? (
                     <p className="mt-1 text-ink">Tình trạng hạng mục sau kiểm tra: {ITEM_CONDITION_LABEL[review.itemConditionAfter]}</p>

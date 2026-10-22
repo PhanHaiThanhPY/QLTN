@@ -37,7 +37,7 @@ describe('LoginPage', () => {
     renderLogin();
 
     const accountButton = await screen.findByRole('button', { name: /BQL-A/ });
-    expect(screen.getAllByRole('button').length).toBe(4);
+    expect(screen.getAllByRole('button').length).toBe(7);
 
     fireEvent.click(accountButton);
 

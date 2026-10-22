@@ -1,4 +1,4 @@
-import { Save, Settings2, X } from 'lucide-react';
+import { Info, Save, Settings2, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -61,8 +61,8 @@ export const WorkflowInfoPanel = ({
         </NativeSelect>
       </Field>
     </div>
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line bg-surface-2 px-4 py-2.5 sm:px-5">
-      <p className="text-xs text-ink-3">Thay đổi áp dụng cho hồ sơ tạo sau khi lưu.</p>
+    <div className="sticky bottom-3 z-20 flex flex-wrap items-center justify-between gap-3 rounded-b-xl border-t border-line bg-surface-2/95 px-4 py-2.5 shadow-[0_-8px_20px_-18px_rgb(7_26_48_/_0.6)] backdrop-blur sm:px-5">
+      <p className="flex items-start gap-1.5 text-xs text-ink-2"><Info className="mt-0.5 size-3.5 shrink-0 text-info" aria-hidden /><span>Thay đổi chỉ áp dụng cho hồ sơ tạo sau khi lưu.</span></p>
       <div className="flex gap-2"><Button variant="outline" disabled={disabled || saving} onClick={onCancel}><X /> Hủy</Button><Button disabled={disabled || saving || !name.trim()} isLoading={saving} onClick={onSave}><Save /> Lưu workflow</Button></div>
     </div>
   </Card>

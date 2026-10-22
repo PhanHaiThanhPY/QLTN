@@ -10,8 +10,8 @@ import type { CommandContext } from '../command-context';
 import { assertLocationScope, assertScopeAndVersion, nextCode, notify, writeAudit } from '../command-context';
 import { newId } from '../runtime';
 import { commitOccurrence, commitSimple, loadOccurrenceFor } from './maintenance-helpers';
-import { approvalStepKeysOf } from '@/domain/building-config';
-import { commitRecord, defaultApprovers, isActiveUserInRole } from './repair-helpers';
+import { approvalStepKeysOf, workflowApprovalDefinitionsOf, workflowApprovalStepsOf, workflowStageApprovalStepKeysOf } from '@/domain/building-config';
+import { commitRecord, defaultApprovers, defaultWorkflowApprovers, isActiveUserInRole } from './repair-helpers';
 import { loadBuildingConfig } from './building-handlers';
 
 const isPriority = (value: unknown): value is Priority =>
@@ -63,6 +63,7 @@ const createRepairFromMaintenance: CommandHandler = async (ctx, command) => {
   }));
   await ctx.db.attachments.bulkAdd(copies);
   const buildingConfig = await loadBuildingConfig(ctx, occurrence.buildingId);
+  const workflowApprovalSteps = workflowApprovalStepsOf(workflowApprovalDefinitionsOf(buildingConfig.workflowApprovalSteps));
   const record: RepairRecord = {
     id: recordId,
     code: await nextCode(ctx, 'SC'),
@@ -79,6 +80,9 @@ const createRepairFromMaintenance: CommandHandler = async (ctx, command) => {
     ...approvers,
     dueDays: buildingConfig.taskDueDays,
     approvalStepKeys: approvalStepKeysOf(buildingConfig.approvalStepKeys),
+    workflowApprovalSteps,
+    workflowStageApprovalStepKeys: workflowStageApprovalStepKeysOf(buildingConfig.workflowStages, buildingConfig.approvalStepKeys),
+    approvalAssigneeUserIds: defaultWorkflowApprovers(ctx, workflowApprovalSteps, occurrence.buildingId, locationId),
     attachmentIds: copies.map((copy) => copy.id),
     createdBy: ctx.actor.id,
     createdAt: ctx.now,

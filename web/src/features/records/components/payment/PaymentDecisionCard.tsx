@@ -1,7 +1,9 @@
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
+import { approvalStepOf } from '@/domain/actions';
 import type { PaymentRequest } from '@/domain/types';
 import { formatVnd } from '@/utils/money';
 import { useRepairAction } from '../../hooks/useRepairAction';
+import { useRecordContext } from '../../record-context';
 import { ConfirmActionButton } from '../shared/ConfirmActionButton';
 import { ReasonActionButton } from '../shared/ReasonActionButton';
 import { RecordFiles } from '../shared/RecordFiles';
@@ -9,11 +11,13 @@ import { RecordFiles } from '../shared/RecordFiles';
 /** Approver panel for the current payment request revision. */
 export const PaymentDecisionCard = ({ request }: { request: PaymentRequest }) => {
   const approve = useRepairAction('approvePayment');
+  const { detail } = useRecordContext();
+  const currentStep = approvalStepOf(detail.record.status, request.approvalStepKeys, detail.record.workflowApprovalSteps, request.currentApprovalStepKey);
   if (!approve.relevant || request.decision) return null;
   return (
     <Card className="border-warn/40">
       <CardHeader
-        title={`Đề nghị thanh toán lần ${request.revisionNo} chờ duyệt`}
+        title={`Đề nghị thanh toán lần ${request.revisionNo} – ${currentStep?.label ?? 'chờ duyệt'}`}
         actions={
           <>
             <ReasonActionButton

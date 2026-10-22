@@ -29,6 +29,12 @@ export const ChecklistEntriesView = ({ entries, attachmentsById }: ChecklistEntr
           <CheckResultBadge result={entry.result} required={entry.required} />
         </div>
         {entry.note ? <p className="mt-1 text-sm text-ink-2">Ghi chú: {entry.note}</p> : null}
+        {entry.inputType === 'MEASUREMENT' ? (
+          <p className="mt-1 text-sm text-ink-2">
+            Số đo: {entry.measurementValue ?? '—'} {entry.unit ?? ''}
+            {entry.minValue !== undefined || entry.maxValue !== undefined ? ` (chuẩn ${entry.minValue ?? '—'} – ${entry.maxValue ?? '—'})` : ''}
+          </p>
+        ) : null}
         {entry.attachmentIds.length > 0 ? (
           <div className="mt-2">
             <AttachmentList attachments={pickAttachments(entry.attachmentIds, attachmentsById)} />

@@ -17,6 +17,7 @@ interface ChecklistEntryEditorProps {
   serverError?: string;
   onResult: (result: CheckResult) => void;
   onNote: (note: string) => void;
+  onMeasurementValue: (value: number | undefined) => void;
   onFiles: (files: Attachment[]) => void;
   onRemoveFile: (id: string) => void;
 }
@@ -30,11 +31,13 @@ export const ChecklistEntryEditor = ({
   serverError,
   onResult,
   onNote,
+  onMeasurementValue,
   onFiles,
   onRemoveFile,
 }: ChecklistEntryEditorProps) => {
   const needsNote = entry.result === 'ISSUE' || entry.result === 'NOT_APPLICABLE';
   const missingNote = needsNote && !entry.note?.trim();
+  const isMeasurement = entry.inputType === 'MEASUREMENT';
   const optionLabel = (result: CheckResult) => (result === 'NOT_CHECKED' && !entry.required ? 'Không kiểm tra' : CHECK_RESULT_LABEL[result]);
   return (
     <li className="space-y-2 rounded-lg border border-line p-3">
@@ -43,6 +46,26 @@ export const ChecklistEntryEditor = ({
         <span className="min-w-0 flex-1">{entry.label}</span>
         {entry.required ? <Badge tone="accent">Bắt buộc</Badge> : <Badge tone="outline">Tùy chọn</Badge>}
       </div>
+      {isMeasurement ? (
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-[12rem_1fr]">
+          <Input
+            aria-label={`Số đo mục ${index + 1}`}
+            type="number"
+            step="any"
+            placeholder="Nhập số đo"
+            value={entry.measurementValue ?? ''}
+            onChange={(event) => {
+              const value = event.target.value;
+              const parsed = value === '' ? undefined : Number(value);
+              onMeasurementValue(parsed === undefined || Number.isFinite(parsed) ? parsed : undefined);
+            }}
+          />
+          <p className="self-center text-xs text-ink-3">
+            Đơn vị: {entry.unit ?? '—'}
+            {entry.minValue !== undefined || entry.maxValue !== undefined ? ` · Khoảng chuẩn: ${entry.minValue ?? '—'} – ${entry.maxValue ?? '—'}` : ''}
+          </p>
+        </div>
+      ) : null}
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-[12rem_1fr]">
         <NativeSelect
           aria-label={`Kết quả mục ${index + 1}`}

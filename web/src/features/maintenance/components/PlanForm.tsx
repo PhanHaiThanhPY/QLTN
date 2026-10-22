@@ -42,7 +42,7 @@ const toDefaults = (plan: MaintenancePlan | undefined, today: string): PlanFormV
     title: plan.title,
     frequency: version.frequency,
     anchorDate: version.anchorDate,
-    checklist: plan.checklistTemplate.map((row) => ({ ...row })),
+    checklist: plan.checklistTemplate.map((row) => ({ ...row, inputType: row.inputType ?? 'CHECK', unit: row.unit ?? '' })),
     confirmationUserId: plan.confirmationUserId,
     contractorName: plan.contractorName ?? '',
   };
@@ -75,7 +75,15 @@ export const PlanForm = ({ plan }: { plan?: MaintenancePlan }) => {
   const onSubmit = async (values: PlanFormValues) => {
     const shared = {
       title: values.title,
-      checklistTemplate: values.checklist.map((row) => ({ id: row.id, label: row.label, required: row.required })),
+      checklistTemplate: values.checklist.map((row) => ({
+        id: row.id,
+        label: row.label,
+        required: row.required,
+        inputType: row.inputType,
+        unit: row.inputType === 'MEASUREMENT' ? row.unit.trim() : undefined,
+        minValue: row.inputType === 'MEASUREMENT' ? row.minValue : undefined,
+        maxValue: row.inputType === 'MEASUREMENT' ? row.maxValue : undefined,
+      })),
       confirmationUserId: values.confirmationUserId,
       contractorName: values.contractorName.trim(),
     };

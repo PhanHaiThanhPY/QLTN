@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
 import { APPROVAL_STEPS, BUSINESS_WORKFLOW_STEPS } from '@/domain/constants';
 import type { ApprovalStepKey, BusinessWorkflowStepKey } from '@/domain/constants';
-import type { BuildingConfig, WorkflowStageConfig, WorkflowStageKey, WorkflowStepBinding } from '@/domain/types';
+import type { BuildingConfig, RoleDefinition, WorkflowApprovalStep, WorkflowStageConfig, WorkflowStageKey, WorkflowStepBinding } from '@/domain/types';
 import { workflowStagesOf, workflowStepBindingsOf } from '@/domain/building-config';
-import { DEFAULT_WORKFLOW_DESCRIPTION, DEFAULT_WORKFLOW_NAME, stepFor } from '../workflow-designer-meta';
+import { DEFAULT_WORKFLOW_DESCRIPTION, DEFAULT_WORKFLOW_NAME } from '../workflow-designer-meta';
 import type { WorkflowScope } from '../workflow-designer-meta';
 
 const INITIAL_STAGE_KEY: WorkflowStageKey = 'PROPOSAL';
@@ -18,6 +18,11 @@ const initialSelectionOf = (stages: readonly WorkflowStageConfig[]): number | nu
  */
 export const useWorkflowDraft = (config: BuildingConfig) => {
   const [initialStages] = useState(() => workflowStagesOf(config.workflowStages, config.approvalStepKeys));
+  const [initialApprovalSteps] = useState<WorkflowApprovalStep[]>(() => [
+    ...APPROVAL_STEPS,
+    ...(config.workflowApprovalSteps ?? []).filter((step) => !APPROVAL_STEPS.some((fixed) => fixed.key === step.key)),
+  ]);
+  const [approvalSteps, setApprovalSteps] = useState<WorkflowApprovalStep[]>(initialApprovalSteps);
   const [stages, setStages] = useState<WorkflowStageConfig[]>(initialStages);
   const [selectedStageKey, setSelectedStageKey] = useState<WorkflowStageKey>(INITIAL_STAGE_KEY);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(() => initialSelectionOf(initialStages));
@@ -31,8 +36,8 @@ export const useWorkflowDraft = (config: BuildingConfig) => {
   const currentStage = stages.find((stage) => stage.key === selectedStageKey) ?? stages[0];
   const steps = currentStage?.approvalStepKeys ?? [];
   const stepBindings = currentStage ? workflowStepBindingsOf(currentStage) : [];
-  const selectedStep = selectedIndex === null ? undefined : stepFor(steps[selectedIndex]);
-  const availableSteps = useMemo(() => APPROVAL_STEPS.filter((step) => !steps.includes(step.key)), [steps]);
+  const selectedStep = selectedIndex === null ? undefined : approvalSteps.find((step) => step.key === steps[selectedIndex]);
+  const availableSteps = useMemo(() => approvalSteps.filter((step) => !steps.includes(step.key)), [approvalSteps, steps]);
   const availableBusinessSteps = useMemo(
     () => BUSINESS_WORKFLOW_STEPS.filter((step) => step.stage === currentStage?.key),
     [currentStage?.key],
@@ -49,10 +54,29 @@ export const useWorkflowDraft = (config: BuildingConfig) => {
   const updateSteps = (next: ApprovalStepKey[]) => {
     setPast((current) => [...current, steps]);
     setFuture([]);
-    replaceCurrentSteps(next);
+    setStages((current) => current.map((stage) => stage.key === selectedStageKey
+      ? {
+        ...stage,
+        approvalStepKeys: next,
+        stepBindings: (stage.stepBindings ?? []).map((binding) => next.includes(binding.approvalStepKey ?? '') ? binding : { ...binding, approvalStepKey: undefined }),
+      }
+      : stage));
     setSelectedIndex(next.length > 0 ? Math.min(selectedIndex ?? 0, next.length - 1) : null);
   };
   const addStep = (key: ApprovalStepKey) => updateSteps([...steps, key]);
+  const addCustomStep = (input: { label: string; role: RoleDefinition }): void => {
+    const key = `CUSTOM_${Date.now()}`;
+    const step: WorkflowApprovalStep = {
+      key,
+      label: input.label.trim(),
+      actor: input.role.name,
+      role: input.role.baseRole,
+      roleDefId: input.role.isSystem ? undefined : input.role.id,
+      status: 'PENDING_CUSTOM_APPROVAL',
+    };
+    setApprovalSteps((current) => [...current, step]);
+    addStep(key);
+  };
   const updateStepBindings = (next: WorkflowStepBinding[]) => {
     setStages((current) =>
       current.map((stage) =>
@@ -103,6 +127,7 @@ export const useWorkflowDraft = (config: BuildingConfig) => {
   /** Drops every unsaved change and returns to the saved config. */
   const reset = () => {
     setStages(initialStages);
+    setApprovalSteps(initialApprovalSteps);
     setSelectedStageKey(INITIAL_STAGE_KEY);
     setSelectedIndex(initialSelectionOf(initialStages));
     setPast([]);
@@ -118,6 +143,7 @@ export const useWorkflowDraft = (config: BuildingConfig) => {
     selectedStageKey,
     currentStage,
     steps,
+    approvalSteps,
     stepBindings,
     selectedIndex,
     selectedStep,
@@ -136,6 +162,7 @@ export const useWorkflowDraft = (config: BuildingConfig) => {
     setSelectedIndex,
     selectStage,
     addStep,
+    addCustomStep,
     addBusinessStep,
     removeBusinessStep,
     removeStep,

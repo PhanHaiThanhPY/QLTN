@@ -18,7 +18,7 @@ const WorkflowRulesPage = () => {
 
   if (query.isLoading) return <LoadingState rows={5} />;
   if (query.error || !query.data) return <ErrorState error={query.error} onRetry={() => void query.refetch()} />;
-  const { buildings, workflows, canConfigure } = query.data;
+  const { buildings, workflows, roles, canConfigure } = query.data;
   const selected = workflows.find((item) => item.building.id === selectedId) ?? workflows[0];
   if (!selected) return <ErrorState error={new Error('Chưa có tòa nhà để cấu hình workflow.')} />;
 
@@ -36,7 +36,7 @@ const WorkflowRulesPage = () => {
           backLabel="Danh sách workflow"
           actions={<BuildingPicker buildings={buildings} value={selected.building.id} onChange={(id) => openEditor(id)} className="w-full sm:w-72" />}
         />
-        <WorkflowDesignerCard key={`${selected.building.id}-${selected.config.version}`} building={selected.building} config={selected.config} workflowTargets={workflows} canEdit={canConfigure} />
+        <WorkflowDesignerCard key={`${selected.building.id}-${selected.config.version}`} building={selected.building} config={selected.config} workflowTargets={workflows} roles={roles} canEdit={canConfigure} />
       </div>
     );
   }

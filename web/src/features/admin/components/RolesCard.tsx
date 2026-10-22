@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
@@ -13,18 +14,19 @@ interface RolesCardProps {
 }
 
 interface Editing {
-  role: RoleDefinition;
-  mode: 'copy' | 'edit';
+  role?: RoleDefinition;
+  mode: 'create' | 'copy' | 'edit';
 }
 
 /** System roles (fixed) and custom roles copied from them, with how many accounts hold each. */
 export const RolesCard = ({ roles, users }: RolesCardProps) => {
   const [editing, setEditing] = useState<Editing | null>(null);
+  const systemRoles = roles.filter((role) => role.isSystem);
   const holders = (role: RoleDefinition) =>
     users.filter((user) => (role.isSystem ? user.role === role.baseRole && !user.roleDefId : user.roleDefId === role.id)).length;
   return (
     <Card>
-      <CardHeader title="Vai trò" description="Sao chép vai trò để tạo vai trò mới từ quyền mẫu; vai trò hệ thống không sửa được." />
+      <CardHeader title="Vai trò" description="Khách hàng có thể tạo vai trò mới, chọn vai trò gốc và quyền được phép; vai trò hệ thống không sửa được." actions={<Button size="sm" onClick={() => setEditing({ mode: 'create' })}><Plus /> Tạo vai trò</Button>} />
       <CardBody>
         <Table>
           <thead>
@@ -79,7 +81,7 @@ export const RolesCard = ({ roles, users }: RolesCardProps) => {
           ))}
         </ul>
       </CardBody>
-      {editing ? <RoleDialog role={editing.role} mode={editing.mode} onClose={() => setEditing(null)} /> : null}
+      {editing ? <RoleDialog role={editing.role} systemRoles={systemRoles} mode={editing.mode} onClose={() => setEditing(null)} /> : null}
     </Card>
   );
 };

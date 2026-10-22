@@ -35,7 +35,9 @@ const LoginPage = () => {
               <p className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-accent">Truy cập bản demo</p>
               <h1 className="text-[1.85rem] font-bold leading-tight tracking-[-0.03em] text-ink sm:text-[2rem]">Chọn tài khoản để bắt đầu</h1>
             </div>
-            <span className="hidden shrink-0 rounded-full border border-accent/20 bg-white px-3 py-1.5 text-xs font-bold text-accent shadow-card sm:inline-flex">4 tài khoản</span>
+            <span className="hidden shrink-0 rounded-full border border-accent/20 bg-white px-3 py-1.5 text-xs font-bold text-accent shadow-card sm:inline-flex">
+              {accounts.data?.length ?? 7} tài khoản
+            </span>
           </div>
           <p className="mt-2 max-w-xl text-sm leading-6 text-ink-2">Mỗi tài khoản đại diện một vai trò và phạm vi tòa nhà. Bạn có thể đổi tài khoản bất cứ lúc nào.</p>
           <Notice tone="warning" title="Đăng nhập mô phỏng" className="mt-5 rounded-2xl px-5 py-4">

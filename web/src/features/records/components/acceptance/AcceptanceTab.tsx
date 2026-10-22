@@ -1,4 +1,5 @@
 import { EmptyState } from '@/components/common/States';
+import { approvalStepsFor } from '@/domain/actions';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { useRecordContext } from '../../record-context';
 import { DialogActionButton } from '../shared/DialogActionButton';
@@ -15,14 +16,16 @@ export const AcceptanceTab = () => {
     return <EmptyState title="Chưa có lượt nghiệm thu" description="BQL gửi nghiệm thu khi tiến độ thi công đạt 100% và có ảnh kết quả." />;
   }
   const pending = rounds.find((round) => round.result === 'PENDING');
-  const waitingFor = (detail.record.pendingAcceptanceSlots ?? []).map((slot) => REVIEWER_LABEL[slot]).join(' và ');
+  const waitingFor = detail.record.pendingApprovalStepKeys
+    ? approvalStepsFor(detail.record.pendingApprovalStepKeys, detail.record.workflowApprovalSteps).map((step) => step.label).join(' và ')
+    : (detail.record.pendingAcceptanceSlots ?? []).map((slot) => REVIEWER_LABEL[slot]).join(' và ');
   return (
     <div className="space-y-4">
       {pending ? (
         <Card className="border-warn/40">
           <CardHeader
             title={`Lượt ${pending.roundNo} đang chờ nghiệm thu`}
-            description={`Cần cả Kỹ thuật và TVKT nghiệm thu đạt. Đang chờ: ${waitingFor || "—"}.`}
+            description={`Đang chờ các bước theo workflow: ${waitingFor || "—"}.`}
             actions={
               <>
                 <DialogActionButton
@@ -38,7 +41,7 @@ export const AcceptanceTab = () => {
             }
           />
           <CardBody>
-            <p className="text-sm text-ink-2">Đạt cần kết luận (Kỹ thuật kèm biên bản nghiệm thu). Một người ghi không đạt thì hồ sơ chuyển sang “Cần khắc phục”.</p>
+            <p className="text-sm text-ink-2">Mỗi bước nghiệm thu cần kết luận riêng. Người có vai trò nghiệm thu bắt buộc đính kèm biên bản khi bước của họ yêu cầu. Một người ghi không đạt thì hồ sơ chuyển sang “Cần khắc phục”.</p>
           </CardBody>
         </Card>
       ) : null}

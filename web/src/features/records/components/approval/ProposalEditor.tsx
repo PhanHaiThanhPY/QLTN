@@ -38,7 +38,7 @@ export const ProposalEditor = () => {
   const [lateReason, setLateReason] = useState('');
   const files = useAttachmentDraft(pickAttachments(detail.attachments, proposalDraft?.attachmentIds ?? []));
   const saveCommand = useRecordCommand({ successMessage: 'Đã lưu tờ trình nháp.' });
-  const firstApprovalLabel = approvalStepsFor(record.approvalStepKeys)[0]?.label ?? 'bước đầu theo workflow';
+  const firstApprovalLabel = approvalStepsFor(record.approvalStepKeys, record.workflowApprovalSteps)[0]?.label ?? 'bước đầu theo workflow';
   const submitCommand = useRecordCommand({ successMessage: isFirst ? `Đã trình duyệt. Bước đầu: ${firstApprovalLabel}.` : `Đã trình lại. Bước đầu: ${firstApprovalLabel}.` });
   if (!save.relevant) return null;
 

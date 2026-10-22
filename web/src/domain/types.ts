@@ -1,6 +1,7 @@
 import type { Capability } from './permissions';
 import type {
   ApprovalStepKey,
+  ApprovalStepDefinition,
   BusinessWorkflowStepKey,
   AttachmentPurpose,
   Priority,
@@ -75,6 +76,10 @@ export interface BuildingConfig {
   taskDueDays: Partial<Record<TaskKind, number>>;
   /** Ordered approval roles applied to new repair records in this building. */
   approvalStepKeys: ApprovalStepKey[];
+  /** Customer-defined approval steps. A record snapshots these definitions when it is created. */
+  workflowApprovalSteps?: WorkflowApprovalStep[];
+  /** Approval order per operational stage; proposal remains mirrored by approvalStepKeys. */
+  workflowStageApprovalStepKeys?: Partial<Record<WorkflowStageKey, ApprovalStepKey[]>>;
   /** Optional workflow assignment rules. Empty or missing means use legacy role-based fallback. */
   assignmentRules?: AssignmentRule[];
   emergencyLimitVnd: number;
@@ -97,6 +102,11 @@ export interface WorkflowStageConfig {
   businessStepKeys?: BusinessWorkflowStepKey[];
   stepBindings?: WorkflowStepBinding[];
   enabled: boolean;
+}
+
+/** One customer-configured proposal approval step. `roleDefId` targets a custom role; otherwise `role` targets a system role. */
+export interface WorkflowApprovalStep extends ApprovalStepDefinition {
+  role: Role;
 }
 
 /** Connects a business action to the approval step that owns or follows it. */
@@ -247,6 +257,17 @@ export interface RepairRecord extends Versioned {
   boardUserId: string;
   /** Snapshot of the building approval order taken when this record was created. */
   approvalStepKeys: ApprovalStepKey[];
+  /** Snapshot of the approval definitions used by the runtime workflow. */
+  workflowApprovalSteps?: WorkflowApprovalStep[];
+  workflowStageApprovalStepKeys?: Partial<Record<WorkflowStageKey, ApprovalStepKey[]>>;
+  /** Resolved assignee for each configured approval step. */
+  approvalAssigneeUserIds?: Record<string, string>;
+  /** Current dynamic approval step when the status is PENDING_CUSTOM_APPROVAL. */
+  currentApprovalStepKey?: ApprovalStepKey;
+  /** Current payment approval step when the payment stage has a custom chain. */
+  currentPaymentApprovalStepKey?: ApprovalStepKey;
+  /** Approval steps still pending in the current acceptance round. */
+  pendingApprovalStepKeys?: ApprovalStepKey[];
   /** Reviewers (KT, TVKT) who still have to decide the current acceptance round. */
   pendingAcceptanceSlots?: ('confirmer' | 'consultant')[];
   currentSubmissionId?: string;
@@ -381,6 +402,8 @@ export type AcceptanceReviewer = 'confirmer' | 'consultant';
 /** One reviewer's decision inside an acceptance round. */
 export interface AcceptanceCheck {
   reviewer: AcceptanceReviewer;
+  stepKey?: ApprovalStepKey;
+  reviewerLabel?: string;
   actorId: string;
   passed: boolean;
   note: string;
@@ -423,6 +446,18 @@ export interface PaymentRequest {
   decidedBy?: string;
   decidedAt?: IsoDateTime;
   reason?: string;
+  approvalStepKeys?: ApprovalStepKey[];
+  currentApprovalStepKey?: ApprovalStepKey;
+  approvalAssigneeUserIds?: Record<string, string>;
+  approvalDecisions?: PaymentApprovalDecision[];
+}
+
+export interface PaymentApprovalDecision {
+  step: ApprovalStepKey;
+  actorId: string;
+  outcome: PaymentDecision;
+  reason?: string;
+  createdAt: IsoDateTime;
 }
 
 export interface Payment {

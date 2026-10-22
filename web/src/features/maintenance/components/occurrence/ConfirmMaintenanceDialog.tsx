@@ -7,7 +7,7 @@ import { NativeSelect, Textarea } from '@/components/ui/input';
 import { ITEM_CONDITION_LABEL, LIMITS } from '@/domain/constants';
 import { countIssueEntries, needsIssueResolution } from '@/domain/maintenance-rules';
 import type { ItemCondition } from '@/domain/constants';
-import type { MaintenanceOccurrence, MaintenanceSubmission } from '@/domain/types';
+import type { MaintenanceItemReview, MaintenanceOccurrence, MaintenanceSubmission } from '@/domain/types';
 import { useCommand } from '@/hooks/useCommand';
 
 const CONDITION_OPTIONS = Object.entries(ITEM_CONDITION_LABEL) as [ItemCondition, string][];
@@ -15,13 +15,14 @@ const CONDITION_OPTIONS = Object.entries(ITEM_CONDITION_LABEL) as [ItemCondition
 interface ConfirmMaintenanceDialogProps {
   occurrence: MaintenanceOccurrence;
   submission: MaintenanceSubmission;
+  reviewItems?: MaintenanceItemReview[];
   onClose: () => void;
 }
 
 const tooShort = (text: string): boolean => text.length > 0 && text.length < LIMITS.REASON_MIN;
 
 /** confirmMaintenance on the current submission; every unresolved ISSUE needs a resolution note (spec 6.3). */
-export const ConfirmMaintenanceDialog = ({ occurrence, submission, onClose }: ConfirmMaintenanceDialogProps) => {
+export const ConfirmMaintenanceDialog = ({ occurrence, submission, reviewItems, onClose }: ConfirmMaintenanceDialogProps) => {
   const [condition, setCondition] = useState<ItemCondition | ''>('');
   const [conditionNote, setConditionNote] = useState('');
   const [resolution, setResolution] = useState('');
@@ -40,7 +41,7 @@ export const ConfirmMaintenanceDialog = ({ occurrence, submission, onClose }: Co
       subjectId: occurrence.id,
       expectedVersion: occurrence.version,
       action: 'confirmMaintenance',
-      payload: { submissionId: submission.id, itemCondition: condition, conditionNote: noteText, issueResolutionNote: resolutionText },
+      payload: { submissionId: submission.id, itemCondition: condition, conditionNote: noteText, issueResolutionNote: resolutionText, reviewItems },
     });
     if (result) onClose();
   };

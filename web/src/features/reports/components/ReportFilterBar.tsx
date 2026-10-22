@@ -18,9 +18,11 @@ interface ReportFilterBarProps {
 /** Building + date range filters; empty values mean "all". */
 export const ReportFilterBar = ({ filters, buildings, onChange }: ReportFilterBarProps) => {
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const update = (patch: Partial<ReportFilters>) => onChange({ ...filters, ...patch });
   const hasFilter = Boolean(filters.buildingId || filters.dateFrom || filters.dateTo || filters.repairStatus || filters.maintenanceStatus);
   const filterCount = [filters.buildingId, filters.dateFrom, filters.dateTo, filters.repairStatus, filters.maintenanceStatus].filter(Boolean).length;
+  const advancedFilterCount = [filters.repairStatus, filters.maintenanceStatus].filter(Boolean).length;
   const clear = () => onChange({});
   const activeLabels = [
     filters.buildingId ? buildings.find((building) => building.id === filters.buildingId)?.name ?? filters.buildingId : undefined,
@@ -30,7 +32,7 @@ export const ReportFilterBar = ({ filters, buildings, onChange }: ReportFilterBa
     filters.maintenanceStatus ? OCCURRENCE_STATUS_LABEL[filters.maintenanceStatus] : undefined,
   ].filter((label): label is string => Boolean(label));
 
-  const renderFields = (prefix: string) => (
+  const renderFields = (prefix: string, includeStatus = true) => (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:items-end">
       <Field label="Tòa nhà" htmlFor={`${prefix}-report-building`}>
         <NativeSelect id={`${prefix}-report-building`} className="h-11 lg:h-9" value={filters.buildingId ?? ''} onChange={(event) => update({ buildingId: event.target.value || undefined })}>
@@ -44,6 +46,11 @@ export const ReportFilterBar = ({ filters, buildings, onChange }: ReportFilterBa
       <Field label="Đến ngày" htmlFor={`${prefix}-report-to`}>
         <Input id={`${prefix}-report-to`} className="h-11 lg:h-9" type="date" value={filters.dateTo ?? ''} min={filters.dateFrom} onChange={(event) => update({ dateTo: event.target.value || undefined })} />
       </Field>
+      {includeStatus ? renderStatusFields(prefix) : null}
+    </div>
+  );
+  const renderStatusFields = (prefix: string) => (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <Field label="Trạng thái sửa chữa" htmlFor={`${prefix}-report-repair-status`}>
         <NativeSelect id={`${prefix}-report-repair-status`} className="h-11 lg:h-9" value={filters.repairStatus ?? ''} onChange={(event) => update({ repairStatus: event.target.value as ReportFilters['repairStatus'] || undefined })}>
           <option value="">Tất cả trạng thái</option>
@@ -64,16 +71,23 @@ export const ReportFilterBar = ({ filters, buildings, onChange }: ReportFilterBa
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2"><span className="flex size-7 items-center justify-center rounded-md bg-accent-soft text-accent"><Filter className="size-4" aria-hidden /></span><div><p className="text-sm font-semibold text-ink">Bộ lọc báo cáo</p><p className="text-xs text-ink-2">Chọn phạm vi dữ liệu cần theo dõi</p></div></div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="min-h-11 lg:hidden" onClick={() => setAdvancedOpen(true)}><SlidersHorizontal className="size-4" />Bộ lọc{filterCount > 0 ? ` (${filterCount})` : ''}</Button>
+          <Button variant="outline" size="sm" className="min-h-11 lg:hidden" onClick={() => setMobileOpen(true)}><SlidersHorizontal className="size-4" />Bộ lọc{filterCount > 0 ? ` (${filterCount})` : ''}</Button>
           <Button variant="ghost" size="sm" disabled={!hasFilter} onClick={clear}>Xóa bộ lọc</Button>
         </div>
       </div>
-      <div className="hidden lg:block">{renderFields('desktop')}</div>
+      <div className="hidden space-y-3 lg:block">
+        {renderFields('desktop', false)}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3">
+          <span className="text-xs text-ink-3">Trạng thái là bộ lọc nâng cao, chỉ cần mở khi muốn phân tích chi tiết.</span>
+          <Button variant="outline" size="sm" onClick={() => setAdvancedOpen((open) => !open)} aria-expanded={advancedOpen}><SlidersHorizontal className="size-4" />Bộ lọc nâng cao{advancedFilterCount > 0 ? ` (${advancedFilterCount})` : ''}</Button>
+        </div>
+        {advancedOpen ? <div className="border-t border-line pt-3">{renderStatusFields('desktop-advanced')}</div> : null}
+      </div>
       <div className="flex flex-wrap gap-2 lg:hidden">
         {activeLabels.length === 0 ? <span className="text-xs text-ink-3">Tất cả dữ liệu trong phạm vi được cấp quyền</span> : activeLabels.map((label) => <span key={label} className="inline-flex min-h-8 items-center gap-1 rounded-full bg-accent-soft px-2.5 text-xs font-medium text-accent">{label}<button type="button" className="flex size-5 items-center justify-center rounded-full hover:bg-accent/10" aria-label={`Bỏ lọc ${label}`} onClick={clear}><X className="size-3" /></button></span>)}
       </div>
-      <Sheet open={advancedOpen} onOpenChange={setAdvancedOpen} placement="bottom" title="Bộ lọc báo cáo" description="Chọn phạm vi rồi đóng bảng để cập nhật báo cáo.">
-        <div className="space-y-5">{renderFields('mobile')}<Button variant="navy" size="lg" className="min-h-11 w-full" onClick={() => setAdvancedOpen(false)}>Áp dụng bộ lọc</Button></div>
+      <Sheet open={mobileOpen} onOpenChange={setMobileOpen} placement="bottom" title="Bộ lọc báo cáo" description="Chọn phạm vi rồi đóng bảng để cập nhật báo cáo.">
+        <div className="space-y-5">{renderFields('mobile')}<Button variant="navy" size="lg" className="min-h-11 w-full" onClick={() => setMobileOpen(false)}>Áp dụng bộ lọc</Button></div>
       </Sheet>
     </div>
   );

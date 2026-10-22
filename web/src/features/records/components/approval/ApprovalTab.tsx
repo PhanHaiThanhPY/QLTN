@@ -9,8 +9,8 @@ import { ProposalEditor } from './ProposalEditor';
 import { SubmissionCard } from './SubmissionCard';
 import { UnresolvedNoticeCard } from './UnresolvedNoticeCard';
 
-const returnTitle = (status: string, step: ApprovalStepKey | undefined, approvalStepKeys: readonly ApprovalStepKey[]): string => {
-  const who = approvalStepsFor(approvalStepKeys).find((row) => row.key === step)?.actor ?? 'Người duyệt';
+const returnTitle = (status: string, step: ApprovalStepKey | undefined, approvalStepKeys: readonly ApprovalStepKey[], workflowApprovalSteps: Parameters<typeof approvalStepsFor>[1]): string => {
+  const who = approvalStepsFor(approvalStepKeys, workflowApprovalSteps).find((row) => row.key === step)?.actor ?? 'Người duyệt';
   return status === 'REJECTED_RESUBMITTABLE' ? `${who} từ chối – được trình lại` : `${who} yêu cầu bổ sung`;
 };
 
@@ -32,7 +32,7 @@ export const ApprovalTab = () => {
   return (
     <div className="space-y-4">
       {showReturnNotice ? (
-        <Notice tone="warning" title={returnTitle(record.status, lastDecision?.step, record.approvalStepKeys)}>
+        <Notice tone="warning" title={returnTitle(record.status, lastDecision?.step, record.approvalStepKeys, record.workflowApprovalSteps)}>
           <span className="whitespace-pre-line">{lastDecision?.reason}</span>
         </Notice>
       ) : null}

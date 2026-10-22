@@ -79,6 +79,7 @@ export const ChecklistWorkEditor = ({ occurrence, attachments, viewer }: Checkli
                 serverError={errors[`checklist.${index}`]}
                 onResult={(result) => api.setResult(index, result)}
                 onNote={(note) => api.setNote(index, note)}
+                onMeasurementValue={(value) => api.setMeasurementValue(index, value)}
                 onFiles={(files) => api.addEntryFiles(index, files)}
                 onRemoveFile={(id) => api.removeEntryFile(index, id)}
               />

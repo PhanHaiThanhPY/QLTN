@@ -132,11 +132,12 @@ const findOccurrence = async (planId: string, date: string): Promise<Maintenance
   return row;
 };
 
-const answers = (occurrence: MaintenanceOccurrence, overrides: Record<number, { result: CheckResult; note?: string }> = {}) =>
+const answers = (occurrence: MaintenanceOccurrence, overrides: Record<number, { result: CheckResult; note?: string; attachmentIds?: string[] }> = {}) =>
   occurrence.checklist.map((entry, index) => ({
     templateItemId: entry.templateItemId,
     result: overrides[index]?.result ?? 'OK',
     note: overrides[index]?.note,
+    attachmentIds: overrides[index]?.attachmentIds ?? [],
   }));
 
 interface PerformOptions {
@@ -257,7 +258,7 @@ export const seedMaintenance = async (seed: SeedRunner, items: SeededItem[], hoo
   const issuePhoto = await seed.atDate(bt005Date, 10).photo('MAINTENANCE_OCCURRENCE', bt005.id, 'MAINTENANCE_RESULT', 'ro-ri-phot-bom');
   const started = (await getDb().occurrences.get(bt005.id)) as MaintenanceOccurrence;
   await seed.run('saveMaintenanceProgress', 'MAINTENANCE_OCCURRENCE', bt005.id, {
-    checklist: answers(started, { 1: { result: 'ISSUE', note: 'Phớt cơ khí bơm số 1 rò nước, cần thay.' } }),
+    checklist: answers(started, { 1: { result: 'ISSUE', note: 'Phớt cơ khí bơm số 1 rò nước, cần thay.', attachmentIds: [issuePhoto] } }),
     performerName: 'Kỹ thuật tòa nhà',
     attachmentIds: [issuePhoto],
   });
@@ -265,7 +266,7 @@ export const seedMaintenance = async (seed: SeedRunner, items: SeededItem[], hoo
   await hooks.createLinkedRepair(bt005.id, bt005Date);
   const withRepair = (await getDb().occurrences.get(bt005.id)) as MaintenanceOccurrence;
   await seed.atDate(bt005Date, 15).as(BQL_A).run('submitMaintenance', 'MAINTENANCE_OCCURRENCE', bt005.id, {
-    checklist: answers(withRepair, { 1: { result: 'ISSUE', note: 'Phớt cơ khí bơm số 1 rò nước, đã lập hồ sơ sửa chữa.' } }),
+    checklist: answers(withRepair, { 1: { result: 'ISSUE', note: 'Phớt cơ khí bơm số 1 rò nước, đã lập hồ sơ sửa chữa.', attachmentIds: [issuePhoto] } }),
     resultNote: 'Bơm vận hành được; phát hiện rò phớt bơm số 1, đã tạo hồ sơ sửa chữa.',
   });
   await confirm(seed, bt005.id, KT_A, bt005Date, { itemCondition: 'NEEDS_ATTENTION', conditionNote: 'Chờ thay phớt bơm số 1.' });

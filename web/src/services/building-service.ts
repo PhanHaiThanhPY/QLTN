@@ -1,7 +1,7 @@
-import { approvalStepKeysOf, assignmentRulesOf, defaultConfigValues } from '@/domain/building-config';
+import { approvalStepKeysOf, assignmentRulesOf, defaultConfigValues, workflowApprovalDefinitionsOf } from '@/domain/building-config';
 import { forbidden } from '@/domain/errors';
 import { hasCapability } from '@/domain/permissions';
-import type { AuditEvent, Building, BuildingConfig, Location } from '@/domain/types';
+import type { AuditEvent, Building, BuildingConfig, Location, RoleDefinition } from '@/domain/types';
 import { getDb } from '@/storage/db';
 import { now } from './runtime';
 import { requireViewer } from './viewer';
@@ -26,6 +26,7 @@ export interface WorkflowIndexItem {
 export interface WorkflowIndex {
   buildings: Building[];
   workflows: WorkflowIndexItem[];
+  roles: RoleDefinition[];
   canConfigure: boolean;
 }
 
@@ -45,7 +46,7 @@ export const getBuildingSettings = async (buildingId?: string): Promise<Building
     db.auditEvents.where('[subjectType+subjectId]').equals(['BUILDING', building.id]).sortBy('createdAt'),
   ]);
   const config: BuildingConfig = stored
-    ? { ...stored, approvalStepKeys: approvalStepKeysOf(stored.approvalStepKeys), assignmentRules: assignmentRulesOf(stored.assignmentRules) }
+    ? { ...stored, workflowApprovalSteps: workflowApprovalDefinitionsOf(stored.workflowApprovalSteps), approvalStepKeys: approvalStepKeysOf(stored.approvalStepKeys, workflowApprovalDefinitionsOf(stored.workflowApprovalSteps)), assignmentRules: assignmentRulesOf(stored.assignmentRules) }
     : {
         buildingId: building.id,
         ...defaultConfigValues(),
@@ -71,18 +72,20 @@ export const listBuildingConfigs = async (): Promise<BuildingConfig[]> => {
   const rows = await getDb().buildingConfigs.bulkGet(viewer.buildingIds);
   return rows
     .filter((row): row is BuildingConfig => Boolean(row))
-    .map((row) => ({ ...row, approvalStepKeys: approvalStepKeysOf(row.approvalStepKeys), assignmentRules: assignmentRulesOf(row.assignmentRules) }));
+    .map((row) => ({ ...row, workflowApprovalSteps: workflowApprovalDefinitionsOf(row.workflowApprovalSteps), approvalStepKeys: approvalStepKeysOf(row.approvalStepKeys, workflowApprovalDefinitionsOf(row.workflowApprovalSteps)), assignmentRules: assignmentRulesOf(row.assignmentRules) }));
 };
 
 /** Lists the building-scoped workflows before the user enters the visual designer. */
 export const getWorkflowIndex = async (): Promise<WorkflowIndex> => {
   const first = await getBuildingSettings();
+  const roles = (await getDb().roleDefs.toArray()).sort((a, b) => Number(b.isSystem) - Number(a.isSystem) || a.code.localeCompare(b.code));
   const settings = await Promise.all(first.buildings.map((building) => (
     building.id === first.building.id ? Promise.resolve(first) : getBuildingSettings(building.id)
   )));
   return {
     buildings: first.buildings,
     workflows: settings.map(({ building, config }) => ({ building, config })),
+    roles,
     canConfigure: first.canConfigure,
   };
 };

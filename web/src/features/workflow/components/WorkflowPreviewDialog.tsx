@@ -1,9 +1,10 @@
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { BUSINESS_WORKFLOW_STEPS } from '@/domain/constants';
-import type { WorkflowStageConfig } from '@/domain/types';
+import type { WorkflowApprovalStep, WorkflowStageConfig } from '@/domain/types';
 import { workflowStepBindingsOf } from '@/domain/building-config';
 import { BUSINESS_STEP_ICON, DEFAULT_WORKFLOW_NAME, STEP_ICON, stepFor } from '../workflow-designer-meta';
+import { UserRound } from 'lucide-react';
 import { WorkflowPreviewRow } from './WorkflowPreviewRow';
 
 interface WorkflowPreviewDialogProps {
@@ -11,10 +12,11 @@ interface WorkflowPreviewDialogProps {
   onOpenChange: (open: boolean) => void;
   name: string;
   stages: readonly WorkflowStageConfig[];
+  approvalSteps: readonly WorkflowApprovalStep[];
 }
 
 /** Read-only preview of every enabled stage in order. */
-export const WorkflowPreviewDialog = ({ open, onOpenChange, name, stages }: WorkflowPreviewDialogProps) => (
+export const WorkflowPreviewDialog = ({ open, onOpenChange, name, stages, approvalSteps }: WorkflowPreviewDialogProps) => (
   <Dialog
     open={open}
     onOpenChange={onOpenChange}
@@ -34,7 +36,7 @@ export const WorkflowPreviewDialog = ({ open, onOpenChange, name, stages }: Work
             {workflowStepBindingsOf(stage).map((binding, index) => {
               const businessStep = BUSINESS_WORKFLOW_STEPS.find((step) => step.key === binding.businessStepKey);
               if (!businessStep) return null;
-              const approval = binding.approvalStepKey ? stepFor(binding.approvalStepKey) : undefined;
+              const approval = binding.approvalStepKey ? stepFor(binding.approvalStepKey, approvalSteps) : undefined;
               const approvalNote = approval ? ` · Gắn với ${approval.label}` : ' · Không yêu cầu phê duyệt';
               return (
                 <WorkflowPreviewRow
@@ -47,11 +49,11 @@ export const WorkflowPreviewDialog = ({ open, onOpenChange, name, stages }: Work
               );
             })}
             {stage.approvalStepKeys.map((key, index) => {
-              const step = stepFor(key);
+              const step = stepFor(key, approvalSteps);
               return (
                 <WorkflowPreviewRow
                   key={`${stage.key}-${key}`}
-                  icon={STEP_ICON[key]}
+                  icon={STEP_ICON[key] ?? UserRound}
                   label={`${index + 1}. ${step.label}`}
                   description={`Người thực hiện: ${step.actor}`}
                   tone="accent"

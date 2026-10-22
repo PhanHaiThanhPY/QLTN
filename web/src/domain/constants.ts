@@ -33,6 +33,8 @@ export const REPAIR_STATUS = {
   PENDING_TECH_APPROVAL: 'PENDING_TECH_APPROVAL',
   PENDING_TECH_REVIEW: 'PENDING_TECH_REVIEW',
   PENDING_BOARD_APPROVAL: 'PENDING_BOARD_APPROVAL',
+  PENDING_CUSTOM_APPROVAL: 'PENDING_CUSTOM_APPROVAL',
+  PENDING_CUSTOM_PAYMENT_APPROVAL: 'PENDING_CUSTOM_PAYMENT_APPROVAL',
   NEEDS_SUBMISSION_UPDATE: 'NEEDS_SUBMISSION_UPDATE',
   REJECTED_RESUBMITTABLE: 'REJECTED_RESUBMITTABLE',
   READY_FOR_CONSTRUCTION: 'READY_FOR_CONSTRUCTION',
@@ -59,6 +61,8 @@ export const REPAIR_STATUS_LABEL: Record<RepairStatus, string> = {
   PENDING_TECH_APPROVAL: 'Chờ kỹ thuật duyệt',
   PENDING_TECH_REVIEW: 'Chờ TVKT thẩm định',
   PENDING_BOARD_APPROVAL: 'Chờ BQT duyệt',
+  PENDING_CUSTOM_APPROVAL: 'Chờ phê duyệt theo workflow',
+  PENDING_CUSTOM_PAYMENT_APPROVAL: 'Chờ duyệt thanh toán theo workflow',
   NEEDS_SUBMISSION_UPDATE: 'Cần bổ sung tờ trình',
   REJECTED_RESUBMITTABLE: 'Từ chối và được trình lại',
   READY_FOR_CONSTRUCTION: 'Chờ thi công',
@@ -108,6 +112,8 @@ export const REPAIR_STATUS_GROUP_BY_STATUS: Record<RepairStatus, RepairStatusGro
   PENDING_TECH_APPROVAL: 'APPROVAL',
   PENDING_TECH_REVIEW: 'APPROVAL',
   PENDING_BOARD_APPROVAL: 'APPROVAL',
+  PENDING_CUSTOM_APPROVAL: 'APPROVAL',
+  PENDING_CUSTOM_PAYMENT_APPROVAL: 'PAYMENT',
   NEEDS_SUBMISSION_UPDATE: 'NEEDS_ACTION',
   REJECTED_RESUBMITTABLE: 'NEEDS_ACTION',
   READY_FOR_CONSTRUCTION: 'CONSTRUCTION',
@@ -132,16 +138,28 @@ export const REPAIR_FINAL_STATUSES: readonly RepairStatus[] = [
 ];
 
 /** Available approval steps. Administrators choose and order a subset per building. */
+export interface ApprovalStepDefinition {
+  key: string;
+  status: RepairStatus;
+  role: Role;
+  roleDefId?: string;
+  actor: string;
+  label: string;
+}
+
 export const APPROVAL_STEPS = [
   { key: 'TECH_CONFIRM', status: 'PENDING_TECH_APPROVAL', role: 'TECH_CONFIRMER', actor: 'KT', label: 'Kỹ thuật duyệt' },
   { key: 'TECH', status: 'PENDING_TECH_REVIEW', role: 'TECH_CONSULTANT', actor: 'TVKT', label: 'TVKT thẩm định' },
   { key: 'BOARD', status: 'PENDING_BOARD_APPROVAL', role: 'OWNERS_BOARD', actor: 'BQT', label: 'BQT duyệt' },
-] as const satisfies readonly { key: string; status: RepairStatus; role: Role; actor: string; label: string }[];
-export type ApprovalStepKey = (typeof APPROVAL_STEPS)[number]['key'];
+] as const satisfies readonly ApprovalStepDefinition[];
+export type ApprovalStepKey = string;
 /** Minimal default for a new building; the administrator can add, remove, and reorder steps. */
 export const DEFAULT_APPROVAL_STEP_KEYS: readonly ApprovalStepKey[] = ['TECH'];
-export type ApprovalStatus = (typeof APPROVAL_STEPS)[number]['status'];
-export const APPROVAL_STATUSES: readonly RepairStatus[] = APPROVAL_STEPS.map((step) => step.status);
+export type ApprovalStatus = RepairStatus;
+export const APPROVAL_STATUSES: readonly RepairStatus[] = [
+  ...APPROVAL_STEPS.map((step) => step.status),
+  'PENDING_CUSTOM_APPROVAL',
+];
 
 /** Lifecycle steps that can be enabled for each workflow stage. */
 export const BUSINESS_WORKFLOW_STEPS = [
@@ -370,6 +388,7 @@ export const LIMITS = {
   PROPOSAL_MIN: 10,
   CHECKLIST_LABEL_MIN: 3,
   CHECKLIST_LABEL_MAX: 200,
+  CHECKLIST_UNIT_MAX: 30,
   GENERATION_WINDOW_DAYS: 30,
   GENERATION_LIMIT: 100,
   UPCOMING_DAYS: 7,
@@ -382,6 +401,7 @@ export const TASK_DUE_DAYS: Partial<Record<TaskKind, number>> = {
   REVIEW_ACCEPTANCE: 3,
   APPROVE_PROPOSAL: 3,
   APPROVE_PAYMENT: 3,
+  REVIEW_MAINTENANCE: 2,
 };
 
 export const SYSTEM_ACTOR_ID = 'SYSTEM';

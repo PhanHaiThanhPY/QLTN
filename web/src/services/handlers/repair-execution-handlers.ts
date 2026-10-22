@@ -1,4 +1,5 @@
 import { assertNoFieldErrors, conflict, invalidTransition, notFound, validationError } from '@/domain/errors';
+import { APPROVAL_STEP_SLOT, approvalStepsFor, nextApprovalStep } from '@/domain/actions';
 import type { Acceptance, AcceptanceReviewer, Construction, PaymentRequest, RepairRecord } from '@/domain/types';
 import { FieldErrorCollector, asNumber, asRecord, asString, asStringArray } from '@/domain/validation';
 import type { CommandHandler } from '../command-engine';
@@ -84,6 +85,29 @@ const addAcceptanceRound = async (
 /** Both KT and TVKT review every acceptance round. */
 const ACCEPTANCE_REVIEWERS: AcceptanceReviewer[] = ['confirmer', 'consultant'];
 
+const acceptanceStepKeysOf = (record: RepairRecord): string[] =>
+  record.workflowStageApprovalStepKeys?.ACCEPTANCE ?? ['TECH_CONFIRM', 'TECH'];
+
+const isSequentialAcceptance = (record: RepairRecord): boolean => {
+  const keys = acceptanceStepKeysOf(record);
+  return keys.length !== 2 || keys.some((key, index) => key !== ['TECH_CONFIRM', 'TECH'][index]);
+};
+
+const paymentStepKeysOf = (record: RepairRecord): string[] =>
+  record.workflowStageApprovalStepKeys?.PAYMENT ?? ['BOARD'];
+
+const legacyAcceptanceSlotsOf = (keys: readonly string[]): AcceptanceReviewer[] =>
+  keys.map((key) => APPROVAL_STEP_SLOT[key]).filter((slot): slot is AcceptanceReviewer => slot === 'confirmer' || slot === 'consultant');
+
+const acceptanceStepsOf = (record: RepairRecord): ReturnType<typeof approvalStepsFor> =>
+  approvalStepsFor(record.pendingApprovalStepKeys ?? acceptanceStepKeysOf(record), record.workflowApprovalSteps);
+
+const paymentStepsOf = (record: RepairRecord, request?: PaymentRequest): ReturnType<typeof approvalStepsFor> =>
+  approvalStepsFor(request?.approvalStepKeys ?? paymentStepKeysOf(record), record.workflowApprovalSteps);
+
+const actorOwnsStep = (record: RepairRecord, stepKey: string, actorId: string): boolean =>
+  record.approvalAssigneeUserIds?.[stepKey] === actorId;
+
 const submitAcceptance: CommandHandler = async (ctx, command) => {
   const record = await loadRecordFor(ctx, command, 'submitAcceptance');
   const construction = await getConstruction(ctx, record);
@@ -98,7 +122,16 @@ const submitAcceptance: CommandHandler = async (ctx, command) => {
   const attachmentIds = await ownImages(ctx, record, asStringArray(payload.attachmentIds), 'attachmentIds', 'Cần ít nhất 1 ảnh kết quả.');
   await ctx.db.constructions.put({ ...construction, completedDate });
   await addAcceptanceRound(ctx, record, note, attachmentIds);
-  await commitRecord(ctx, record, { ...record, status: 'PENDING_ACCEPTANCE', pendingAcceptanceSlots: ACCEPTANCE_REVIEWERS }, 'submitAcceptance');
+  const keys = acceptanceStepKeysOf(record);
+  const steps = approvalStepsFor(keys, record.workflowApprovalSteps);
+  const pendingKeys = isSequentialAcceptance(record) ? steps.slice(0, 1).map((step) => step.key) : steps.map((step) => step.key);
+  const pendingAcceptanceSlots = legacyAcceptanceSlotsOf(pendingKeys);
+  await commitRecord(ctx, record, {
+    ...record,
+    status: 'PENDING_ACCEPTANCE',
+    pendingApprovalStepKeys: pendingKeys,
+    pendingAcceptanceSlots,
+  }, 'submitAcceptance');
   return { ok: true, subjectId: record.id };
 };
 
@@ -110,19 +143,26 @@ const pendingAcceptance = async (ctx: CommandContext, record: RepairRecord): Pro
 };
 
 /** Reviewer slot the actor holds among those still pending in this round. */
-const reviewerOf = (ctx: CommandContext, record: RepairRecord): AcceptanceReviewer => {
-  const pending = record.pendingAcceptanceSlots ?? [];
-  if (pending.includes('confirmer') && record.confirmationUserId === ctx.actor.id) return 'confirmer';
-  return 'consultant';
+const reviewerOf = (ctx: CommandContext, record: RepairRecord): { stepKey: string; reviewer: AcceptanceReviewer } => {
+  if (record.pendingApprovalStepKeys) {
+    const step = acceptanceStepsOf(record).find((candidate) => actorOwnsStep(record, candidate.key, ctx.actor.id));
+    if (step) {
+      const reviewer = APPROVAL_STEP_SLOT[step.key] === 'confirmer' || step.role === 'TECH_CONFIRMER' ? 'confirmer' : 'consultant';
+      return { stepKey: step.key, reviewer };
+    }
+  }
+  const pending = record.pendingAcceptanceSlots ?? ACCEPTANCE_REVIEWERS;
+  if (pending.includes('confirmer') && record.confirmationUserId === ctx.actor.id) return { stepKey: 'TECH_CONFIRM', reviewer: 'confirmer' };
+  return { stepKey: 'TECH', reviewer: 'consultant' };
 };
 
 interface AcceptanceOutcome {
   result: Acceptance['result'];
   status: RepairRecord['status'];
-  pending?: AcceptanceReviewer[];
+  pending?: string[];
 }
 
-const acceptanceOutcome = (isPass: boolean, pending: AcceptanceReviewer[]): AcceptanceOutcome => {
+const acceptanceOutcome = (isPass: boolean, pending: string[]): AcceptanceOutcome => {
   if (!isPass) return { result: 'FAILED', status: 'NEEDS_REPAIR' };
   if (pending.length === 0) return { result: 'PASSED', status: 'PENDING_PAYMENT_REQUEST' };
   return { result: 'PENDING', status: 'PENDING_ACCEPTANCE', pending };
@@ -141,20 +181,33 @@ const decideAcceptance =
     const payload = asRecord(command.payload);
     const note = asString(payload.note);
     const isPass = action === 'passAcceptance';
-    const reviewer = reviewerOf(ctx, record);
+    const current = reviewerOf(ctx, record);
+    const reviewer = current.reviewer;
     assertNoFieldErrors(new FieldErrorCollector().reason('note', note, isPass ? 'Kết luận nghiệm thu' : 'Nội dung chưa đạt').errors);
     const reportIds = await assertOwnAttachments(ctx, asStringArray(payload.reportAttachmentIds), 'REPAIR_RECORD', record.id, 'reportAttachmentIds', ['ACCEPTANCE']);
-    if (isPass && reviewer === 'confirmer' && reportIds.length === 0) {
+    const step = acceptanceStepsOf(record).find((candidate) => candidate.key === current.stepKey);
+    const requiresReport = reviewer === 'confirmer' || step?.role === 'TECH_CONFIRMER';
+    if (isPass && requiresReport && reportIds.length === 0) {
       throw validationError({ reportAttachmentIds: 'Cần tài liệu biên bản nghiệm thu.' });
     }
     const checks = [
       ...acceptance.checks,
-      { reviewer, actorId: ctx.actor.id, passed: isPass, note, reportAttachmentIds: reportIds, checkedAt: ctx.now },
+      { reviewer, stepKey: current.stepKey, reviewerLabel: step?.label, actorId: ctx.actor.id, passed: isPass, note, reportAttachmentIds: reportIds, checkedAt: ctx.now },
     ];
-    const pending = (record.pendingAcceptanceSlots ?? []).filter((slot) => slot !== reviewer);
+    let pending = (record.pendingApprovalStepKeys ?? acceptanceStepKeysOf(record)).filter((key) => key !== current.stepKey);
+    if (isSequentialAcceptance(record) && isPass && pending.length === 0) {
+      const configured = approvalStepsFor(acceptanceStepKeysOf(record), record.workflowApprovalSteps);
+      const next = configured[configured.findIndex((candidate) => candidate.key === current.stepKey) + 1];
+      if (next) pending = [next.key];
+    }
     const outcome = acceptanceOutcome(isPass, pending);
     await ctx.db.acceptances.put({ ...acceptance, checks, result: outcome.result });
-    const next: RepairRecord = { ...record, status: outcome.status, pendingAcceptanceSlots: outcome.pending };
+    const next: RepairRecord = {
+      ...record,
+      status: outcome.status,
+      pendingApprovalStepKeys: outcome.pending,
+      pendingAcceptanceSlots: outcome.pending ? legacyAcceptanceSlotsOf(outcome.pending) : undefined,
+    };
     await commitRecord(ctx, record, next, action, { reason: note });
     return { ok: true, subjectId: record.id };
   };
@@ -180,7 +233,15 @@ const resubmitAcceptance: CommandHandler = async (ctx, command) => {
   const attachmentIds = await ownImages(ctx, record, ids, 'attachmentIds', 'Cần ít nhất 1 ảnh sau khắc phục.');
   await ctx.db.constructions.put({ ...construction, repairEvidence: undefined });
   await addAcceptanceRound(ctx, record, note, attachmentIds);
-  await commitRecord(ctx, record, { ...record, status: 'PENDING_ACCEPTANCE', pendingAcceptanceSlots: ACCEPTANCE_REVIEWERS }, 'resubmitAcceptance');
+  const keys = acceptanceStepKeysOf(record);
+  const steps = approvalStepsFor(keys, record.workflowApprovalSteps);
+  const pendingKeys = isSequentialAcceptance(record) ? steps.slice(0, 1).map((step) => step.key) : steps.map((step) => step.key);
+  await commitRecord(ctx, record, {
+    ...record,
+    status: 'PENDING_ACCEPTANCE',
+    pendingApprovalStepKeys: pendingKeys,
+    pendingAcceptanceSlots: legacyAcceptanceSlotsOf(pendingKeys),
+  }, 'resubmitAcceptance');
   return { ok: true, subjectId: record.id };
 };
 
@@ -232,9 +293,18 @@ const submitPaymentRequest: CommandHandler = async (ctx, command) => {
     attachmentIds,
     submittedBy: ctx.actor.id,
     submittedAt: ctx.now,
+    approvalStepKeys: paymentStepKeysOf(record),
+    currentApprovalStepKey: paymentStepsOf(record)[0]?.key,
+    approvalAssigneeUserIds: record.approvalAssigneeUserIds,
+    approvalDecisions: [],
   };
   await ctx.db.paymentRequests.add(request);
-  await commitRecord(ctx, record, { ...record, status: 'PENDING_PAYMENT_APPROVAL' }, 'submitPaymentRequest');
+  const isLegacyBoard = request.approvalStepKeys?.length === 1 && request.approvalStepKeys[0] === 'BOARD';
+  await commitRecord(ctx, record, {
+    ...record,
+    status: isLegacyBoard ? 'PENDING_PAYMENT_APPROVAL' : 'PENDING_CUSTOM_PAYMENT_APPROVAL',
+    currentPaymentApprovalStepKey: isLegacyBoard ? undefined : request.currentApprovalStepKey,
+  }, 'submitPaymentRequest');
   return { ok: true, subjectId: record.id, data: { paymentRequestId: request.id } };
 };
 
@@ -254,15 +324,36 @@ const decidePayment =
     const isApprove = action === 'approvePayment';
     const reason = asString(asRecord(command.payload).reason);
     if (!isApprove) assertNoFieldErrors(new FieldErrorCollector().reason('reason', reason).errors);
-    await ctx.db.paymentRequests.put({
-      ...request,
-      decision: isApprove ? 'APPROVED' : 'NEEDS_UPDATE',
-      decidedBy: ctx.actor.id,
-      decidedAt: ctx.now,
-      reason: isApprove ? undefined : reason,
-    });
-    const status = isApprove ? 'PENDING_PAYMENT' : 'NEEDS_PAYMENT_UPDATE';
-    await commitRecord(ctx, record, { ...record, status }, action, { reason: isApprove ? undefined : reason });
+    const steps = paymentStepsOf(record, request);
+    const currentKey = request.currentApprovalStepKey ?? record.currentPaymentApprovalStepKey ?? steps[0]?.key;
+    const current = steps.find((step) => step.key === currentKey);
+    if (!current) throw invalidTransition('Không xác định được bước duyệt thanh toán hiện tại.');
+    const decisions = [
+      ...(request.approvalDecisions ?? []),
+      { step: current.key, actorId: ctx.actor.id, outcome: isApprove ? 'APPROVED' as const : 'NEEDS_UPDATE' as const, reason: isApprove ? undefined : reason, createdAt: ctx.now },
+    ];
+    const nextStep = isApprove ? nextApprovalStep(current.key, request.approvalStepKeys ?? paymentStepKeysOf(record), record.workflowApprovalSteps) : undefined;
+    if (nextStep) {
+      await ctx.db.paymentRequests.put({ ...request, currentApprovalStepKey: nextStep.key, approvalDecisions: decisions, decision: undefined, decidedBy: undefined, decidedAt: undefined, reason: undefined });
+      const isLegacyBoard = nextStep.key === 'BOARD' && (request.approvalStepKeys?.length ?? 0) === 1;
+      await commitRecord(ctx, record, {
+        ...record,
+        status: isLegacyBoard ? 'PENDING_PAYMENT_APPROVAL' : 'PENDING_CUSTOM_PAYMENT_APPROVAL',
+        currentPaymentApprovalStepKey: isLegacyBoard ? undefined : nextStep.key,
+      }, action);
+    } else {
+      await ctx.db.paymentRequests.put({
+        ...request,
+        currentApprovalStepKey: undefined,
+        approvalDecisions: decisions,
+        decision: isApprove ? 'APPROVED' : 'NEEDS_UPDATE',
+        decidedBy: ctx.actor.id,
+        decidedAt: ctx.now,
+        reason: isApprove ? undefined : reason,
+      });
+      const status = isApprove ? 'PENDING_PAYMENT' : 'NEEDS_PAYMENT_UPDATE';
+      await commitRecord(ctx, record, { ...record, status, currentPaymentApprovalStepKey: undefined }, action, { reason: isApprove ? undefined : reason });
+    }
     return { ok: true, subjectId: record.id };
   };
 

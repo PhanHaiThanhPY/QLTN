@@ -14,12 +14,14 @@ import {
   approverErrors,
   assertOwnAttachments,
   commitRecord,
+  defaultWorkflowApprovers,
   defaultApprovers,
   firstActiveInRole,
   isActiveUserInRole,
   loadRecordFor,
 } from './repair-helpers';
 import { loadBuildingConfig } from './building-handlers';
+import { workflowApprovalDefinitionsOf, workflowApprovalStepsOf, workflowStageApprovalStepKeysOf } from '@/domain/building-config';
 
 const isPriority = (value: unknown): value is Priority =>
   typeof value === 'string' && (Object.values(PRIORITY) as string[]).includes(value);
@@ -126,6 +128,7 @@ const createRecord: CommandHandler = async (ctx, command) => {
 
   const id = newId('rec');
   const buildingConfig = await loadBuildingConfig(ctx, buildingId);
+  const workflowApprovalSteps = workflowApprovalStepsOf(workflowApprovalDefinitionsOf(buildingConfig.workflowApprovalSteps));
   const base: RepairRecord = {
     id,
     code: await nextCode(ctx, 'SC'),
@@ -140,6 +143,9 @@ const createRecord: CommandHandler = async (ctx, command) => {
     ...defaultApprovers(ctx, buildingId, asString(payload.locationId)),
     dueDays: buildingConfig.taskDueDays,
     approvalStepKeys: [...(buildingConfig.approvalStepKeys ?? DEFAULT_APPROVAL_STEP_KEYS)],
+    workflowApprovalSteps,
+    workflowStageApprovalStepKeys: workflowStageApprovalStepKeysOf(buildingConfig.workflowStages, buildingConfig.approvalStepKeys),
+    approvalAssigneeUserIds: defaultWorkflowApprovers(ctx, workflowApprovalSteps, buildingId, asString(payload.locationId)),
     attachmentIds: [],
     createdBy: ctx.actor.id,
     createdAt: ctx.now,

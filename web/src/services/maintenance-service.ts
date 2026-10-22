@@ -1,4 +1,4 @@
-import { LIMITS, OCCURRENCE_FINAL_STATUSES, OCCURRENCE_OVERDUE_STATUSES, REPAIR_FINAL_STATUSES } from '@/domain/constants';
+import { LIMITS, OCCURRENCE_FINAL_STATUSES, OCCURRENCE_OVERDUE_STATUSES, REPAIR_FINAL_STATUSES, TASK_DUE_DAYS } from '@/domain/constants';
 import type { OccurrenceStatus, PlanStatus } from '@/domain/constants';
 import { nextScheduleDate } from '@/domain/schedule';
 import { unassignableSlots } from '@/domain/task-rules';
@@ -230,6 +230,13 @@ export interface OccurrenceListItem {
   pendingSince?: string;
 }
 
+/** Backfills the review deadline for occurrences created before the SLA field was introduced. */
+const withReviewDeadline = (occurrence: MaintenanceOccurrence, submittedAt?: string): MaintenanceOccurrence => {
+  if (occurrence.status !== 'PENDING_REVIEW' || occurrence.reviewDueAt || !submittedAt) return occurrence;
+  const days = TASK_DUE_DAYS.REVIEW_MAINTENANCE;
+  return days === undefined ? occurrence : { ...occurrence, reviewDueAt: new Date(new Date(submittedAt).getTime() + days * 86_400_000).toISOString() };
+};
+
 /** Builds list rows with indicator, reassignment flag and review waiting time. */
 const toListItems = async (occurrences: MaintenanceOccurrence[], today: IsoDate): Promise<OccurrenceListItem[]> => {
   const db = getDb();
@@ -241,14 +248,17 @@ const toListItems = async (occurrences: MaintenanceOccurrence[], today: IsoDate)
   const usersById = new Map(users.map((user) => [user.id, user]));
   const locationByItem = new Map(items.filter(Boolean).map((row) => [row?.id, row?.locationId]));
   const submittedAt = new Map(submissions.filter(Boolean).map((row) => [row?.id, row?.submittedAt]));
-  return occurrences.map((occurrence) => ({
-    occurrence,
+  return occurrences.map((occurrence) => {
+    const current = withReviewDeadline(occurrence, submittedAt.get(occurrence.currentSubmissionId ?? ''));
+    return {
+    occurrence: current,
     indicator: occurrenceIndicator(occurrence, today),
     needsReassignment:
       !['COMPLETED', 'CANCELLED'].includes(occurrence.status) &&
       unassignableSlots({ ...occurrence, locationId: locationByItem.get(occurrence.itemId) }, usersById).length > 0,
     pendingSince: occurrence.status === 'PENDING_REVIEW' ? submittedAt.get(occurrence.currentSubmissionId) : undefined,
-  }));
+    };
+  });
 };
 
 export const listOccurrences = async (filters: OccurrenceFilters = {}): Promise<Page<OccurrenceListItem>> => {
@@ -305,9 +315,11 @@ export const getOccurrenceDetail = async (occurrenceId: string): Promise<Occurre
     db.users.toArray(),
   ]);
   const usersById = new Map(users.map((user) => [user.id, user]));
+  const currentSubmission = submissions.find((row) => row.id === occurrence.currentSubmissionId);
+  const occurrenceWithDeadline = withReviewDeadline(occurrence, currentSubmission?.submittedAt);
   const isFinal = ['COMPLETED', 'CANCELLED'].includes(occurrence.status);
   return {
-    occurrence,
+    occurrence: occurrenceWithDeadline,
     plan,
     item,
     submissions,

@@ -73,6 +73,150 @@ describe('building configuration, roles and emergency repairs', () => {
     expect(invalid.fieldErrors?.approvalStepKeys).toBeDefined();
   });
 
+  it('should execute a customer-defined approval step for a custom role', async () => {
+    asUser(USER_ID.ADMIN);
+    const role = await run('createRoleDef', 'ACCOUNT', undefined, {
+      sourceRoleId: 'role-tech_consultant',
+      name: 'Hội đồng kỹ thuật riêng',
+    });
+    const customRoleId = role.subjectId as string;
+    const approver = await run('createUser', 'ACCOUNT', undefined, {
+      code: 'TVKT-RIENG',
+      fullName: 'Người duyệt workflow riêng',
+      departmentId: 'dep-consulting',
+      roleDefId: customRoleId,
+      buildingIds: ['bld-a'],
+      locationIds: ['loc-a-5'],
+    });
+
+    const settings = await getBuildingSettings('bld-a');
+    const customStep = {
+      key: 'CUSTOM_TECH_PANEL',
+      label: 'Hội đồng kỹ thuật riêng duyệt',
+      actor: 'Hội đồng kỹ thuật riêng',
+      role: 'TECH_CONSULTANT' as const,
+      roleDefId: customRoleId,
+      status: 'PENDING_CUSTOM_APPROVAL' as const,
+    };
+    await run('updateBuildingConfig', 'BUILDING', 'bld-a', {
+      ...settings.config,
+      workflowApprovalSteps: [...(settings.config.workflowApprovalSteps ?? []), customStep],
+      approvalStepKeys: [customStep.key],
+    });
+
+    asUser(USER_ID.BQL_A);
+    const recordId = await newRecord('bld-a', 'loc-a-5');
+    await run('submitRecord', 'REPAIR_RECORD', recordId);
+    asUser(USER_ID.KT_A);
+    await run('confirmRepair', 'REPAIR_RECORD', recordId, { note: 'Đã xác nhận cần sửa.' });
+    asUser(USER_ID.BQL_A);
+    const file = await uploadAttachment({ subjectType: 'REPAIR_RECORD', subjectId: recordId, purpose: 'PROPOSAL', file: makeSamplePdf('TT'), fileName: 'tt.pdf' });
+    await run('submitProposal', 'REPAIR_RECORD', recordId, {
+      proposal: 'Thay thế linh kiện theo phương án đã khảo sát.',
+      contractorName: 'Nhà thầu thử nghiệm',
+      amountVnd: 8_000_000,
+      attachmentIds: [file.id],
+      signature: signatureDataUrl('BQL-A'),
+    });
+    expect((await getDb().records.get(recordId))?.status).toBe('PENDING_CUSTOM_APPROVAL');
+    expect((await getDb().records.get(recordId))?.approvalAssigneeUserIds?.[customStep.key]).toBe(approver.subjectId);
+
+    await expectCode(run('approveProposal', 'REPAIR_RECORD', recordId, { submissionId: (await getDb().records.get(recordId))?.currentSubmissionId }), 'FORBIDDEN');
+    asUser(approver.subjectId as string);
+    await run('approveProposal', 'REPAIR_RECORD', recordId, { submissionId: (await getDb().records.get(recordId))?.currentSubmissionId });
+    expect((await getDb().records.get(recordId))?.status).toBe('READY_FOR_CONSTRUCTION');
+  });
+
+  it('should execute custom acceptance and payment stages from the workflow designer', async () => {
+    asUser(USER_ID.ADMIN);
+    const acceptanceRole = await run('createRoleDef', 'ACCOUNT', undefined, {
+      sourceRoleId: 'role-tech_confirmer',
+      name: 'Tổ nghiệm thu riêng',
+    });
+    const paymentRole = await run('createRoleDef', 'ACCOUNT', undefined, {
+      sourceRoleId: 'role-owners_board',
+      name: 'Hội đồng thanh toán riêng',
+    });
+    const acceptanceUser = await run('createUser', 'ACCOUNT', undefined, {
+      code: 'KT-NT-RIENG',
+      fullName: 'Tổ nghiệm thu riêng',
+      departmentId: 'dep-technical',
+      roleDefId: acceptanceRole.subjectId,
+      buildingIds: ['bld-a'],
+      locationIds: ['loc-a-5'],
+    });
+    const paymentUser = await run('createUser', 'ACCOUNT', undefined, {
+      code: 'BQT-TT-RIENG',
+      fullName: 'Hội đồng thanh toán riêng',
+      departmentId: 'dep-board',
+      roleDefId: paymentRole.subjectId,
+      buildingIds: ['bld-a'],
+      locationIds: ['loc-a-5'],
+    });
+    const settings = await getBuildingSettings('bld-a');
+    const acceptanceKey = 'CUSTOM_ACCEPTANCE_PANEL';
+    const paymentKey = 'CUSTOM_PAYMENT_PANEL';
+    const customSteps = [
+      { key: acceptanceKey, label: 'Tổ nghiệm thu riêng', actor: 'Tổ nghiệm thu riêng', role: 'TECH_CONFIRMER' as const, roleDefId: acceptanceRole.subjectId as string, status: 'PENDING_CUSTOM_APPROVAL' as const },
+      { key: paymentKey, label: 'Hội đồng thanh toán riêng', actor: 'Hội đồng thanh toán riêng', role: 'OWNERS_BOARD' as const, roleDefId: paymentRole.subjectId as string, status: 'PENDING_CUSTOM_APPROVAL' as const },
+    ];
+    const workflowStages = (settings.config.workflowStages ?? []).map((stage) => stage.key === 'ACCEPTANCE'
+      ? { ...stage, approvalStepKeys: [acceptanceKey, 'TECH'], stepBindings: (stage.stepBindings ?? []).map((binding) => ({ ...binding, approvalStepKey: undefined })) }
+      : stage.key === 'PAYMENT' ? { ...stage, approvalStepKeys: [paymentKey], stepBindings: (stage.stepBindings ?? []).map((binding) => ({ ...binding, approvalStepKey: undefined })) } : stage);
+    await run('updateBuildingConfig', 'BUILDING', 'bld-a', {
+      ...settings.config,
+      workflowApprovalSteps: [...(settings.config.workflowApprovalSteps ?? []), ...customSteps],
+      workflowStages,
+    });
+
+    asUser(USER_ID.BQL_A);
+    const recordId = await newRecord('bld-a', 'loc-a-5');
+    const snapshot = await getDb().records.get(recordId);
+    expect(snapshot?.workflowStageApprovalStepKeys?.ACCEPTANCE).toEqual([acceptanceKey, 'TECH']);
+    expect(snapshot?.workflowStageApprovalStepKeys?.PAYMENT).toEqual([paymentKey]);
+    await run('submitRecord', 'REPAIR_RECORD', recordId);
+    asUser(snapshot?.confirmationUserId as string);
+    await run('confirmRepair', 'REPAIR_RECORD', recordId, { note: 'Đã xác nhận cần sửa.' });
+    asUser(USER_ID.BQL_A);
+    const proposalFile = await uploadAttachment({ subjectType: 'REPAIR_RECORD', subjectId: recordId, purpose: 'PROPOSAL', file: makeSamplePdf('TT'), fileName: 'tt.pdf' });
+    await run('submitProposal', 'REPAIR_RECORD', recordId, {
+      proposal: 'Thay mới hạng mục theo phương án.',
+      contractorName: 'Nhà thầu thử nghiệm',
+      amountVnd: 8_000_000,
+      attachmentIds: [proposalFile.id],
+      signature: signatureDataUrl('BQL-A'),
+    });
+    asUser(USER_ID.TVKT);
+    await run('approveProposal', 'REPAIR_RECORD', recordId);
+    const proposalBoard = await getDb().records.get(recordId);
+    asUser(proposalBoard?.approvalAssigneeUserIds?.BOARD as string);
+    await run('approveProposal', 'REPAIR_RECORD', recordId);
+    asUser(USER_ID.BQL_A);
+    await run('startConstruction', 'REPAIR_RECORD', recordId, { startDate: '2026-10-12', plannedEndDate: '2026-10-15' });
+    await run('updateConstruction', 'REPAIR_RECORD', recordId, { progressPercent: 100, note: 'Đã hoàn thành.', attachmentIds: [] });
+    await run('submitAcceptance', 'REPAIR_RECORD', recordId, { completedDate: '2026-10-12', note: 'Gửi nghiệm thu.', attachmentIds: [await uploadAttachment({ subjectType: 'REPAIR_RECORD', subjectId: recordId, purpose: 'ACCEPTANCE', file: makeSamplePng('#000', '#fff'), fileName: 'nt.png' }).then((file) => file.id)] });
+    const acceptanceTask = await getDb().tasks.where('[subjectType+subjectId]').equals(['REPAIR_RECORD', recordId]).filter((task) => task.status === 'OPEN').first();
+    expect(acceptanceTask?.assigneeId).toBe(acceptanceUser.subjectId);
+    asUser(acceptanceUser.subjectId as string);
+    await run('passAcceptance', 'REPAIR_RECORD', recordId, { note: 'Đạt yêu cầu.', reportAttachmentIds: [await uploadAttachment({ subjectType: 'REPAIR_RECORD', subjectId: recordId, purpose: 'ACCEPTANCE', file: makeSamplePdf('NT'), fileName: 'nt.pdf' }).then((file) => file.id)] });
+    expect((await getDb().records.get(recordId))?.status).toBe('PENDING_ACCEPTANCE');
+    const nextAcceptanceTask = await getDb().tasks.where('[subjectType+subjectId]').equals(['REPAIR_RECORD', recordId]).filter((task) => task.status === 'OPEN').first();
+    expect(nextAcceptanceTask?.assigneeId).toBe(USER_ID.TVKT);
+    asUser(USER_ID.TVKT);
+    await run('passAcceptance', 'REPAIR_RECORD', recordId, { note: 'TVKT thống nhất nghiệm thu.', reportAttachmentIds: [] });
+    asUser(USER_ID.BQL_A);
+    await run('submitPaymentRequest', 'REPAIR_RECORD', recordId, { amountVnd: 8_000_000, attachmentIds: [await uploadAttachment({ subjectType: 'REPAIR_RECORD', subjectId: recordId, purpose: 'PAYMENT_REQUEST', file: makeSamplePdf('TTT'), fileName: 'ttt.pdf' }).then((file) => file.id)] });
+    expect((await getDb().records.get(recordId))?.status).toBe('PENDING_CUSTOM_PAYMENT_APPROVAL');
+    const paymentTask = await getDb().tasks.where('[subjectType+subjectId]').equals(['REPAIR_RECORD', recordId]).filter((task) => task.status === 'OPEN').first();
+    expect(paymentTask?.assigneeId).toBe(paymentUser.subjectId);
+    asUser(USER_ID.BQT);
+    await expectCode(run('approvePayment', 'REPAIR_RECORD', recordId), 'FORBIDDEN');
+    asUser(paymentUser.subjectId as string);
+    await run('approvePayment', 'REPAIR_RECORD', recordId);
+    expect((await getDb().records.get(recordId))?.status).toBe('PENDING_PAYMENT');
+    expect((await getDb().paymentRequests.where('recordId').equals(recordId).first())?.approvalDecisions?.map((decision) => decision.step)).toEqual([paymentKey]);
+  });
+
   it('should resolve workflow assignees from configured department rules and keep legacy fallback', async () => {
     asUser(USER_ID.ADMIN);
     const department = await run('createDepartment', 'ACCOUNT', undefined, {
@@ -118,9 +262,11 @@ describe('building configuration, roles and emergency repairs', () => {
 
   it('should copy a role without adding permissions and apply it to accounts', async () => {
     asUser(USER_ID.ADMIN);
+    const createdFromScratch = await run('createRoleDef', 'ACCOUNT', undefined, { baseRole: 'OWNERS_BOARD', name: 'Hội đồng đầu tư' });
+    expect(createdFromScratch.data?.code).toBe('VT-02');
     await expectCode(run('createRoleDef', 'ACCOUNT', undefined, { sourceRoleId: 'role-tech_confirmer', name: 'KT thử', capabilities: ['VIEW', 'PAYMENT_DECIDE'] }), 'VALIDATION_ERROR');
     const role = await run('createRoleDef', 'ACCOUNT', undefined, { sourceRoleId: 'role-bql', name: 'BQL ca đêm', capabilities: ['VIEW', 'RECORD_EDIT', 'EMERGENCY_START'] });
-    expect(role.data?.code).toBe('VT-02');
+    expect(role.data?.code).toBe('VT-03');
     const user = await run('createUser', 'ACCOUNT', undefined, { code: 'BQL-A3', fullName: 'Trần Văn Đêm', departmentId: 'dep-management', roleDefId: role.subjectId, buildingIds: ['bld-a'] });
     const stored = await getDb().users.get(user.subjectId as string);
     expect(stored?.role).toBe('BQL');

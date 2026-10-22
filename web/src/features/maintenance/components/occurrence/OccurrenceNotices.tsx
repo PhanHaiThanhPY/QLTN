@@ -5,7 +5,7 @@ import type { User } from '@/domain/types';
 import { useCommand } from '@/hooks/useCommand';
 import type { OccurrenceDetail } from '@/services/maintenance-service';
 import { todayVn } from '@/services/runtime';
-import { diffDays, toVnDate } from '@/utils/date';
+import { diffDays, formatDateTime, toVnDate } from '@/utils/date';
 import { CancelOccurrenceButton } from './CancelOccurrenceButton';
 import { ReassignConfirmerButton } from './ReassignConfirmerButton';
 
@@ -20,6 +20,7 @@ export const OccurrenceNotices = ({ detail, viewer }: OccurrenceNoticesProps) =>
   const acknowledge = useCommand({ successMessage: 'Đã giữ lượt này theo ngày hiện tại.' });
   const current = submissions.find((row) => row.id === occurrence.currentSubmissionId);
   const waitingDays = current ? diffDays(toVnDate(current.submittedAt), todayVn()) : 0;
+  const reviewOverdue = Boolean(occurrence.reviewDueAt && new Date(occurrence.reviewDueAt).getTime() < Date.now());
 
   const handleAcknowledge = () =>
     void acknowledge.execute({
@@ -59,8 +60,8 @@ export const OccurrenceNotices = ({ detail, viewer }: OccurrenceNoticesProps) =>
         </Notice>
       ) : null}
       {occurrence.status === 'PENDING_REVIEW' ? (
-        <Notice tone="info" title={`Chờ kiểm tra ${waitingDays} ngày`}>
-          Đã gửi kết quả nên không tính quá hạn. Người xác nhận kiểm tra ở tab “Checklist & kết quả”.
+        <Notice tone={reviewOverdue ? 'danger' : 'info'} title={reviewOverdue ? `Quá hạn kiểm tra ${waitingDays} ngày` : `Chờ kiểm tra ${waitingDays} ngày`}>
+          Đã gửi kết quả. Hạn kiểm tra: {occurrence.reviewDueAt ? formatDateTime(occurrence.reviewDueAt) : 'chưa cấu hình'}. Người xác nhận kiểm tra ở tab “Checklist & kết quả”.
         </Notice>
       ) : null}
       {occurrence.status === 'CANCELLED' && occurrence.cancelReason ? (
