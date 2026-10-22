@@ -138,6 +138,8 @@ export interface Department {
   name: string;
   description?: string;
   buildingIds: string[];
+  /** Optimistic lock in api mode (`PATCH /departments/:id`); mock departments have no version. */
+  version?: number;
 }
 
 export interface Location {

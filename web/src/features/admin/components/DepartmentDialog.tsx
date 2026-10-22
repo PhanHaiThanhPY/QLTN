@@ -25,6 +25,8 @@ export const DepartmentDialog = ({ department, buildings, onClose }: DepartmentD
     void command.execute({
       subjectType: 'ACCOUNT',
       subjectId: department?.id,
+      // Api mode needs the version the dialog loaded; mock departments have none and ignore it.
+      expectedVersion: department?.version,
       action: department ? 'updateDepartment' : 'createDepartment',
       payload: { code, name, description, buildingIds },
     });
