@@ -3,6 +3,9 @@ import type { ReactNode } from 'react';
 import { Navigate, createBrowserRouter } from 'react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { LoadingState } from '@/components/common/States';
+import { IS_API_MODE } from '@/config/data-source';
+import { ApiUnavailablePage } from './ApiUnavailablePage';
+import { HomeRedirect } from './HomeRedirect';
 import { NotFoundPage } from './NotFoundPage';
 import { RouteErrorPage } from './RouteErrorPage';
 
@@ -33,6 +36,9 @@ const SpacePage = lazy(() => import('@/features/space'));
 
 const page = (node: ReactNode) => <Suspense fallback={<LoadingState />}>{node}</Suspense>;
 
+/** api mode (plan decision D2): modules still on IndexedDB show "chưa nối API" instead of failing on UUIDs. */
+const connected = (element: ReactNode): ReactNode => (IS_API_MODE ? <ApiUnavailablePage /> : element);
+
 export const router = createBrowserRouter([
   { path: '/login', element: page(<LoginPage />), errorElement: <RouteErrorPage /> },
   {
@@ -40,23 +46,23 @@ export const router = createBrowserRouter([
     element: <AppLayout />,
     errorElement: <RouteErrorPage />,
     children: [
-      { index: true, element: page(<DashboardPage />) },
-      { path: 'tasks', element: page(<TasksPage />) },
-      { path: 'records', element: page(<RecordsPage />) },
-      { path: 'records/schedule', element: page(<RepairSchedulePage />) },
-      { path: 'records/new', element: page(<RecordFormPage />) },
-      { path: 'records/:recordId', element: page(<RecordDetailPage />) },
-      { path: 'records/:recordId/edit', element: page(<RecordFormPage />) },
-      { path: 'maintenance/schedule', element: page(<SchedulePage />) },
-      { path: 'maintenance/plans', element: page(<PlansPage />) },
-      { path: 'maintenance/plans/new', element: page(<PlanFormPage />) },
-      { path: 'maintenance/plans/:planId', element: page(<PlanDetailPage />) },
-      { path: 'maintenance/plans/:planId/edit', element: page(<PlanFormPage />) },
-      { path: 'maintenance/items', element: page(<ItemsPage />) },
-      { path: 'maintenance/items/:itemId', element: page(<ItemDetailPage />) },
-      { path: 'maintenance/occurrences/:occurrenceId', element: page(<OccurrenceDetailPage />) },
-      { path: 'reports', element: page(<ReportsPage />) },
-      { path: 'notifications', element: page(<NotificationsPage />) },
+      { index: true, element: IS_API_MODE ? <HomeRedirect /> : page(<DashboardPage />) },
+      { path: 'tasks', element: connected(page(<TasksPage />)) },
+      { path: 'records', element: connected(page(<RecordsPage />)) },
+      { path: 'records/schedule', element: connected(page(<RepairSchedulePage />)) },
+      { path: 'records/new', element: connected(page(<RecordFormPage />)) },
+      { path: 'records/:recordId', element: connected(page(<RecordDetailPage />)) },
+      { path: 'records/:recordId/edit', element: connected(page(<RecordFormPage />)) },
+      { path: 'maintenance/schedule', element: connected(page(<SchedulePage />)) },
+      { path: 'maintenance/plans', element: connected(page(<PlansPage />)) },
+      { path: 'maintenance/plans/new', element: connected(page(<PlanFormPage />)) },
+      { path: 'maintenance/plans/:planId', element: connected(page(<PlanDetailPage />)) },
+      { path: 'maintenance/plans/:planId/edit', element: connected(page(<PlanFormPage />)) },
+      { path: 'maintenance/items', element: connected(page(<ItemsPage />)) },
+      { path: 'maintenance/items/:itemId', element: connected(page(<ItemDetailPage />)) },
+      { path: 'maintenance/occurrences/:occurrenceId', element: connected(page(<OccurrenceDetailPage />)) },
+      { path: 'reports', element: connected(page(<ReportsPage />)) },
+      { path: 'notifications', element: connected(page(<NotificationsPage />)) },
       { path: 'admin', element: <Navigate to="/admin/employees" replace /> },
       { path: 'admin/employees', element: page(<AdminEmployeesPage />) },
       { path: 'admin/departments', element: page(<AdminDepartmentsPage />) },
@@ -64,8 +70,8 @@ export const router = createBrowserRouter([
       { path: 'settings/buildings', element: page(<BuildingSettingsPage />) },
       { path: 'settings/workflow', element: page(<WorkflowRulesPage />) },
       { path: 'settings/locations', element: page(<LocationsPage />) },
-      { path: 'assistant', element: page(<AssistantPage />) },
-      { path: 'space', element: page(<SpacePage />) },
+      { path: 'assistant', element: connected(page(<AssistantPage />)) },
+      { path: 'space', element: connected(page(<SpacePage />)) },
       { path: '*', element: <NotFoundPage /> },
     ],
   },
