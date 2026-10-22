@@ -1,4 +1,4 @@
-import { OCCURRENCE_FINAL_STATUSES, REPAIR_FINAL_STATUSES, ROLE_LABEL } from '@/domain/constants';
+import { OCCURRENCE_FINAL_STATUSES, REPAIR_FINAL_STATUSES, ROLE, ROLE_LABEL } from '@/domain/constants';
 import { assertNoFieldErrors, conflict, forbidden, invalidTransition, notFound, validationError } from '@/domain/errors';
 import { APPROVER_SLOTS, CAPABILITY, hasCapability, roleCapabilities, slotUserId } from '@/domain/permissions';
 import type { Capability } from '@/domain/permissions';
@@ -42,30 +42,45 @@ const loadRole = async (ctx: CommandContext, id: string): Promise<RoleDefinition
   return role;
 };
 
-/** Copies a role (system or custom) into a new custom role; users are never copied. */
+/** Creates a custom role from scratch or copies an existing role; users are never copied. */
 const createRoleDef: CommandHandler = async (ctx, command) => {
   requireAccountManager(ctx);
   const payload = asRecord(command.payload);
-  const source = await loadRole(ctx, asString(payload.sourceRoleId));
+  const sourceRoleId = asOptionalString(payload.sourceRoleId);
+  const source = sourceRoleId ? await loadRole(ctx, sourceRoleId) : undefined;
+  const baseRoleValue = source?.baseRole ?? asString(payload.baseRole);
+  const baseRole = (Object.values(ROLE) as string[]).includes(baseRoleValue) ? baseRoleValue as RoleDefinition['baseRole'] : undefined;
   const name = asString(payload.name);
   const errors = new FieldErrorCollector().text('name', 'Tên vai trò', name, 3, 80);
+  errors.when(!baseRole, 'baseRole', 'Cần chọn vai trò gốc để xác định quyền ban đầu.');
   const duplicate = await ctx.db.roleDefs.filter((row) => row.name.toLowerCase() === name.toLowerCase()).count();
   errors.when(duplicate > 0, 'name', 'Tên vai trò đã tồn tại.');
   assertNoFieldErrors(errors.errors);
+  const roleTemplate: RoleDefinition = source ?? {
+    id: `template-${baseRole}`,
+    code: baseRole as string,
+    name: ROLE_LABEL[baseRole as RoleDefinition['baseRole']],
+    baseRole: baseRole as RoleDefinition['baseRole'],
+    capabilities: [...roleCapabilities(baseRole as RoleDefinition['baseRole'])],
+    isSystem: true,
+    version: 1,
+    createdAt: ctx.now,
+    updatedAt: ctx.now,
+  };
   const role: RoleDefinition = {
     id: newId('rol'),
     code: await nextCode(ctx, 'VT', 2),
     name,
-    baseRole: source.baseRole,
-    capabilities: parseCapabilities(source, payload.capabilities ?? source.capabilities),
+    baseRole: roleTemplate.baseRole,
+    capabilities: parseCapabilities(roleTemplate, payload.capabilities ?? roleTemplate.capabilities),
     isSystem: false,
-    sourceRoleId: source.id,
+    ...(source ? { sourceRoleId: source.id } : {}),
     version: 1,
     createdAt: ctx.now,
     updatedAt: ctx.now,
   };
   await ctx.db.roleDefs.add(role);
-  await audit(ctx, role.id, 'createRoleDef', 1, `Sao chép từ ${source.name}`);
+  await audit(ctx, role.id, 'createRoleDef', 1, source ? `Sao chép từ ${source.name}` : `Tạo từ vai trò gốc ${roleTemplate.name}`);
   return { ok: true, subjectId: role.id, data: { code: role.code } };
 };
 

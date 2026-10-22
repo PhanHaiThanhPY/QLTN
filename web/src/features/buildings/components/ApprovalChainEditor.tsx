@@ -10,7 +10,7 @@ interface ApprovalChainEditorProps {
   onChange: (value: ApprovalStepKey[]) => void;
 }
 
-const stepByKey = new Map(APPROVAL_STEPS.map((step) => [step.key, step]));
+const stepByKey = new Map<string, (typeof APPROVAL_STEPS)[number]>(APPROVAL_STEPS.map((step) => [step.key, step]));
 
 /** Builds a configurable approval chain from the available system roles. */
 export const ApprovalChainEditor = ({ value, disabled = false, onChange }: ApprovalChainEditorProps) => {

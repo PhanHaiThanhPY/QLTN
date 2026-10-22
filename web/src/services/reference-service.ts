@@ -33,7 +33,7 @@ export const getReferenceData = async (): Promise<ReferenceData> => {
   };
 };
 
-const DEMO_ACCOUNT_CODES = new Set(['ADMIN-DEMO', 'BQL-A', 'KT-A', 'BQT']);
+const DEMO_ACCOUNT_CODES = new Set(['ADMIN-DEMO', 'BQL-A', 'KT-A', 'KT-A2', 'KT-B', 'TVKT', 'BQT']);
 
 /** Curated demo account list for the "Vào demo" screen; this is a simulated login, not authentication. */
 export const listDemoAccounts = async (): Promise<User[]> => {

@@ -27,10 +27,17 @@ export interface ScheduleVersion {
   frequency: Frequency;
   intervalMonths: number;
 }
+
+export type ChecklistInputType = 'CHECK' | 'MEASUREMENT';
+
 export interface ChecklistTemplateItem {
   id: string;
   label: string;
   required: boolean;
+  inputType?: ChecklistInputType;
+  unit?: string;
+  minValue?: number;
+  maxValue?: number;
 }
 
 export interface SkippedPeriod {
@@ -61,7 +68,12 @@ export interface MaintenanceChecklistEntry {
   templateItemId: string;
   label: string;
   required: boolean;
+  inputType?: ChecklistInputType;
+  unit?: string;
+  minValue?: number;
+  maxValue?: number;
   result: CheckResult;
+  measurementValue?: number;
   note?: string;
   attachmentIds: string[];
 }
@@ -89,6 +101,8 @@ export interface MaintenanceOccurrence extends Versioned {
   checklist: MaintenanceChecklistEntry[];
   resultNote?: string;
   currentSubmissionId?: string;
+  /** Deadline snapshot for the current review round. */
+  reviewDueAt?: IsoDateTime;
   startedAt?: IsoDateTime;
   completedAt?: IsoDateTime;
   cancelReason?: string;
@@ -112,6 +126,15 @@ export interface MaintenanceSubmission {
 }
 
 export type MaintenanceReviewOutcome = 'REWORK' | 'CONFIRMED';
+export type MaintenanceItemReviewOutcome = 'APPROVED' | 'REWORK';
+
+/** Reviewer decision for one immutable checklist item in a submitted round. */
+export interface MaintenanceItemReview {
+  templateItemId: string;
+  outcome: MaintenanceItemReviewOutcome;
+  reason?: string;
+}
+
 export interface MaintenanceReview {
   id: string;
   occurrenceId: string;
@@ -120,6 +143,7 @@ export interface MaintenanceReview {
   actorId: string;
   outcome: MaintenanceReviewOutcome;
   reason?: string;
+  itemReviews?: MaintenanceItemReview[];
   itemConditionAfter?: ItemCondition;
   createdAt: IsoDateTime;
 }

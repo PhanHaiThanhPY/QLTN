@@ -18,17 +18,17 @@ const OUTCOME_TEXT: Record<ApprovalDecision['outcome'], string> = {
   REJECTED: 'từ chối',
 };
 
-const stepActor = (decision: ApprovalDecision, approvalStepKeys: RepairRecord['approvalStepKeys']): string =>
-  approvalStepsFor(approvalStepKeys).find((step) => step.key === decision.step)?.actor ?? 'Người duyệt';
+const stepActor = (decision: ApprovalDecision, record: RepairRecord): string =>
+  approvalStepsFor(record.approvalStepKeys, record.workflowApprovalSteps).find((step) => step.key === decision.step)?.actor ?? 'Người duyệt';
 
 /** One line per returned or rejected submission, oldest first. */
-const reasonLines = (submissions: Submission[], decisions: ApprovalDecision[], approvalStepKeys: RepairRecord['approvalStepKeys']): string[] =>
+const reasonLines = (submissions: Submission[], decisions: ApprovalDecision[], record: RepairRecord): string[] =>
   submissions.flatMap((submission) =>
     decisions
       .filter((row) => row.submissionId === submission.id && row.outcome !== 'APPROVED')
       .map(
         (row) =>
-          `- Lần trình ${submission.attemptNo} (${formatDate(toVnDate(row.createdAt))}, ${formatVnd(submission.amountVnd)}): ${stepActor(row, approvalStepKeys)} ${OUTCOME_TEXT[row.outcome]} – ${row.reason ?? 'không ghi lý do'}`,
+          `- Lần trình ${submission.attemptNo} (${formatDate(toVnDate(row.createdAt))}, ${formatVnd(submission.amountVnd)}): ${stepActor(row, record)} ${OUTCOME_TEXT[row.outcome]} – ${row.reason ?? 'không ghi lý do'}`,
       ),
   );
 
@@ -43,12 +43,12 @@ const composeNotice = async (ctx: CommandContext, record: RepairRecord): Promise
   const buildingName = building?.name ?? record.buildingId;
   const place = location ? `${location.name}, tầng ${location.floor}` : 'chưa rõ vị trí';
   const body = [
-    `Kính gửi: ${approvalStepsFor(record.approvalStepKeys).map((step) => step.actor).join(', ')} – ${buildingName}.`,
+    `Kính gửi: ${approvalStepsFor(record.approvalStepKeys, record.workflowApprovalSteps).map((step) => step.actor).join(', ')} – ${buildingName}.`,
     '',
     `Ban quản lý thông báo hồ sơ sửa chữa ${record.code} “${record.title}” (${place}) hiện CHƯA ĐƯỢC XỬ LÝ do tờ trình không được duyệt sau ${LIMITS.MAX_SUBMISSION_ATTEMPTS} lần trình.`,
     '',
     'Ý kiến qua các lần trình:',
-    ...reasonLines(submissions, decisions, record.approvalStepKeys),
+    ...reasonLines(submissions, decisions, record),
     '',
     `Hiện trạng: ${record.description}`,
     '',
@@ -112,8 +112,11 @@ const issueUnresolvedNotice: CommandHandler = async (ctx, command) => {
   await ctx.db.notices.put({ ...notice, ...text, status: 'ISSUED', issuedAt: ctx.now, issuedBy: ctx.actor.id, version: notice.version + 1, updatedAt: ctx.now });
   const saved = await commitRecord(ctx, record, { ...record, noticeIssuedAt: ctx.now }, 'issueUnresolvedNotice');
   const recipients = new Set(
-    approvalStepsFor(saved.approvalStepKeys)
-      .map((step) => slotUserId(saved, APPROVAL_STEP_SLOT[step.key]))
+    approvalStepsFor(saved.approvalStepKeys, saved.workflowApprovalSteps)
+      .map((step) => {
+        const slot = APPROVAL_STEP_SLOT[step.key];
+        return slot ? slotUserId(saved, slot) : saved.approvalAssigneeUserIds?.[step.key];
+      })
       .filter((id): id is string => Boolean(id)),
   );
   for (const recipientId of recipients) {

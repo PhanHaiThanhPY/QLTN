@@ -25,7 +25,8 @@ interface StepState {
 const stepState = (key: ApprovalStepKey, status: string, props: ApprovalStepperProps): StepState => {
   const decision = props.decisions.find((row) => row.step === key);
   if (decision) return { ...APPROVAL_OUTCOME[decision.outcome], decision };
-  if (props.isCurrent && status === props.record.status) return { label: 'Đang chờ', tone: 'warn' };
+  const isCurrentStep = props.record.currentApprovalStepKey ? props.record.currentApprovalStepKey === key : status === props.record.status;
+  if (props.isCurrent && isCurrentStep) return { label: 'Đang chờ', tone: 'warn' };
   return { label: 'Chưa tới', tone: 'outline' };
 };
 
@@ -34,10 +35,11 @@ export const ApprovalStepper = (props: ApprovalStepperProps) => {
   const { userName } = useReferenceData();
   return (
     <ol className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-      {approvalStepsFor(props.record.approvalStepKeys).map((step, index) => {
+      {approvalStepsFor(props.record.approvalStepKeys, props.record.workflowApprovalSteps).map((step, index) => {
         const state = stepState(step.key, step.status, props);
         const isWaiting = state.label === 'Đang chờ';
-        const assignee = state.decision?.actorId ?? slotUserId(props.record, APPROVAL_STEP_SLOT[step.key]);
+        const slot = APPROVAL_STEP_SLOT[step.key];
+        const assignee = state.decision?.actorId ?? (slot ? slotUserId(props.record, slot) : props.record.approvalAssigneeUserIds?.[step.key]);
         return (
           <li
             key={step.key}

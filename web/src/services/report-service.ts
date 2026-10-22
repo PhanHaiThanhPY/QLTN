@@ -70,7 +70,7 @@ export const getRepairReport = async (filters: ReportFilters = {}): Promise<Repa
   const rows: RepairReportRow[] = records.map((record) => {
     const approved = record.approvedSubmissionId ? submissionById.get(record.approvedSubmissionId) : undefined;
     // The last configured approval step dates the approved value.
-    const finalApprovalStep = approvalStepsFor(record.approvalStepKeys).at(-1)?.key;
+  const finalApprovalStep = approvalStepsFor(record.approvalStepKeys, record.workflowApprovalSteps).at(-1)?.key;
     const decision = decisions.find((row) => row.submissionId === record.approvedSubmissionId && row.step === finalApprovalStep);
     const recordPayments = payments.filter((row) => row.recordId === record.id).sort((a, b) => a.paidDate.localeCompare(b.paidDate));
     return {

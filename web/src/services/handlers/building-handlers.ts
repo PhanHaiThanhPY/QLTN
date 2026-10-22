@@ -1,10 +1,11 @@
-import { ASSIGNMENT_ROLES, CONFIG_DUE_KINDS, CONFIG_LIMITS, approvalStepKeysOf, assignmentRulesOf, defaultConfigValues, diffConfig, templateValues } from '@/domain/building-config';
+import { ASSIGNMENT_ROLES, CONFIG_DUE_KINDS, CONFIG_LIMITS, approvalStepKeysOf, assignmentRulesOf, defaultConfigValues, diffConfig, templateValues, workflowApprovalDefinitionsOf } from '@/domain/building-config';
 import type { ConfigValues } from '@/domain/building-config';
-import { APPROVAL_STEPS, BUSINESS_WORKFLOW_STEPS, DEFAULT_APPROVAL_STEP_KEYS } from '@/domain/constants';
+import { APPROVAL_STEPS, BUSINESS_WORKFLOW_STEPS, DEFAULT_APPROVAL_STEP_KEYS, ROLE } from '@/domain/constants';
 import type { ApprovalStepKey, BusinessWorkflowStepKey, TaskKind } from '@/domain/constants';
 import { assertNoFieldErrors, conflict, forbidden, notFound, validationError } from '@/domain/errors';
-import { hasCapability } from '@/domain/permissions';
-import type { AssignmentRule, Building, BuildingConfig, Location, WorkflowStageConfig, WorkflowStageKey, WorkflowStepBinding } from '@/domain/types';
+import { hasCapability, roleCapabilities } from '@/domain/permissions';
+import type { Capability } from '@/domain/permissions';
+import type { AssignmentRule, Building, BuildingConfig, Location, WorkflowApprovalStep, WorkflowStageConfig, WorkflowStageKey, WorkflowStepBinding } from '@/domain/types';
 import { FieldErrorCollector, asNumber, asOptionalString, asRecord, asString, asStringArray } from '@/domain/validation';
 import type { Command, CommandHandler } from '../command-engine';
 import type { CommandContext } from '../command-context';
@@ -15,7 +16,12 @@ import { newId } from '../runtime';
 export const loadBuildingConfig = async (ctx: CommandContext, buildingId: string): Promise<BuildingConfig> => {
   const stored = await ctx.db.buildingConfigs.get(buildingId);
   return stored
-    ? { ...stored, approvalStepKeys: approvalStepKeysOf(stored.approvalStepKeys), assignmentRules: assignmentRulesOf(stored.assignmentRules) }
+    ? {
+      ...stored,
+      workflowApprovalSteps: workflowApprovalDefinitionsOf(stored.workflowApprovalSteps),
+      approvalStepKeys: approvalStepKeysOf(stored.approvalStepKeys, workflowApprovalDefinitionsOf(stored.workflowApprovalSteps)),
+      assignmentRules: assignmentRulesOf(stored.assignmentRules),
+    }
     : { buildingId, ...defaultConfigValues(), assignmentRules: [], version: 0, updatedAt: ctx.now, updatedBy: ctx.actor.id };
 };
 const requireBuilding = async (ctx: CommandContext, buildingId: string, capability: 'BUILDING_CONFIG' | 'ACCOUNT_MANAGE'): Promise<Building> => {
@@ -33,24 +39,62 @@ const intIn = (errors: FieldErrorCollector, field: string, value: unknown, min: 
   return number ?? min;
 };
 
-const parseApprovalStepKeys = (errors: FieldErrorCollector, value: unknown): ApprovalStepKey[] => {
+const parseApprovalStepKeys = (
+  errors: FieldErrorCollector,
+  value: unknown,
+  definitions: readonly WorkflowApprovalStep[] = APPROVAL_STEPS,
+): ApprovalStepKey[] => {
   if (value === undefined) return [...DEFAULT_APPROVAL_STEP_KEYS];
   const keys = asStringArray(value);
-  const allowed = new Set(APPROVAL_STEPS.map((step) => step.key));
+  const allowed = new Set(definitions.map((step) => step.key));
   const isStepKey = (key: string): key is ApprovalStepKey => allowed.has(key as ApprovalStepKey);
-  const valid = keys.length > 0 && keys.length <= APPROVAL_STEPS.length && keys.every(isStepKey) && new Set(keys).size === keys.length;
+  const valid = keys.length > 0 && keys.length <= definitions.length && keys.every(isStepKey) && new Set(keys).size === keys.length;
   errors.when(!valid, 'approvalStepKeys', 'Chuỗi phê duyệt cần ít nhất một bước, không trùng bước và chỉ dùng vai trò đã cấu hình.');
   return valid ? keys.filter(isStepKey) : [...DEFAULT_APPROVAL_STEP_KEYS];
 };
 
-const parseWorkflowStages = (errors: FieldErrorCollector, value: unknown): WorkflowStageConfig[] | undefined => {
+const parseWorkflowApprovalSteps = (errors: FieldErrorCollector, value: unknown): WorkflowApprovalStep[] | undefined => {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) {
+    errors.add('workflowApprovalSteps', 'Cấu hình bước duyệt không hợp lệ.');
+    return undefined;
+  }
+  const systemRoles = new Set<string>(Object.values(ROLE));
+  const parsed = value.map((entry, index) => {
+    const row = asRecord(entry);
+    const key = asString(row.key);
+    const fixed = APPROVAL_STEPS.find((step) => step.key === key);
+    const role = asString(row.role);
+    const roleDefId = asOptionalString(row.roleDefId);
+    const label = asString(row.label);
+    errors.when(!key, `workflowApprovalSteps.${index}.key`, 'Cần mã bước duyệt.');
+    errors.when(!label, `workflowApprovalSteps.${index}.label`, 'Cần tên bước duyệt.');
+    errors.when(!fixed && !roleDefId && !systemRoles.has(role), `workflowApprovalSteps.${index}.role`, 'Cần chọn vai trò hệ thống hoặc vai trò tùy chỉnh.');
+    errors.when(Boolean(fixed) && roleDefId !== undefined, `workflowApprovalSteps.${index}.roleDefId`, 'Bước hệ thống không dùng roleDefId.');
+    return fixed && !roleDefId
+      ? { ...fixed }
+      : {
+        key,
+        label,
+        actor: asString(row.actor) || role,
+        role: (role || fixed?.role || 'BQL') as WorkflowApprovalStep['role'],
+        roleDefId,
+        status: 'PENDING_CUSTOM_APPROVAL' as const,
+      };
+  });
+  errors.when(parsed.length === 0, 'workflowApprovalSteps', 'Cần ít nhất một bước duyệt.');
+  errors.when(new Set(parsed.map((step) => step.key)).size !== parsed.length, 'workflowApprovalSteps', 'Mã bước duyệt không được trùng nhau.');
+  return parsed;
+};
+
+const parseWorkflowStages = (errors: FieldErrorCollector, value: unknown, definitions: readonly WorkflowApprovalStep[] = APPROVAL_STEPS): WorkflowStageConfig[] | undefined => {
   if (value === undefined) return undefined;
   if (!Array.isArray(value)) {
     errors.add('workflowStages', 'Cấu hình các giai đoạn workflow không hợp lệ.');
     return undefined;
   }
   const allowed = new Set<WorkflowStageKey>(['INTAKE', 'PROPOSAL', 'ACCEPTANCE', 'PAYMENT']);
-  const steps = new Set(APPROVAL_STEPS.map((step) => step.key));
+  const steps = new Set(definitions.map((step) => step.key));
   const parsed = value.map((entry, index) => {
     const row = asRecord(entry);
     const key = asString(row.key) as WorkflowStageKey;
@@ -94,8 +138,9 @@ const parseValues = (payload: Record<string, unknown>): ConfigValues => {
   const errors = new FieldErrorCollector();
   const rawDays = asRecord(payload.taskDueDays);
   const taskDueDays: Partial<Record<TaskKind, number>> = {};
-  const approvalStepKeys = parseApprovalStepKeys(errors, payload.approvalStepKeys);
-  const workflowStages = parseWorkflowStages(errors, payload.workflowStages);
+  const workflowApprovalSteps = parseWorkflowApprovalSteps(errors, payload.workflowApprovalSteps);
+  const approvalStepKeys = parseApprovalStepKeys(errors, payload.approvalStepKeys, workflowApprovalSteps ?? APPROVAL_STEPS);
+  const workflowStages = parseWorkflowStages(errors, payload.workflowStages, workflowApprovalSteps ?? APPROVAL_STEPS);
   for (const { kind, label } of CONFIG_DUE_KINDS) {
     taskDueDays[kind] = intIn(errors, `taskDueDays.${kind}`, rawDays[kind], 1, CONFIG_LIMITS.DUE_DAYS_MAX, label);
   }
@@ -139,6 +184,7 @@ const parseValues = (payload: Record<string, unknown>): ConfigValues => {
     ...(payload.workflowName !== undefined ? { workflowName: asOptionalString(payload.workflowName) } : {}),
     ...(payload.workflowDescription !== undefined ? { workflowDescription: asOptionalString(payload.workflowDescription) } : {}),
     ...(workflowStages !== undefined ? { workflowStages } : {}),
+    ...(workflowApprovalSteps !== undefined ? { workflowApprovalSteps } : {}),
     taskDueDays,
     approvalStepKeys,
     emergencyLimitVnd: asNumber(payload.emergencyLimitVnd) as number,
@@ -166,12 +212,50 @@ const validateAssignmentRules = async (ctx: CommandContext, buildingId: string, 
   assertNoFieldErrors(errors.errors);
 };
 
+const validateWorkflowApprovalSteps = async (
+  ctx: CommandContext,
+  steps: readonly WorkflowApprovalStep[] | undefined,
+  stages?: readonly WorkflowStageConfig[],
+): Promise<void> => {
+  if (!steps) return;
+  const roleIds = [...new Set(steps.map((step) => step.roleDefId).filter((id): id is string => Boolean(id)))];
+  const roles = await ctx.db.roleDefs.bulkGet(roleIds);
+  const roleById = new Map(roles.filter((role): role is NonNullable<typeof role> => Boolean(role)).map((role) => [role.id, role]));
+  const errors = new FieldErrorCollector();
+  const requiredCapabilities = new Map<ApprovalStepKey, Set<Capability>>();
+  for (const stage of stages ?? []) {
+    const capability: Capability = stage.key === 'PAYMENT' ? 'PAYMENT_DECIDE' : stage.key === 'ACCEPTANCE' ? 'ACCEPTANCE_DECIDE' : 'PROPOSAL_DECIDE';
+    for (const key of stage.approvalStepKeys) {
+      const current = requiredCapabilities.get(key) ?? new Set<Capability>();
+      current.add(capability);
+      requiredCapabilities.set(key, current);
+    }
+  }
+  steps.forEach((step, index) => {
+    const capabilities = requiredCapabilities.get(step.key) ?? new Set<Capability>(['PROPOSAL_DECIDE']);
+    if (step.roleDefId) {
+      const role = roleById.get(step.roleDefId);
+      errors.when(!role, `workflowApprovalSteps.${index}.roleDefId`, 'Vai trò tùy chỉnh không tồn tại.');
+      errors.when(Boolean(role) && role?.baseRole !== step.role, `workflowApprovalSteps.${index}.roleDefId`, 'Vai trò tùy chỉnh không khớp vai trò gốc của bước.');
+      for (const capability of capabilities) {
+        errors.when(Boolean(role) && !role?.capabilities.includes(capability), `workflowApprovalSteps.${index}.roleDefId`, `Vai trò được chọn cần có quyền ${capability}.`);
+      }
+    } else {
+      for (const capability of capabilities) {
+        errors.when(!roleCapabilities(step.role).includes(capability), `workflowApprovalSteps.${index}.role`, `Vai trò được chọn không có quyền ${capability}.`);
+      }
+    }
+  });
+  assertNoFieldErrors(errors.errors);
+};
+
 /** Saves a new configuration version; open records keep the due days they were created with. */
 const saveConfig = async (ctx: CommandContext, command: Command, values: ConfigValues, action: string) => {
   const current = await loadBuildingConfig(ctx, command.subjectId ?? '');
   if (command.expectedVersion === undefined) throw conflict('Thiếu phiên bản dữ liệu (expectedVersion). Vui lòng tải lại.');
   if (command.expectedVersion !== current.version) throw conflict();
   await validateAssignmentRules(ctx, current.buildingId, values.assignmentRules);
+  await validateWorkflowApprovalSteps(ctx, values.workflowApprovalSteps, values.workflowStages);
   const next: BuildingConfig = {
     ...current,
     ...values,

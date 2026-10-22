@@ -12,6 +12,17 @@ const checklistRowSchema = z.object({
     .min(LIMITS.CHECKLIST_LABEL_MIN, `Nhãn cần tối thiểu ${LIMITS.CHECKLIST_LABEL_MIN} ký tự.`)
     .max(LIMITS.CHECKLIST_LABEL_MAX, `Nhãn tối đa ${LIMITS.CHECKLIST_LABEL_MAX} ký tự.`),
   required: z.boolean(),
+  inputType: z.enum(['CHECK', 'MEASUREMENT']),
+  unit: z.string().trim().max(30, 'Đơn vị tối đa 30 ký tự.'),
+  minValue: z.number().finite().optional(),
+  maxValue: z.number().finite().optional(),
+}).superRefine((row, ctx) => {
+  if (row.inputType === 'MEASUREMENT' && !row.unit) {
+    ctx.addIssue({ code: 'custom', path: ['unit'], message: 'Mục đo cần có đơn vị.' });
+  }
+  if (row.minValue !== undefined && row.maxValue !== undefined && row.minValue > row.maxValue) {
+    ctx.addIssue({ code: 'custom', path: ['maxValue'], message: 'Giá trị tối đa phải lớn hơn hoặc bằng tối thiểu.' });
+  }
 });
 
 const basePlanSchema = z.object({
@@ -41,4 +52,4 @@ export const buildPlanSchema = (today: string, scheduleLocked: boolean) =>
     }
   });
 
-export const EMPTY_CHECKLIST_ROW = { id: '', label: '', required: true } as const;
+export const EMPTY_CHECKLIST_ROW = { id: '', label: '', required: true, inputType: 'CHECK' as const, unit: '', minValue: undefined, maxValue: undefined };

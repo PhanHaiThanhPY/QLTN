@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Field } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/input';
 import { LIMITS } from '@/domain/constants';
+import { approvalStepsFor } from '@/domain/actions';
 import { useAttachmentDraft } from '../../hooks/useAttachmentDraft';
 import { useRecordCommand } from '../../hooks/useRecordCommand';
 import { useRecordContext } from '../../record-context';
@@ -18,15 +19,21 @@ interface AcceptanceDecisionDialogProps {
 const decisionHint = (isPass: boolean, isLastReviewer: boolean): string => {
   if (!isPass) return 'Hồ sơ chuyển sang “Cần khắc phục”; biên bản lượt này được giữ lại.';
   if (isLastReviewer) return 'Bạn là người nghiệm thu cuối: hồ sơ chuyển sang “Chờ đề nghị thanh toán”.';
-  return 'Lượt này còn chờ người nghiệm thu còn lại (Kỹ thuật hoặc TVKT).';
+  return 'Lượt này còn chờ người nghiệm thu tiếp theo trong workflow.';
 };
 
 /** KT or TVKT decision on the pending round; KT passing requires report files (ACCEPTANCE), TVKT may attach one. */
 export const AcceptanceDecisionDialog = ({ outcome, roundNo, onClose }: AcceptanceDecisionDialogProps) => {
   const { detail, viewer } = useRecordContext();
   const isPass = outcome === 'pass';
-  const needsReport = isPass && detail.record.confirmationUserId === viewer.id;
-  const isLastReviewer = (detail.record.pendingAcceptanceSlots ?? []).length <= 1;
+  const pendingSteps = detail.record.pendingApprovalStepKeys
+    ? approvalStepsFor(detail.record.pendingApprovalStepKeys, detail.record.workflowApprovalSteps)
+    : [];
+  const currentStep = pendingSteps.find((step) => detail.record.approvalAssigneeUserIds?.[step.key] === viewer.id);
+  const needsReport = isPass && (currentStep?.role === 'TECH_CONFIRMER' || (!currentStep && detail.record.confirmationUserId === viewer.id));
+  const isLastReviewer = detail.record.pendingApprovalStepKeys
+    ? detail.record.pendingApprovalStepKeys.length <= 1
+    : (detail.record.pendingAcceptanceSlots ?? []).length <= 1;
   const [note, setNote] = useState('');
   const reports = useAttachmentDraft();
   const command = useRecordCommand({

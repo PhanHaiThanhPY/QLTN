@@ -22,8 +22,8 @@ export const PendingDecisionCard = () => {
   if (!approve.relevant || !view) return null;
   const { submission } = view;
   const isLastAttempt = submission.attemptNo >= LIMITS.MAX_SUBMISSION_ATTEMPTS;
-  const step = approvalStepOf(detail.record.status, detail.record.approvalStepKeys);
-  const next = step ? nextApprovalStep(step.key, detail.record.approvalStepKeys) : undefined;
+  const step = approvalStepOf(detail.record.status, detail.record.approvalStepKeys, detail.record.workflowApprovalSteps, detail.record.currentApprovalStepKey);
+  const next = step ? nextApprovalStep(step.key, detail.record.approvalStepKeys, detail.record.workflowApprovalSteps) : undefined;
   const afterApprove = next ? `Tiếp theo: ${next.label}.` : 'Tiếp theo: BQL có thể bắt đầu thi công.';
 
   return (

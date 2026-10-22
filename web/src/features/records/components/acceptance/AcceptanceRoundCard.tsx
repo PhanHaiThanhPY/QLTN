@@ -32,7 +32,7 @@ export const AcceptanceRoundCard = ({ round }: { round: Acceptance }) => (
       {round.checks.map((check) => (
         <div key={`${check.reviewer}-${check.checkedAt}`} className="rounded-lg bg-surface-2 p-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold text-ink-2">{REVIEWER_LABEL[check.reviewer]}</span>
+            <span className="text-xs font-semibold text-ink-2">{check.reviewerLabel ?? REVIEWER_LABEL[check.reviewer]}</span>
             <Badge tone={check.passed ? 'good' : 'crit'}>{check.passed ? 'Đạt' : 'Không đạt'}</Badge>
           </div>
           <p className="mt-1 whitespace-pre-line text-sm text-ink">{check.note}</p>

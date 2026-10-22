@@ -214,7 +214,7 @@ export const getEquipmentHistory = async (itemId: string): Promise<EquipmentHist
   const repairs = records.map((record): EquipmentRepairEntry => {
     const own = submissions.filter((row) => row.recordId === record.id).sort((a, b) => b.attemptNo - a.attemptNo);
     const shown = own.find((row) => row.id === record.approvedSubmissionId) ?? own[0];
-    const finalStep = approvalStepsFor(record.approvalStepKeys).at(-1)?.key;
+    const finalStep = approvalStepsFor(record.approvalStepKeys, record.workflowApprovalSteps).at(-1)?.key;
     const decision = decisions.find((row) => row.submissionId === record.approvedSubmissionId && row.step === finalStep);
     const construction = constructions.find((row) => row.recordId === record.id);
     const rounds = acceptances

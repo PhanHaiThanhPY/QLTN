@@ -1,4 +1,5 @@
 import type { OccurrenceStatus, RepairStatus, TaskKind } from './constants';
+import { approvalStepsFor } from './actions';
 import { APPROVER_SLOTS, SLOT_ROLE, canAccessLocation, hasCapability, slotUserId } from './permissions';
 import type { AssignedSubject, AssigneeSlot, Capability } from './permissions';
 import type { MaintenanceOccurrence, RepairRecord, User } from './types';
@@ -77,6 +78,8 @@ export interface DesiredTask {
   assigneeId: string;
   /** Slot whose assignee is inactive, when the task is a reassignment request. */
   blockedSlot?: AssigneeSlot;
+  /** Custom approval step whose assignee needs to be fixed. */
+  blockedStepKey?: string;
 }
 
 const toDesired = (target: TaskTarget, subject: AssignedSubject, usersById: Map<string, User>): DesiredTask => {
@@ -93,14 +96,52 @@ const dedupe = (tasks: DesiredTask[]): DesiredTask[] =>
     (task, index) => tasks.findIndex((other) => other.kind === task.kind && other.assigneeId === task.assigneeId) === index,
   );
 
+const workflowTask = (
+  record: RepairRecord,
+  stepKey: string | undefined,
+  kind: 'REVIEW_ACCEPTANCE' | 'APPROVE_PAYMENT',
+  capability: Capability,
+  usersById: Map<string, User>,
+): DesiredTask => {
+  const step = stepKey ? approvalStepsFor([stepKey], record.workflowApprovalSteps)[0] : undefined;
+  const assigneeId = step ? record.approvalAssigneeUserIds?.[step.key] : undefined;
+  const assignee = assigneeId ? usersById.get(assigneeId) : undefined;
+  const isRoleMatch = Boolean(step && assignee && (step.roleDefId ? assignee.roleDefId === step.roleDefId : assignee.role === step.role));
+  if (step && assignee && assignee.active && isRoleMatch && canAccessLocation(assignee, record.buildingId, record.locationId) && hasCapability(assignee, capability)) {
+    return { kind, assigneeId: assignee.id };
+  }
+  return { kind: 'REASSIGN_REQUIRED', assigneeId: record.managerUserId, blockedStepKey: step?.key };
+};
+
 /** Open tasks a record needs now; acceptance opens one task per reviewer still to decide (KT and TVKT). */
 export const desiredRepairTasks = (record: RepairRecord, usersById: Map<string, User>): DesiredTask[] => {
   if (record.status === 'PENDING_ACCEPTANCE') {
+    if (record.pendingApprovalStepKeys) {
+      return dedupe(record.pendingApprovalStepKeys.map((key) => workflowTask(record, key, 'REVIEW_ACCEPTANCE', 'ACCEPTANCE_DECIDE', usersById)));
+    }
     const slots = record.pendingAcceptanceSlots ?? [];
     return dedupe(slots.map((slot) => toDesired({ kind: 'REVIEW_ACCEPTANCE', slot }, record, usersById)));
   }
   if (record.status === 'UNRESOLVED') {
     return record.noticeIssuedAt ? [] : [toDesired({ kind: 'ISSUE_UNRESOLVED_NOTICE', slot: 'manager' }, record, usersById)];
+  }
+  if (record.status === 'PENDING_CUSTOM_APPROVAL') {
+    const step = approvalStepsFor(record.approvalStepKeys, record.workflowApprovalSteps).find(
+      (candidate) => candidate.key === record.currentApprovalStepKey,
+    );
+    const assigneeId = step ? record.approvalAssigneeUserIds?.[step.key] : undefined;
+    const assignee = assigneeId ? usersById.get(assigneeId) : undefined;
+    const isRoleMatch = Boolean(step && assignee && (step.roleDefId ? assignee.roleDefId === step.roleDefId : assignee.role === step.role));
+    if (step && assignee && assignee.active && isRoleMatch && canAccessLocation(assignee, record.buildingId, record.locationId) && hasCapability(assignee, 'PROPOSAL_DECIDE')) {
+      return [{ kind: 'APPROVE_PROPOSAL', assigneeId: assignee.id }];
+    }
+    return [{ kind: 'REASSIGN_REQUIRED', assigneeId: record.managerUserId, blockedStepKey: step?.key }];
+  }
+  if (record.status === 'PENDING_CUSTOM_PAYMENT_APPROVAL') {
+    const step = approvalStepsFor(record.workflowStageApprovalStepKeys?.PAYMENT, record.workflowApprovalSteps).find(
+      (candidate) => candidate.key === record.currentPaymentApprovalStepKey,
+    );
+    return [workflowTask(record, step?.key, 'APPROVE_PAYMENT', 'PAYMENT_DECIDE', usersById)];
   }
   const target = REPAIR_TASK[record.status];
   return target ? [toDesired(target, record, usersById)] : [];

@@ -4,7 +4,7 @@ import { Card, CardHeader } from '@/components/ui/card';
 import { StatusPill } from '@/components/ui/badge';
 import { useCommand } from '@/hooks/useCommand';
 import { toConfigPayload, toDraft } from '@/features/buildings/config-form';
-import type { Building, BuildingConfig } from '@/domain/types';
+import type { Building, BuildingConfig, RoleDefinition } from '@/domain/types';
 import { useWorkflowDraft } from '../hooks/useWorkflowDraft';
 import type { WorkflowTarget } from '../workflow-designer-meta';
 import { WorkflowCanvas } from './WorkflowCanvas';
@@ -17,6 +17,7 @@ interface WorkflowDesignerCardProps {
   building: Building;
   config: BuildingConfig;
   workflowTargets: readonly WorkflowTarget[];
+  roles: readonly RoleDefinition[];
   canEdit: boolean;
 }
 
@@ -24,7 +25,7 @@ interface WorkflowDesignerCardProps {
  * Workflow designer of one building. The parent remounts it per building + config version
  * (`key`), which resets the local draft after every save.
  */
-export const WorkflowDesignerCard = ({ building, config, workflowTargets, canEdit }: WorkflowDesignerCardProps) => {
+export const WorkflowDesignerCard = ({ building, config, workflowTargets, roles, canEdit }: WorkflowDesignerCardProps) => {
   const draft = useWorkflowDraft(config);
   const [previewOpen, setPreviewOpen] = useState(false);
   const command = useCommand({ successMessage: 'Đã lưu workflow theo phạm vi đã chọn.' });
@@ -50,6 +51,7 @@ export const WorkflowDesignerCard = ({ building, config, workflowTargets, canEdi
               workflowName: draft.name.trim(),
               workflowDescription: draft.description.trim(),
               approvalStepKeys,
+              workflowApprovalSteps: draft.approvalSteps,
             }, target.config.templateKey, false),
             workflowStages,
           },
@@ -103,6 +105,7 @@ export const WorkflowDesignerCard = ({ building, config, workflowTargets, canEdi
             <div className="min-w-0">
               <WorkflowCanvas
                 steps={steps}
+                approvalSteps={draft.approvalSteps}
                 stepBindings={stepBindings.filter((binding) => availableBusinessSteps.some((step) => step.key === binding.businessStepKey))}
                 selectedIndex={draft.selectedIndex}
                 disabled={!canEdit}
@@ -120,11 +123,15 @@ export const WorkflowDesignerCard = ({ building, config, workflowTargets, canEdi
             </div>
             <WorkflowLibrary
               businessSteps={availableBusinessSteps}
+                stageKey={draft.selectedStageKey}
+              approvalSteps={draft.approvalSteps}
+              roles={roles}
               activeKeys={steps}
               activeBindings={stepBindings}
               selectedStep={draft.selectedStep}
               canEdit={canEdit}
               onAdd={draft.addStep}
+              onAddCustomStep={draft.addCustomStep}
               onAddBusinessStep={draft.addBusinessStep}
               onPreview={() => setPreviewOpen(true)}
             />
@@ -135,7 +142,7 @@ export const WorkflowDesignerCard = ({ building, config, workflowTargets, canEdi
           <span className="text-xs text-ink-3">Cấu hình theo tòa nhà</span>
         </div>
       </Card>
-      <WorkflowPreviewDialog open={previewOpen} onOpenChange={setPreviewOpen} name={draft.name} stages={draft.stages} />
+      <WorkflowPreviewDialog open={previewOpen} onOpenChange={setPreviewOpen} name={draft.name} stages={draft.stages} approvalSteps={draft.approvalSteps} />
     </div>
   );
 };

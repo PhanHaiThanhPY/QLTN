@@ -1,6 +1,6 @@
 import { ALERT_RULES, APPROVAL_STEPS, BUSINESS_WORKFLOW_STEPS, DEFAULT_APPROVAL_STEP_KEYS, TASK_DUE_DAYS } from './constants';
 import type { ApprovalStepKey, BusinessWorkflowStepKey, Role, TaskKind } from './constants';
-import type { AssignmentRule, BuildingConfig, WorkflowStageConfig, WorkflowStageKey, WorkflowStepBinding } from './types';
+import type { AssignmentRule, BuildingConfig, WorkflowApprovalStep, WorkflowStageConfig, WorkflowStageKey, WorkflowStepBinding } from './types';
 
 /** Steps whose processing time each building can set (days). */
 export const CONFIG_DUE_KINDS: readonly { kind: TaskKind; label: string }[] = [
@@ -8,6 +8,7 @@ export const CONFIG_DUE_KINDS: readonly { kind: TaskKind; label: string }[] = [
   { kind: 'APPROVE_PROPOSAL', label: 'Mỗi bước duyệt tờ trình' },
   { kind: 'REVIEW_ACCEPTANCE', label: 'Nghiệm thu' },
   { kind: 'APPROVE_PAYMENT', label: 'BQT duyệt thanh toán' },
+  { kind: 'REVIEW_MAINTENANCE', label: 'Kiểm tra kết quả bảo trì' },
 ];
 
 export type ConfigValues = Omit<BuildingConfig, 'buildingId' | 'version' | 'updatedAt' | 'updatedBy'>;
@@ -114,11 +115,41 @@ export const templateValues = (key: string): ConfigValues | undefined => {
     : undefined;
 };
 
-export const approvalStepKeysOf = (keys?: readonly ApprovalStepKey[]): ApprovalStepKey[] => {
-  const allowed = new Set(APPROVAL_STEPS.map((step) => step.key));
-  const valid = keys !== undefined && keys.length > 0 && keys.length <= APPROVAL_STEPS.length && new Set(keys).size === keys.length && keys.every((key) => allowed.has(key));
+export const approvalStepKeysOf = (
+  keys?: readonly ApprovalStepKey[],
+  definitions: readonly WorkflowApprovalStep[] = APPROVAL_STEPS,
+): ApprovalStepKey[] => {
+  const allowed = new Set(definitions.map((step) => step.key));
+  const valid = keys !== undefined && keys.length > 0 && keys.length <= definitions.length && new Set(keys).size === keys.length && keys.every((key) => allowed.has(key));
   return valid ? [...(keys as readonly ApprovalStepKey[])] : [...DEFAULT_APPROVAL_STEP_KEYS];
 };
+
+/** Normalizes the runtime approval chain while keeping the legacy fixed-step fallback. */
+export const workflowApprovalStepsOf = (
+  definitions?: readonly WorkflowApprovalStep[],
+  keys?: readonly ApprovalStepKey[],
+): WorkflowApprovalStep[] => {
+  const available = definitions && definitions.length > 0 ? definitions : APPROVAL_STEPS;
+  const selectedKeys = keys && keys.length > 0 ? keys : available.map((step) => step.key);
+  return selectedKeys
+    .map((key) => available.find((step) => step.key === key))
+    .filter((step): step is WorkflowApprovalStep => Boolean(step))
+    .map((step) => ({ ...step }));
+};
+
+/** Returns the complete library of system steps plus any customer-defined steps. */
+export const workflowApprovalDefinitionsOf = (definitions?: readonly WorkflowApprovalStep[]): WorkflowApprovalStep[] => [
+  ...APPROVAL_STEPS,
+  ...(definitions ?? []).filter((step) => !APPROVAL_STEPS.some((fixed) => fixed.key === step.key)).map((step) => ({ ...step })),
+];
+
+/** Snapshots the configured approval order for every operational stage on a new record. */
+export const workflowStageApprovalStepKeysOf = (
+  stages?: readonly WorkflowStageConfig[],
+  legacyApprovalStepKeys?: readonly ApprovalStepKey[],
+): Partial<Record<WorkflowStageKey, ApprovalStepKey[]>> => Object.fromEntries(
+  workflowStagesOf(stages, legacyApprovalStepKeys).map((stage) => [stage.key, [...stage.approvalStepKeys]]),
+) as Partial<Record<WorkflowStageKey, ApprovalStepKey[]>>;
 
 export const assignmentRulesOf = (rules?: readonly AssignmentRule[]): AssignmentRule[] =>
   (rules ?? [])
@@ -147,11 +178,11 @@ const money = (value: number): string => `${new Intl.NumberFormat('vi-VN').forma
 /** Human readable differences between two configurations (preview before applying, and audit reason). */
 export const diffConfig = (before: ConfigValues, after: ConfigValues): ConfigChange[] => {
   const changes: ConfigChange[] = [];
-  const beforeApproval = approvalStepKeysOf(before.approvalStepKeys);
-  const afterApproval = approvalStepKeysOf(after.approvalStepKeys);
+  const beforeApproval = approvalStepKeysOf(before.approvalStepKeys, before.workflowApprovalSteps);
+  const afterApproval = approvalStepKeysOf(after.approvalStepKeys, after.workflowApprovalSteps);
   if (beforeApproval.join('|') !== afterApproval.join('|')) {
     const labels = (keys: readonly ApprovalStepKey[]): string =>
-      keys.map((key) => APPROVAL_STEPS.find((step) => step.key === key)?.actor ?? key).join(' → ');
+      keys.map((key) => [...(before.workflowApprovalSteps ?? []), ...(after.workflowApprovalSteps ?? []), ...APPROVAL_STEPS].find((step) => step.key === key)?.actor ?? key).join(' → ');
     changes.push({ label: 'Thứ tự chuỗi phê duyệt', from: labels(beforeApproval), to: labels(afterApproval) });
   }
   const beforeRules = assignmentRulesOf(before.assignmentRules);

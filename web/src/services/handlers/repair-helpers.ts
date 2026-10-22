@@ -1,11 +1,11 @@
-import { APPROVAL_STEP_SLOT, REPAIR_ACTIONS, approvalStepsFor, resolveSlots } from '@/domain/actions';
+import { APPROVAL_STEP_SLOT, REPAIR_ACTIONS, approvalStepsFor, resolveSlots, workflowAcceptanceReason, workflowApprovalReason, workflowPaymentReason } from '@/domain/actions';
 import type { RepairAction } from '@/domain/actions';
 import { ATTACHMENT_PURPOSE_LABEL, REPAIR_FINAL_STATUSES, REPAIR_STATUS_LABEL } from '@/domain/constants';
 import type { AttachmentPurpose, SubjectType, TaskKind } from '@/domain/constants';
 import { forbidden, invalidTransition, validationError } from '@/domain/errors';
 import { SLOT_ROLE, canAccessLocation, denyReason, slotUserId } from '@/domain/permissions';
 import { desiredRepairTasks } from '@/domain/task-rules';
-import type { RepairRecord, TaskCompletionReason } from '@/domain/types';
+import type { RepairRecord, TaskCompletionReason, WorkflowApprovalStep } from '@/domain/types';
 import type { Command } from '../command-engine';
 import { assertScopeAndVersion, bumpVersion, dueAtFor, syncTasks, writeAudit } from '../command-context';
 import type { CommandContext } from '../command-context';
@@ -22,6 +22,18 @@ export const loadRecordFor = async (
   const def = REPAIR_ACTIONS[action];
   const reason = denyReason(ctx.actor, current, def.capability, resolveSlots(def.slot, current));
   if (reason) throw forbidden(reason);
+  if (def.slot === 'APPROVAL_STEP') {
+    const workflowReason = workflowApprovalReason(ctx.actor, current);
+    if (workflowReason) throw forbidden(workflowReason);
+  }
+  if (def.slot === 'ACCEPTANCE_PENDING') {
+    const workflowReason = workflowAcceptanceReason(ctx.actor, current);
+    if (workflowReason) throw forbidden(workflowReason);
+  }
+  if (def.slot === 'PAYMENT_APPROVAL') {
+    const workflowReason = workflowPaymentReason(ctx.actor, current);
+    if (workflowReason) throw forbidden(workflowReason);
+  }
   if (!(def.from as readonly string[]).includes(current.status)) {
     throw invalidTransition(
       `Không thể “${def.label}” khi hồ sơ đang ở trạng thái “${REPAIR_STATUS_LABEL[current.status]}”.`,
@@ -128,6 +140,45 @@ export const firstActiveInRole = (ctx: CommandContext, role: string, buildingId:
   return undefined;
 };
 
+export const isActiveUserForApprovalStep = (
+  ctx: CommandContext,
+  userId: string | undefined,
+  step: WorkflowApprovalStep,
+  buildingId: string,
+  locationId?: string,
+): boolean => {
+  const user = userId ? ctx.usersById.get(userId) : undefined;
+  if (!user || !canAccessLocation(user, buildingId, locationId)) return false;
+  if (step.roleDefId) return user.roleDefId === step.roleDefId;
+  return isActiveUserInRole(ctx, userId, step.role, buildingId, locationId);
+};
+
+export const firstActiveForApprovalStep = (
+  ctx: CommandContext,
+  step: WorkflowApprovalStep,
+  buildingId: string,
+  locationId?: string,
+): string | undefined => {
+  if (step.roleDefId) {
+    return [...ctx.usersById.values()]
+      .filter((user) => user.roleDefId === step.roleDefId && canAccessLocation(user, buildingId, locationId))
+      .sort((a, b) => a.code.localeCompare(b.code))
+      .at(0)?.id;
+  }
+  return firstActiveInRole(ctx, step.role, buildingId, locationId);
+};
+
+export const defaultWorkflowApprovers = (
+  ctx: CommandContext,
+  steps: readonly WorkflowApprovalStep[],
+  buildingId: string,
+  locationId?: string,
+): Record<string, string> => Object.fromEntries(
+  steps
+    .map((step) => [step.key, firstActiveForApprovalStep(ctx, step, buildingId, locationId)] as const)
+    .filter((entry): entry is readonly [string, string] => Boolean(entry[1])),
+);
+
 /** Keeps compatibility fields populated while the selected workflow resolves its own slots. */
 export const defaultApprovers = (ctx: CommandContext, buildingId: string, locationId?: string): Pick<RepairRecord, 'consultantUserId' | 'boardUserId'> => ({
   consultantUserId: firstActiveInRole(ctx, SLOT_ROLE.consultant, buildingId, locationId) ?? '',
@@ -137,10 +188,10 @@ export const defaultApprovers = (ctx: CommandContext, buildingId: string, locati
 /** Field errors for every configured approval step whose resolved assignee is invalid. */
 export const approverErrors = (ctx: CommandContext, record: RepairRecord): Record<string, string> => {
   const errors: Record<string, string> = {};
-  for (const [index, step] of approvalStepsFor(record.approvalStepKeys).entries()) {
+  for (const [index, step] of approvalStepsFor(record.approvalStepKeys, record.workflowApprovalSteps).entries()) {
     const slot = APPROVAL_STEP_SLOT[step.key];
-    const userId = slotUserId(record, slot);
-    if (!isActiveUserInRole(ctx, userId, step.role, record.buildingId, record.locationId)) {
+    const userId = slot ? slotUserId(record, slot) : record.approvalAssigneeUserIds?.[step.key];
+    if (!isActiveUserForApprovalStep(ctx, userId, step, record.buildingId, record.locationId)) {
       errors[`approvalStepKeys.${index}`] = `Người xử lý bước ${step.label} đã ngừng hoạt động hoặc không hợp lệ. Cần kiểm tra lại phân công.`;
     }
   }

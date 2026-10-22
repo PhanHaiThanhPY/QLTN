@@ -2,7 +2,7 @@ import { CONFIG_DUE_KINDS } from '@/domain/building-config';
 import type { ConfigValues } from '@/domain/building-config';
 import type { ApprovalStepKey, TaskKind } from '@/domain/constants';
 import { assignmentRulesOf } from '@/domain/building-config';
-import type { AssignmentRule, BuildingConfig } from '@/domain/types';
+import type { AssignmentRule, BuildingConfig, WorkflowApprovalStep } from '@/domain/types';
 import { formatVndInput, parseVndInput } from '@/utils/money';
 
 /** Text form state of a building configuration. */
@@ -11,6 +11,7 @@ export interface ConfigDraft {
   workflowName: string;
   workflowDescription: string;
   approvalStepKeys: ApprovalStepKey[];
+  workflowApprovalSteps: WorkflowApprovalStep[];
   assignmentRules: AssignmentRule[];
   emergencyLimit: string;
   emergencyHours: string;
@@ -24,6 +25,7 @@ export const toDraft = (config: BuildingConfig): ConfigDraft => ({
   workflowName: config.workflowName ?? 'Quy trình sửa chữa và bảo trì',
   workflowDescription: config.workflowDescription ?? 'Quy trình xử lý hồ sơ theo từng bước được cấu hình cho tòa nhà.',
   approvalStepKeys: [...config.approvalStepKeys],
+  workflowApprovalSteps: [...(config.workflowApprovalSteps ?? [])],
   assignmentRules: assignmentRulesOf(config.assignmentRules),
   emergencyLimit: formatVndInput(config.emergencyLimitVnd),
   emergencyHours: String(config.emergencyDocHours),
@@ -47,6 +49,7 @@ export const toConfigPayload = (draft: ConfigDraft, templateKey?: string, includ
   workflowDescription: draft.workflowDescription,
   taskDueDays: Object.fromEntries(CONFIG_DUE_KINDS.map(({ kind }) => [kind, toNumber(draft.days[kind])])),
   approvalStepKeys: [...draft.approvalStepKeys],
+  workflowApprovalSteps: [...draft.workflowApprovalSteps],
   ...(includeAssignmentRules ? { assignmentRules: draft.assignmentRules } : {}),
   emergencyLimitVnd: parseVndInput(draft.emergencyLimit),
   emergencyDocHours: toNumber(draft.emergencyHours),

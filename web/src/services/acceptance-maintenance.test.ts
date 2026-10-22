@@ -4,6 +4,7 @@ import { signatureDataUrl } from '@/mock/signature-art';
 import { getDb } from '@/storage/db';
 import { asUser, occurrenceByCode, run, seedAt } from '@/test/helpers';
 import type { AppError } from '@/domain/errors';
+import type { MaintenanceOccurrence } from '@/domain/types';
 import { vnDateTimeToIso } from '@/utils/date';
 import { executeSystemCommand } from './command-engine';
 import { uploadAttachment } from './file-service';
@@ -80,11 +81,20 @@ describe('maintenance workflow acceptance (spec 13.2)', () => {
       attachmentIds: [await occPhoto(bt3.id)],
     });
     asUser(USER_ID.KT_A);
-    await run('requestMaintenanceRework', 'MAINTENANCE_OCCURRENCE', bt3.id, { reason: 'Thiếu ảnh tủ điều khiển.' });
+    const reviewItems = bt3.checklist.map((entry, index) => ({
+      templateItemId: entry.templateItemId,
+      outcome: index === 0 ? ('REWORK' as const) : ('APPROVED' as const),
+      reason: index === 0 ? 'Thiếu ảnh tủ điều khiển trong kết quả gửi.' : undefined,
+    }));
+    await run('requestMaintenanceRework', 'MAINTENANCE_OCCURRENCE', bt3.id, { reason: 'Thiếu ảnh tủ điều khiển.', reviewItems });
+    const review = await getDb().maintenanceReviews.where('occurrenceId').equals(bt3.id).first();
+    expect(review?.itemReviews?.find((item) => item.templateItemId === bt3.checklist[0].templateItemId)).toMatchObject({ outcome: 'REWORK' });
     asUser(USER_ID.BQL_A);
     await run('submitMaintenance', 'MAINTENANCE_OCCURRENCE', bt3.id, { resultNote: 'Đã bổ sung ảnh tủ điều khiển.' });
     asUser(USER_ID.KT_A);
-    await run('confirmMaintenance', 'MAINTENANCE_OCCURRENCE', bt3.id);
+    await run('confirmMaintenance', 'MAINTENANCE_OCCURRENCE', bt3.id, {
+      reviewItems: bt3.checklist.map((entry) => ({ templateItemId: entry.templateItemId, outcome: 'APPROVED' as const })),
+    });
     const submissions = await getDb().maintenanceSubmissions.where('occurrenceId').equals(bt3.id).sortBy('roundNo');
     expect(submissions.map((row) => row.resultNote)).toEqual(['Đã làm xong.', 'Đã bổ sung ảnh tủ điều khiển.']);
     const reviews = await getDb().maintenanceReviews.where('occurrenceId').equals(bt3.id).sortBy('roundNo');
@@ -105,6 +115,7 @@ describe('maintenance workflow acceptance (spec 13.2)', () => {
       templateItemId: entry.templateItemId,
       result: index === 0 ? ('ISSUE' as const) : ('OK' as const),
       note: index === 0 ? 'Phanh và bộ hãm an toàn hoạt động bất thường, cần kiểm tra sửa chữa.' : undefined,
+      attachmentIds: index === 0 ? [inspectionPhoto] : [],
     }));
     await run('saveMaintenanceProgress', 'MAINTENANCE_OCCURRENCE', bt003.id, {
       checklist: issueChecklist,
@@ -145,6 +156,7 @@ describe('maintenance workflow acceptance (spec 13.2)', () => {
       templateItemId: entry.templateItemId,
       result: index === 0 ? ('ISSUE' as const) : ('OK' as const),
       note: index === 0 ? 'Đã lập hồ sơ sửa chữa liên kết để xử lý lỗi phanh.' : undefined,
+      attachmentIds: index === 0 ? [inspectionPhoto] : [],
     }));
     await run('submitMaintenance', 'MAINTENANCE_OCCURRENCE', bt003.id, {
       checklist: submitChecklist,
@@ -330,6 +342,51 @@ describe('maintenance workflow acceptance (spec 13.2)', () => {
     expect(missing.fieldErrors?.issueResolutionNote).toBeDefined();
     await run('confirmMaintenance', 'MAINTENANCE_OCCURRENCE', bt10.id, { issueResolutionNote: 'Mục còn lại đã được ghi nhận để theo dõi tiếp.' });
     expect((await occurrenceByCode('BT-010')).status).toBe('COMPLETED');
+  });
+
+  it('should validate measurement checklist values and create a review SLA task', async () => {
+    const plan = await planOf('KH-03');
+    asUser(USER_ID.BQL_A);
+    await run('updateMaintenancePlan', 'MAINTENANCE_PLAN', plan.id, {
+      checklistTemplate: plan.checklistTemplate.map((item, index) => ({
+        ...item,
+        inputType: index === 0 ? 'MEASUREMENT' : 'CHECK',
+        unit: index === 0 ? 'bar' : undefined,
+        minValue: index === 0 ? 1 : undefined,
+        maxValue: index === 0 ? 5 : undefined,
+      })),
+    });
+    const created = await run('createManualOccurrence', 'MAINTENANCE_PLAN', plan.id, { scheduledDate: '2026-10-21', reason: 'Kiểm tra bổ sung thông số vận hành.' });
+    const occurrenceId = created.subjectId as string;
+    await run('startMaintenance', 'MAINTENANCE_OCCURRENCE', occurrenceId);
+    const occurrence = (await getDb().occurrences.get(occurrenceId)) as MaintenanceOccurrence;
+    const photo = await occPhoto(occurrenceId);
+    const checklist = occurrence.checklist.map((entry, index) => ({
+      templateItemId: entry.templateItemId,
+      result: 'OK' as const,
+      measurementValue: index === 0 ? 9 : undefined,
+    }));
+    const invalid = await expectError(run('submitMaintenance', 'MAINTENANCE_OCCURRENCE', occurrenceId, {
+      checklist,
+      resultNote: 'Đã kiểm tra thông số vận hành.',
+      performerName: 'Đội kỹ thuật',
+      attachmentIds: [photo],
+    }), 'VALIDATION_ERROR');
+    expect(Object.values(invalid.fieldErrors ?? {}).join(' ')).toContain('ngoài khoảng chuẩn');
+    await run('submitMaintenance', 'MAINTENANCE_OCCURRENCE', occurrenceId, {
+      checklist: checklist.map((entry, index) => ({ ...entry, measurementValue: index === 0 ? 3 : undefined })),
+      resultNote: 'Đã kiểm tra thông số vận hành.',
+      performerName: 'Đội kỹ thuật',
+      attachmentIds: [photo],
+    });
+    const saved = (await getDb().occurrences.get(occurrenceId)) as typeof occurrence;
+    expect(saved.reviewDueAt).toBeDefined();
+    const task = await getDb().tasks
+      .where('[subjectType+subjectId]')
+      .equals(['MAINTENANCE_OCCURRENCE', occurrenceId])
+      .filter((row) => row.kind === 'REVIEW_MAINTENANCE' && row.status === 'OPEN')
+      .first();
+    expect(task?.dueAt).toBe(saved.reviewDueAt);
   });
 
   it('should report maintenance numbers consistent with the seed', async () => {

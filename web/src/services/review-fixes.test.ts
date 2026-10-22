@@ -33,7 +33,8 @@ const approveAllSteps = async (recordId: string): Promise<void> => {
     const record = await getDb().records.get(recordId);
     const step = record ? approvalStepOf(record.status, record.approvalStepKeys) : undefined;
     if (!record || !step) return;
-    asUser(slotUserId(record, APPROVAL_STEP_SLOT[step.key]) ?? '');
+    const slot = APPROVAL_STEP_SLOT[step.key];
+    asUser(slot ? slotUserId(record, slot) ?? '' : record.approvalAssigneeUserIds?.[step.key] ?? '');
     await run('approveProposal', 'REPAIR_RECORD', recordId);
   }
 };

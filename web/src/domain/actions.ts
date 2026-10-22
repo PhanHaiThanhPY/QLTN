@@ -10,15 +10,16 @@ import {
 import type { ApprovalStepKey, OccurrenceStatus, PlanStatus, RepairStatus } from './constants';
 import { denyReason } from './permissions';
 import type { AssignedSubject, AssigneeSlot, Capability } from './permissions';
-import type { User } from './types';
+import type { User, WorkflowApprovalStep } from './types';
 
 /**
  * Who may perform a step:
  * - a slot: only that assignee; null: anyone holding the capability in the building;
  * - APPROVAL_STEP: the assignee of the current approval step (derived from the status);
- * - ACCEPTANCE_PENDING: KT or TVKT who has not yet passed the current acceptance round.
+ * - ACCEPTANCE_PENDING: a configured acceptance approver who has not yet decided.
+ * - PAYMENT_APPROVAL: the configured approver for the current payment step.
  */
-export type SlotRule = AssigneeSlot | null | 'APPROVAL_STEP' | 'ACCEPTANCE_PENDING';
+export type SlotRule = AssigneeSlot | null | 'APPROVAL_STEP' | 'ACCEPTANCE_PENDING' | 'PAYMENT_APPROVAL';
 
 export interface ActionDef<S extends string> {
   label: string;
@@ -27,41 +28,100 @@ export interface ActionDef<S extends string> {
   slot: SlotRule;
 }
 
-export const APPROVAL_STEP_SLOT: Record<ApprovalStepKey, AssigneeSlot> = {
+export const APPROVAL_STEP_SLOT: Partial<Record<ApprovalStepKey, AssigneeSlot>> = {
   TECH_CONFIRM: 'confirmer',
   TECH: 'consultant',
   BOARD: 'board',
 };
 
-export type ApprovalStep = (typeof APPROVAL_STEPS)[number];
+export type ApprovalStep = WorkflowApprovalStep;
 
 /** Current approval step for a status, or undefined outside the chain. */
-export const approvalStepsFor = (keys?: readonly ApprovalStepKey[]): ApprovalStep[] => {
+export const approvalStepsFor = (
+  keys?: readonly ApprovalStepKey[],
+  definitions?: readonly WorkflowApprovalStep[],
+): ApprovalStep[] => {
   const order = keys && keys.length > 0 ? keys : DEFAULT_APPROVAL_STEP_KEYS;
-  return order.map((key) => APPROVAL_STEPS.find((step) => step.key === key)).filter((step): step is ApprovalStep => Boolean(step));
+  const available = definitions && definitions.length > 0 ? definitions : APPROVAL_STEPS;
+  return order
+    .map((key) => available.find((step) => step.key === key))
+    .filter((step): step is ApprovalStep => Boolean(step));
 };
 
-export const approvalStepOf = (status: string, keys?: readonly ApprovalStepKey[]): ApprovalStep | undefined =>
-  approvalStepsFor(keys).find((step) => step.status === status);
+export const approvalStepOf = (
+  status: string,
+  keys?: readonly ApprovalStepKey[],
+  definitions?: readonly WorkflowApprovalStep[],
+  currentKey?: ApprovalStepKey,
+): ApprovalStep | undefined => {
+  const chain = approvalStepsFor(keys, definitions);
+  if (currentKey) return chain.find((step) => step.key === currentKey);
+  return chain.find((step) => step.status === status);
+};
 
-export const nextApprovalStep = (key: ApprovalStepKey, keys?: readonly ApprovalStepKey[]): ApprovalStep | undefined => {
-  const chain = approvalStepsFor(keys);
+export const nextApprovalStep = (
+  key: ApprovalStepKey,
+  keys?: readonly ApprovalStepKey[],
+  definitions?: readonly WorkflowApprovalStep[],
+): ApprovalStep | undefined => {
+  const chain = approvalStepsFor(keys, definitions);
   const index = chain.findIndex((step) => step.key === key);
   return chain[index + 1];
+};
+
+/** Permission check for a customer-defined approval step that has no legacy slot field. */
+export const workflowApprovalReason = (user: User, subject: RuleSubject): string | null => {
+  const step = approvalStepOf(subject.status, subject.approvalStepKeys, subject.workflowApprovalSteps, subject.currentApprovalStepKey);
+  if (!step || APPROVAL_STEP_SLOT[step.key]) return null;
+  const assignedId = subject.approvalAssigneeUserIds?.[step.key];
+  const matchesRole = step.roleDefId ? user.roleDefId === step.roleDefId : user.role === step.role;
+  if (!assignedId || assignedId !== user.id || !matchesRole) return `Chỉ ${step.label} được giao mới thực hiện được bước này.`;
+  return null;
+};
+
+const assignedToStep = (user: User, subject: RuleSubject, step: ApprovalStep): boolean => {
+  const assignedId = subject.approvalAssigneeUserIds?.[step.key];
+  const matchesRole = step.roleDefId ? user.roleDefId === step.roleDefId : user.role === step.role;
+  return Boolean(assignedId && assignedId === user.id && matchesRole);
+};
+
+/** Permission check for the configured acceptance chain. */
+export const workflowAcceptanceReason = (user: User, subject: RuleSubject): string | null => {
+  if (!subject.pendingApprovalStepKeys) return null;
+  const steps = approvalStepsFor(subject.pendingApprovalStepKeys, subject.workflowApprovalSteps);
+  if (steps.some((step) => assignedToStep(user, subject, step))) return null;
+  return 'Chỉ người được giao trong chuỗi nghiệm thu mới thực hiện được bước này.';
+};
+
+/** Permission check for a configured payment approval chain. */
+export const workflowPaymentReason = (user: User, subject: RuleSubject): string | null => {
+  const step = approvalStepOf(subject.status, subject.currentPaymentApprovalStepKey ? [subject.currentPaymentApprovalStepKey] : subject.approvalStepKeys, subject.workflowApprovalSteps, subject.currentPaymentApprovalStepKey);
+  if (!step || !subject.currentPaymentApprovalStepKey) return null;
+  if (assignedToStep(user, subject, step)) return null;
+  return `Chỉ ${step.label} được giao mới thực hiện được bước này.`;
 };
 
 export interface RuleSubject extends AssignedSubject {
   status: string;
   approvalStepKeys?: readonly ApprovalStepKey[];
+  workflowApprovalSteps?: readonly WorkflowApprovalStep[];
+  approvalAssigneeUserIds?: Readonly<Record<string, string>>;
+  currentApprovalStepKey?: ApprovalStepKey;
   pendingAcceptanceSlots?: readonly AssigneeSlot[];
+  pendingApprovalStepKeys?: readonly ApprovalStepKey[];
+  currentPaymentApprovalStepKey?: ApprovalStepKey;
 }
 
 export const resolveSlots = (rule: SlotRule, subject: RuleSubject): AssigneeSlot | readonly AssigneeSlot[] | null => {
   if (rule === 'APPROVAL_STEP') {
-    const step = approvalStepOf(subject.status, subject.approvalStepKeys);
-    return step ? APPROVAL_STEP_SLOT[step.key] : [];
+    const step = approvalStepOf(subject.status, subject.approvalStepKeys, subject.workflowApprovalSteps, subject.currentApprovalStepKey);
+    return step ? APPROVAL_STEP_SLOT[step.key] ?? null : [];
   }
-  if (rule === 'ACCEPTANCE_PENDING') return subject.pendingAcceptanceSlots ?? [];
+  if (rule === 'ACCEPTANCE_PENDING') return subject.pendingApprovalStepKeys ? null : (subject.pendingAcceptanceSlots ?? []);
+  if (rule === 'PAYMENT_APPROVAL') {
+    const step = approvalStepOf(subject.status, subject.currentPaymentApprovalStepKey ? [subject.currentPaymentApprovalStepKey] : subject.approvalStepKeys, subject.workflowApprovalSteps, subject.currentPaymentApprovalStepKey);
+    return step && !APPROVAL_STEP_SLOT[step.key] ? null : (APPROVAL_STEP_SLOT[step?.key ?? ''] ?? 'board');
+  }
   return rule;
 };
 
@@ -127,12 +187,12 @@ export const REPAIR_ACTIONS = {
     capability: 'PAYMENT_RECORD',
     slot: 'manager',
   },
-  approvePayment: { label: 'Duyệt thanh toán', from: ['PENDING_PAYMENT_APPROVAL'], capability: 'PAYMENT_DECIDE', slot: 'board' },
+  approvePayment: { label: 'Duyệt thanh toán', from: ['PENDING_PAYMENT_APPROVAL', 'PENDING_CUSTOM_PAYMENT_APPROVAL'], capability: 'PAYMENT_DECIDE', slot: 'PAYMENT_APPROVAL' },
   requestPaymentUpdate: {
     label: 'Trả đề nghị thanh toán',
-    from: ['PENDING_PAYMENT_APPROVAL'],
+    from: ['PENDING_PAYMENT_APPROVAL', 'PENDING_CUSTOM_PAYMENT_APPROVAL'],
     capability: 'PAYMENT_DECIDE',
-    slot: 'board',
+    slot: 'PAYMENT_APPROVAL',
   },
   recordPayment: { label: 'Ghi nhận thanh toán', from: ['PENDING_PAYMENT'], capability: 'PAYMENT_RECORD', slot: 'manager' },
   completeRecord: { label: 'Đóng hoàn tất', from: ['PENDING_PAYMENT'], capability: 'PAYMENT_RECORD', slot: 'manager' },
@@ -221,6 +281,18 @@ export const evaluateAction = <S extends string>(
 ): ActionState => {
   const reason = denyReason(user, subject, def.capability, resolveSlots(def.slot, subject));
   if (reason) return { allowed: false, reason };
+  if (def.slot === 'APPROVAL_STEP') {
+    const approvalReason = workflowApprovalReason(user, subject);
+    if (approvalReason) return { allowed: false, reason: approvalReason };
+  }
+  if (def.slot === 'ACCEPTANCE_PENDING') {
+    const acceptanceReason = workflowAcceptanceReason(user, subject);
+    if (acceptanceReason) return { allowed: false, reason: acceptanceReason };
+  }
+  if (def.slot === 'PAYMENT_APPROVAL') {
+    const paymentReason = workflowPaymentReason(user, subject);
+    if (paymentReason) return { allowed: false, reason: paymentReason };
+  }
   if (!def.from.includes(subject.status)) {
     return { allowed: false, reason: `Không áp dụng khi đang ở trạng thái “${statusLabel(subject.status)}”.` };
   }

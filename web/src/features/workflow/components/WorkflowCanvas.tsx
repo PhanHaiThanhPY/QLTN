@@ -1,7 +1,7 @@
 import { ArrowDown, CheckCircle2, Maximize2, Play, Plus, ZoomOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { ApprovalStepKey, BusinessWorkflowStepKey } from '@/domain/constants';
-import type { WorkflowStepBinding } from '@/domain/types';
+import type { WorkflowApprovalStep, WorkflowStepBinding } from '@/domain/types';
 import { stepFor } from '../workflow-designer-meta';
 import { WorkflowBusinessStep } from './WorkflowBusinessStep';
 import { WorkflowFixedNode } from './WorkflowFixedNode';
@@ -9,6 +9,7 @@ import { WorkflowStep } from './WorkflowStep';
 
 interface WorkflowCanvasProps {
   steps: ApprovalStepKey[];
+  approvalSteps: readonly WorkflowApprovalStep[];
   stepBindings: WorkflowStepBinding[];
   selectedIndex: number | null;
   disabled: boolean;
@@ -23,6 +24,7 @@ interface WorkflowCanvasProps {
 /** Vertical flow: start node, business steps, approval steps and the end node. */
 export const WorkflowCanvas = ({
   steps,
+  approvalSteps,
   stepBindings,
   selectedIndex,
   disabled,
@@ -43,10 +45,10 @@ export const WorkflowCanvas = ({
     <div className="relative flex min-h-[28rem] flex-col items-center justify-center gap-1.5 px-10 py-6 transition-transform duration-200" style={{ transform: `scale(${zoom})` }}>
       <WorkflowFixedNode icon={Play} label="Bắt đầu" description="Điểm hệ thống" tone="good" />
       {stepBindings.length > 0 || steps.length > 0 ? <ArrowDown className="size-4 text-ink-3" aria-hidden /> : null}
-      {stepBindings.map((binding) => <WorkflowBusinessStep key={binding.businessStepKey} binding={binding} disabled={disabled} onRemove={() => onRemoveBusinessStep(binding.businessStepKey)} />)}
+      {stepBindings.map((binding) => <WorkflowBusinessStep key={binding.businessStepKey} binding={binding} approvalSteps={approvalSteps} disabled={disabled} onRemove={() => onRemoveBusinessStep(binding.businessStepKey)} />)}
       {stepBindings.length > 0 && steps.length > 0 ? <ArrowDown className="size-4 text-ink-3" aria-hidden /> : null}
       {steps.map((key, index) => {
-        const step = stepFor(key);
+        const step = stepFor(key, approvalSteps);
         return <WorkflowStep key={`${key}-${index}`} step={step} index={index} selected={selectedIndex === index} disabled={disabled} first={index === 0} last={index === steps.length - 1} onSelect={() => onSelect(index)} onMove={(direction) => onMove(index, direction)} onRemove={() => onRemove(index)} />;
       })}
       {steps.length === 0 && stepBindings.length === 0 ? <div className="z-10 max-w-xs rounded-xl border border-dashed border-accent/40 bg-surface px-4 py-5 text-center text-xs text-ink-2">Thêm một bước từ thư viện để bắt đầu thiết kế.</div> : null}

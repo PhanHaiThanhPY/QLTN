@@ -119,8 +119,15 @@ const submitHandler =
     if (!draft) throw validationError({ proposal: 'Chưa có phương án/tờ trình.' });
     const emergency = emergencyAfterSubmit(ctx, record, payload);
     const submission = await createSubmission(ctx, record, draft, signature);
-    const firstStep = approvalStepsFor(record.approvalStepKeys)[0];
-    await commitRecord(ctx, record, { ...record, status: firstStep.status, currentSubmissionId: submission.id, emergency }, action);
+    const firstStep = approvalStepsFor(record.approvalStepKeys, record.workflowApprovalSteps)[0];
+    if (!firstStep) throw invalidTransition('Hồ sơ chưa có bước duyệt hợp lệ.');
+    await commitRecord(ctx, record, {
+      ...record,
+      status: firstStep.status,
+      currentApprovalStepKey: firstStep.key,
+      currentSubmissionId: submission.id,
+      emergency,
+    }, action);
     return { ok: true, subjectId: record.id, data: { submissionId: submission.id, attemptNo: submission.attemptNo } };
   };
 
@@ -142,7 +149,7 @@ const loadDecision = async (
   if (submission.submittedBy === ctx.actor.id) throw invalidTransition('Người lập tờ trình không được tự duyệt.');
   const expectedSubmissionId = asOptionalString(asRecord(command.payload).submissionId);
   if (expectedSubmissionId && expectedSubmissionId !== submission.id) throw conflict('Lần trình đã thay đổi. Vui lòng tải lại.');
-  const step = approvalStepOf(record.status, record.approvalStepKeys);
+  const step = approvalStepOf(record.status, record.approvalStepKeys, record.workflowApprovalSteps, record.currentApprovalStepKey);
   if (!step) throw invalidTransition('Hồ sơ không ở bước duyệt tờ trình.');
   return { record, submission, step };
 };
@@ -174,10 +181,10 @@ const statusAfterFinalApproval = async (ctx: CommandContext, record: RepairRecor
 const approveProposal: CommandHandler = async (ctx, command) => {
   const target = await loadDecision(ctx, command, 'approveProposal');
   await recordDecision(ctx, target, 'APPROVED');
-  const next = nextApprovalStep(target.step.key, target.record.approvalStepKeys);
+  const next = nextApprovalStep(target.step.key, target.record.approvalStepKeys, target.record.workflowApprovalSteps);
   const record: RepairRecord = next
-    ? { ...target.record, status: next.status }
-    : { ...target.record, status: await statusAfterFinalApproval(ctx, target.record), approvedSubmissionId: target.submission.id };
+    ? { ...target.record, status: next.status, currentApprovalStepKey: next.key }
+    : { ...target.record, status: await statusAfterFinalApproval(ctx, target.record), currentApprovalStepKey: undefined, approvedSubmissionId: target.submission.id };
   await commitRecord(ctx, target.record, record, 'approveProposal', { reason: target.step.label });
   return { ok: true, subjectId: record.id };
 };
@@ -190,7 +197,7 @@ const requestProposalUpdate: CommandHandler = async (ctx, command) => {
   const reason = asString(asRecord(command.payload).reason);
   assertNoFieldErrors(new FieldErrorCollector().reason('reason', reason).errors);
   await recordDecision(ctx, target, 'NEEDS_UPDATE', reason);
-  await commitRecord(ctx, target.record, { ...target.record, status: 'NEEDS_SUBMISSION_UPDATE' }, 'requestProposalUpdate', { reason });
+  await commitRecord(ctx, target.record, { ...target.record, status: 'NEEDS_SUBMISSION_UPDATE', currentApprovalStepKey: undefined }, 'requestProposalUpdate', { reason });
   return { ok: true, subjectId: target.record.id };
 };
 
@@ -202,11 +209,11 @@ const rejectProposal: CommandHandler = async (ctx, command) => {
   await recordDecision(ctx, target, 'REJECTED', reason);
   const isLast = target.submission.attemptNo >= LIMITS.MAX_SUBMISSION_ATTEMPTS;
   if (!isLast) {
-    await commitRecord(ctx, target.record, { ...target.record, status: 'REJECTED_RESUBMITTABLE' }, 'rejectProposal', { reason });
+    await commitRecord(ctx, target.record, { ...target.record, status: 'REJECTED_RESUBMITTABLE', currentApprovalStepKey: undefined }, 'rejectProposal', { reason });
     return { ok: true, subjectId: target.record.id };
   }
   // Third rejection: the record becomes "Chưa xử lý" and the system drafts a notice with the reasons (proposal 2.4).
-  const saved = await commitRecord(ctx, target.record, { ...target.record, status: 'UNRESOLVED' }, 'rejectProposal', { reason });
+  const saved = await commitRecord(ctx, target.record, { ...target.record, status: 'UNRESOLVED', currentApprovalStepKey: undefined }, 'rejectProposal', { reason });
   await createUnresolvedNotice(ctx, saved);
   return { ok: true, subjectId: saved.id };
 };

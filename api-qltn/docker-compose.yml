@@ -1,0 +1,21 @@
+# Local infrastructure for api-qltn. Credentials come from .env (see .env.example).
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: qltn-postgres
+    environment:
+      POSTGRES_DB: ${CONFIG_POSTGRES_DB_QLTN:-qltn_dev}
+      POSTGRES_USER: ${CONFIG_POSTGRES_USER_QLTN:-qltn}
+      POSTGRES_PASSWORD: ${CONFIG_POSTGRES_PASSWORD_QLTN:?set CONFIG_POSTGRES_PASSWORD_QLTN in .env}
+    ports:
+      - '${CONFIG_POSTGRES_PORT_QLTN:-5434}:5432'
+    volumes:
+      - qltn-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  qltn-pgdata:

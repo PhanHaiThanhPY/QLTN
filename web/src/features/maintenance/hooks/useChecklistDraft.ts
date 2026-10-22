@@ -29,7 +29,7 @@ export const useChecklistDraft = (occurrence: MaintenanceOccurrence) => {
   const [baseVersion, setBaseVersion] = useState(occurrence.version);
   const [uploaded, setUploaded] = useState<Attachment[]>([]);
 
-  const updateEntry = (index: number, patch: Partial<Pick<MaintenanceChecklistEntry, 'result' | 'note' | 'attachmentIds'>>) =>
+  const updateEntry = (index: number, patch: Partial<Pick<MaintenanceChecklistEntry, 'result' | 'note' | 'measurementValue' | 'attachmentIds'>>) =>
     setDraft((prev) => ({ ...prev, checklist: prev.checklist.map((entry, row) => (row === index ? { ...entry, ...patch } : entry)) }));
 
   return {
@@ -40,6 +40,7 @@ export const useChecklistDraft = (occurrence: MaintenanceOccurrence) => {
     setField: (field: DraftTextField, value: string) => setDraft((prev) => ({ ...prev, [field]: value })),
     setResult: (index: number, result: CheckResult) => updateEntry(index, { result }),
     setNote: (index: number, note: string) => updateEntry(index, { note }),
+    setMeasurementValue: (index: number, measurementValue: number | undefined) => updateEntry(index, { measurementValue }),
     addEntryFiles: (index: number, files: Attachment[]) => {
       setUploaded((prev) => [...prev, ...files]);
       setDraft((prev) => ({
@@ -78,6 +79,7 @@ export const draftPayload = (draft: ChecklistDraft) => ({
     templateItemId: entry.templateItemId,
     result: entry.result,
     note: entry.note ?? '',
+    measurementValue: entry.measurementValue,
     attachmentIds: entry.attachmentIds,
   })),
   resultNote: draft.resultNote,

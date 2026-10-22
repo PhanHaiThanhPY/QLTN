@@ -15,7 +15,7 @@ import { APPROVAL_OUTCOME } from './approval-labels';
 /** Header badge: the latest decision, or "running" while the chain is still on this attempt. */
 const submissionBadge = (latest: ApprovalDecision | undefined, isRunning: boolean, record: RepairRecord): { label: string; tone: BadgeTone } => {
   if (isRunning) return { label: 'Đang trong chuỗi duyệt', tone: 'warn' };
-  if (latest?.outcome === 'APPROVED') return { label: `Đã duyệt đủ ${approvalStepsFor(record.approvalStepKeys).length} bước`, tone: 'good' };
+  if (latest?.outcome === 'APPROVED') return { label: `Đã duyệt đủ ${approvalStepsFor(record.approvalStepKeys, record.workflowApprovalSteps).length} bước`, tone: 'good' };
   if (latest) return APPROVAL_OUTCOME[latest.outcome];
   return { label: 'Đang chờ duyệt', tone: 'warn' };
 };
@@ -31,7 +31,7 @@ export const SubmissionCard = ({ view, record, signatures }: SubmissionCardProps
   const { submission, decisions } = view;
   const latest = decisions[decisions.length - 1];
   const isCurrent = record.currentSubmissionId === submission.id;
-  const badge = submissionBadge(latest, isCurrent && Boolean(approvalStepOf(record.status, record.approvalStepKeys)), record);
+  const badge = submissionBadge(latest, isCurrent && Boolean(approvalStepOf(record.status, record.approvalStepKeys, record.workflowApprovalSteps, record.currentApprovalStepKey)), record);
   return (
     <Card>
       <CardHeader

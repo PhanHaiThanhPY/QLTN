@@ -13,6 +13,7 @@ import { OccurrenceFlags } from './components/OccurrenceFlags';
 import { ChecklistTab } from './components/occurrence/ChecklistTab';
 import { OccurrenceActions } from './components/occurrence/OccurrenceActions';
 import { OccurrenceNotices } from './components/occurrence/OccurrenceNotices';
+import { MaintenanceDocumentButton } from './components/occurrence/MaintenanceDocumentButton';
 import { OverviewTab } from './components/occurrence/OverviewTab';
 import { useMaintenanceScreen } from './hooks/useMaintenanceScreen';
 
@@ -66,7 +67,7 @@ const OccurrenceDetailPage = () => {
             {isMoved ? ` (ngày gốc ${formatDate(occurrence.originalScheduledDate)})` : ''}
           </>
         }
-        actions={<OccurrenceActions detail={detail} viewer={data.viewer} />}
+        actions={<><MaintenanceDocumentButton detail={detail} /><OccurrenceActions detail={detail} viewer={data.viewer} /></>}
       />
       <OccurrenceNotices detail={detail} viewer={data.viewer} />
       <Tabs value={tab} onValueChange={setTab} items={TABS}>

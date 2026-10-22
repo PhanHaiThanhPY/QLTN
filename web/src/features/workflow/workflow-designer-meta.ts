@@ -12,9 +12,9 @@ import {
 } from 'lucide-react';
 import { APPROVAL_STEPS } from '@/domain/constants';
 import type { ApprovalStepKey, BUSINESS_WORKFLOW_STEPS, BusinessWorkflowStepKey } from '@/domain/constants';
-import type { Building, BuildingConfig } from '@/domain/types';
+import type { Building, BuildingConfig, WorkflowApprovalStep } from '@/domain/types';
 
-export type ApprovalStepDefinition = (typeof APPROVAL_STEPS)[number];
+export type ApprovalStepDefinition = WorkflowApprovalStep;
 export type BusinessStepDefinition = (typeof BUSINESS_WORKFLOW_STEPS)[number];
 export type WorkflowScope = 'current' | 'all';
 
@@ -26,13 +26,13 @@ export interface WorkflowTarget {
 export const DEFAULT_WORKFLOW_NAME = 'Quy trình sửa chữa và bảo trì';
 export const DEFAULT_WORKFLOW_DESCRIPTION = 'Quy trình xử lý hồ sơ theo từng bước được cấu hình cho tòa nhà.';
 
-export const STEP_ICON: Record<ApprovalStepKey, LucideIcon> = {
+export const STEP_ICON: Record<string, LucideIcon> = {
   TECH_CONFIRM: UserRound,
   TECH: CheckSquare2,
   BOARD: UsersRound,
 };
 
-export const STEP_TONE: Record<ApprovalStepKey, string> = {
+export const STEP_TONE: Record<string, string> = {
   TECH_CONFIRM: 'bg-info-soft text-info',
   TECH: 'bg-accent-soft text-accent-strong',
   BOARD: 'bg-good-soft text-good',
@@ -53,4 +53,5 @@ export const BUSINESS_STEP_ICON: Record<BusinessWorkflowStepKey, LucideIcon> = {
   COMPLETE_RECORD: CheckCircle2,
 };
 
-export const stepFor = (key: ApprovalStepKey): ApprovalStepDefinition => APPROVAL_STEPS.find((step) => step.key === key) ?? APPROVAL_STEPS[0];
+export const stepFor = (key: ApprovalStepKey, definitions: readonly ApprovalStepDefinition[] = APPROVAL_STEPS): ApprovalStepDefinition =>
+  definitions.find((step) => step.key === key) ?? APPROVAL_STEPS.find((step) => step.key === key) ?? APPROVAL_STEPS[0];

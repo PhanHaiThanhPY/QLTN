@@ -40,7 +40,7 @@ export const ChecklistTab = ({ detail, viewer }: { detail: OccurrenceDetail; vie
           </CardBody>
         </Card>
       ) : null}
-      {occurrence.status === 'PENDING_REVIEW' && current ? <ReviewPanel occurrence={occurrence} submission={current} viewer={viewer} /> : null}
+      {occurrence.status === 'PENDING_REVIEW' && current ? <ReviewPanel occurrence={occurrence} submission={current} viewer={viewer} attachmentsById={attachmentsById} /> : null}
       <div>
         <h3 className="mb-2 text-sm font-semibold text-ink">Các lần gửi kết quả</h3>
         <SubmissionRounds submissions={submissions} reviews={reviews} currentSubmissionId={occurrence.currentSubmissionId} attachmentsById={attachmentsById} />
