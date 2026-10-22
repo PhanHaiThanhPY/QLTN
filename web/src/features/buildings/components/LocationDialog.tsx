@@ -23,6 +23,7 @@ export const LocationDialog = ({ buildingId, location, onClose }: LocationDialog
     const result = await command.execute({
       subjectType: 'BUILDING',
       subjectId: buildingId,
+      expectedVersion: location?.version,
       action: location ? 'updateLocation' : 'createLocation',
       payload: { locationId: location?.id, floor, zone, name },
     });

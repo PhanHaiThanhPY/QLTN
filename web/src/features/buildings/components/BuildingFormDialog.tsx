@@ -22,7 +22,7 @@ export const BuildingFormDialog = ({ building, onClose }: BuildingFormDialogProp
   const errors = command.fieldErrors;
   const submit = async () => {
     const result = building
-      ? await command.execute({ subjectType: 'BUILDING', subjectId: building.id, action: 'updateBuilding', payload: { name, address } })
+      ? await command.execute({ subjectType: 'BUILDING', subjectId: building.id, expectedVersion: building.version, action: 'updateBuilding', payload: { name, address } })
       : await command.execute({ subjectType: 'BUILDING', action: 'createBuilding', payload: { code, name, address, templateKey } });
     if (result) onClose(building ? undefined : result.subjectId);
   };

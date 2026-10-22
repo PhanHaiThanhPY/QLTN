@@ -26,7 +26,7 @@ export const LocationsCard = ({ buildingId, locations, canEdit }: LocationsCardP
   const setFilter = <K extends keyof LocationFilters>(key: K, value: LocationFilters[K]) => setFilters((prev) => ({ ...prev, [key]: value }));
   const toggle = useCommand({ successMessage: 'Đã cập nhật trạng thái vị trí.' });
   const setActive = (location: Location, active: boolean) =>
-    void toggle.execute({ subjectType: 'BUILDING', subjectId: buildingId, action: 'setLocationActive', payload: { locationId: location.id, active } });
+    void toggle.execute({ subjectType: 'BUILDING', subjectId: buildingId, expectedVersion: location.version, action: 'setLocationActive', payload: { locationId: location.id, active } });
   return (
     <Card>
       <CardHeader

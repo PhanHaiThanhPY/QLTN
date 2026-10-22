@@ -1,19 +1,27 @@
+import { asRecord, asString } from '@/domain/validation';
 import { AppError, ERROR_CODE } from '@/domain/errors';
 import { broadcastChange } from '../change-channel';
 import type { Command, CommandResult } from '../command-engine';
 import { apiRequest } from './client';
 import {
+  mapBuilding,
   mapDepartment,
+  mapLocation,
   mapRoleDefinition,
   mapUserProfile,
+  toCreateBuildingBody,
   toCreateDepartmentBody,
+  toCreateLocationBody,
   toCreateRoleBody,
   toCreateUserBody,
+  toSetLocationActiveBody,
+  toUpdateBuildingBody,
   toUpdateDepartmentBody,
+  toUpdateLocationBody,
   toUpdateRoleBody,
   toUpdateUserBody,
 } from './mappers';
-import type { ApiDepartment, ApiRole, ApiUser } from './mappers';
+import type { ApiBuilding, ApiDepartment, ApiLocation, ApiRole, ApiUser } from './mappers';
 
 /**
  * Command adapter for `VITE_DATA_SOURCE=api` (plan decision D4).
@@ -86,7 +94,79 @@ const updateRoleDef: ApiCommandHandler = async (command) => {
   return { ok: true, subjectId: role.id };
 };
 
-/** Actions wired to api-qltn. T2a covers accounts; T2b adds departments and custom roles. */
+/** `POST /buildings` — the backend starts the configuration from a template and joins the creator's scope. */
+const createBuilding: ApiCommandHandler = async (command) => {
+  const body = toCreateBuildingBody(command.payload);
+  const created = await apiRequest<ApiBuilding>('POST', '/buildings', { body });
+  const building = mapBuilding(created);
+  broadcastChange();
+  return { ok: true, subjectId: building.id };
+};
+
+/** `PATCH /buildings/:id` — `version` is the optimistic lock; a stale one answers 409 (mapped to CONFLICT). */
+const updateBuilding: ApiCommandHandler = async (command) => {
+  const id = command.subjectId?.trim() ?? '';
+  if (!id) throw new AppError(ERROR_CODE.NOT_FOUND, 'Không tìm thấy tòa nhà.');
+  const body = toUpdateBuildingBody(command.payload, command.expectedVersion);
+  const updated = await apiRequest<ApiBuilding>('PATCH', `/buildings/${encodeURIComponent(id)}`, { body });
+  const building = mapBuilding(updated);
+  broadcastChange();
+  return { ok: true, subjectId: building.id };
+};
+
+const buildingIdOf = (command: Command): string => {
+  const id = command.subjectId?.trim() ?? '';
+  if (!id) throw new AppError(ERROR_CODE.NOT_FOUND, 'Không tìm thấy tòa nhà.');
+  return id;
+};
+
+const locationIdOf = (command: Command): string => {
+  const id = asString(asRecord(command.payload).locationId);
+  if (!id) throw new AppError(ERROR_CODE.NOT_FOUND, 'Không tìm thấy vị trí.');
+  return id;
+};
+
+/** `POST /buildings/:id/locations` — the backend enforces a unique name per floor. */
+const createLocation: ApiCommandHandler = async (command) => {
+  const buildingId = buildingIdOf(command);
+  const body = toCreateLocationBody(command.payload);
+  const created = await apiRequest<ApiLocation>('POST', `/buildings/${encodeURIComponent(buildingId)}/locations`, { body });
+  const location = mapLocation(created);
+  broadcastChange();
+  return { ok: true, subjectId: location.buildingId, data: { locationId: location.id } };
+};
+
+/** `PATCH /buildings/:id/locations/:locationId` — stale version answers 409, duplicate name a field error. */
+const updateLocation: ApiCommandHandler = async (command) => {
+  const buildingId = buildingIdOf(command);
+  const locationId = locationIdOf(command);
+  const body = toUpdateLocationBody(command.payload, command.expectedVersion);
+  const updated = await apiRequest<ApiLocation>(
+    'PATCH',
+    `/buildings/${encodeURIComponent(buildingId)}/locations/${encodeURIComponent(locationId)}`,
+    { body },
+  );
+  const location = mapLocation(updated);
+  broadcastChange();
+  return { ok: true, subjectId: location.buildingId };
+};
+
+/** `PATCH /buildings/:id/locations/:locationId/status` — deactivate/reactivate, same version lock. */
+const setLocationActive: ApiCommandHandler = async (command) => {
+  const buildingId = buildingIdOf(command);
+  const locationId = locationIdOf(command);
+  const body = toSetLocationActiveBody(command.payload, command.expectedVersion);
+  const updated = await apiRequest<ApiLocation>(
+    'PATCH',
+    `/buildings/${encodeURIComponent(buildingId)}/locations/${encodeURIComponent(locationId)}/status`,
+    { body },
+  );
+  const location = mapLocation(updated);
+  broadcastChange();
+  return { ok: true, subjectId: location.buildingId };
+};
+
+/** Actions wired to api-qltn. T2a covers accounts; T2b departments and custom roles; T2c buildings and locations. */
 const API_COMMANDS: Readonly<Record<string, ApiCommandHandler>> = {
   createUser,
   updateUser,
@@ -94,6 +174,11 @@ const API_COMMANDS: Readonly<Record<string, ApiCommandHandler>> = {
   updateDepartment,
   createRoleDef,
   updateRoleDef,
+  createBuilding,
+  updateBuilding,
+  createLocation,
+  updateLocation,
+  setLocationActive,
 };
 
 export const API_UNSUPPORTED_MESSAGE = 'Thao tác này chưa nối API.';

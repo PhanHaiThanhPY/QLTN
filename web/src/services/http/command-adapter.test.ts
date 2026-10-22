@@ -114,14 +114,22 @@ describe('api command adapter', () => {
     clearApiSession();
   });
 
-  it('should register the accounts, departments and roles actions wired so far', () => {
+  it('should register the accounts, departments, roles, buildings and locations actions wired so far', () => {
     expect(isApiAction('createUser')).toBe(true);
     expect(isApiAction('updateUser')).toBe(true);
     expect(isApiAction('createDepartment')).toBe(true);
     expect(isApiAction('updateDepartment')).toBe(true);
     expect(isApiAction('createRoleDef')).toBe(true);
     expect(isApiAction('updateRoleDef')).toBe(true);
-    // Out of scope: maintenance/profile actions stay unwired.
+    expect(isApiAction('createBuilding')).toBe(true);
+    expect(isApiAction('updateBuilding')).toBe(true);
+    expect(isApiAction('createLocation')).toBe(true);
+    expect(isApiAction('updateLocation')).toBe(true);
+    expect(isApiAction('setLocationActive')).toBe(true);
+    // Out of scope: configuration/workflow writes and maintenance/profile actions stay unwired.
+    expect(isApiAction('updateBuildingConfig')).toBe(false);
+    expect(isApiAction('updateWorkflowConfig')).toBe(false);
+    expect(isApiAction('applyConfigTemplate')).toBe(false);
     expect(isApiAction('replaceManager')).toBe(false);
     // A prototype key must not count as a registered action.
     expect(isApiAction('toString')).toBe(false);
@@ -403,5 +411,178 @@ describe('api command adapter', () => {
 
     expect(error.code).toBe(ERROR_CODE.NOT_FOUND);
     expect(mock).not.toHaveBeenCalled();
+  });
+});
+
+const BUILDING_VIEW = {
+  id: 'bld-9',
+  code: 'T2C-E',
+  name: 'Tòa T2C',
+  address: '1 Lê Duẩn',
+  isActive: true,
+  version: 2,
+};
+
+const LOCATION_VIEW = {
+  id: 'loc-9',
+  buildingId: 'bld-9',
+  floor: '5',
+  zone: null,
+  name: 'Phòng 501',
+  isActive: true,
+  version: 3,
+};
+
+describe('api command adapter — buildings and locations', () => {
+  beforeEach(() => {
+    vi.unstubAllGlobals();
+    clearApiSession();
+    saveApiSession({ accessToken: 'tok-1', refreshToken: 'ref-1' });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    clearApiSession();
+  });
+
+  it('should POST /buildings with the CreateBuildingDto and return the new subject id', async () => {
+    const mock = mockFetch(() => jsonResponse(201, successBody(BUILDING_VIEW)));
+
+    await expect(
+      executeApiCommand(
+        createCommand(
+          { code: ' t2c-e ', name: ' Tòa T2C ', address: ' 1 Lê Duẩn ', templateKey: 'OFFICE' },
+          { subjectType: 'BUILDING', action: 'createBuilding' },
+        ),
+      ),
+    ).resolves.toEqual({ ok: true, subjectId: 'bld-9' });
+
+    const [url, init] = mock.mock.calls[0];
+    expect(String(url)).toBe('/api/buildings');
+    expect(init?.method).toBe('POST');
+    expect(bodyOf(init)).toEqual({
+      code: 'T2C-E',
+      name: 'Tòa T2C',
+      address: '1 Lê Duẩn',
+      templateKey: 'OFFICE',
+    });
+  });
+
+  it('should PATCH /buildings/:id with version = expectedVersion', async () => {
+    const mock = mockFetch(() => jsonResponse(200, successBody({ ...BUILDING_VIEW, version: 3, name: 'Tòa T2C (sửa)' })));
+
+    await expect(
+      executeApiCommand(
+        createCommand(
+          { name: ' Tòa T2C (sửa) ', address: ' 1 Lê Duẩn ' },
+          { subjectType: 'BUILDING', action: 'updateBuilding', subjectId: 'bld-9', expectedVersion: 2 },
+        ),
+      ),
+    ).resolves.toEqual({ ok: true, subjectId: 'bld-9' });
+
+    const [url, init] = mock.mock.calls[0];
+    expect(String(url)).toBe('/api/buildings/bld-9');
+    expect(init?.method).toBe('PATCH');
+    expect(bodyOf(init)).toEqual({ name: 'Tòa T2C (sửa)', address: '1 Lê Duẩn', version: 2 });
+  });
+
+  it('should POST /buildings/:id/locations and return the building plus the new location id', async () => {
+    const mock = mockFetch(() => jsonResponse(201, successBody(LOCATION_VIEW)));
+
+    await expect(
+      executeApiCommand(
+        createCommand(
+          { floor: ' 5 ', zone: '', name: ' Phòng 501 ' },
+          { subjectType: 'BUILDING', action: 'createLocation', subjectId: 'bld-9' },
+        ),
+      ),
+    ).resolves.toEqual({ ok: true, subjectId: 'bld-9', data: { locationId: 'loc-9' } });
+
+    const [url, init] = mock.mock.calls[0];
+    expect(String(url)).toBe('/api/buildings/bld-9/locations');
+    expect(init?.method).toBe('POST');
+    expect(bodyOf(init)).toEqual({ floor: '5', name: 'Phòng 501', zone: null });
+  });
+
+  it('should PATCH /buildings/:id/locations/:locationId with version = expectedVersion', async () => {
+    const mock = mockFetch(() => jsonResponse(200, successBody({ ...LOCATION_VIEW, version: 4, zone: 'Bắc' })));
+
+    await expect(
+      executeApiCommand(
+        createCommand(
+          { locationId: 'loc-9', floor: '5', zone: 'Bắc', name: 'Phòng 501' },
+          { subjectType: 'BUILDING', action: 'updateLocation', subjectId: 'bld-9', expectedVersion: 3 },
+        ),
+      ),
+    ).resolves.toEqual({ ok: true, subjectId: 'bld-9' });
+
+    const [url, init] = mock.mock.calls[0];
+    expect(String(url)).toBe('/api/buildings/bld-9/locations/loc-9');
+    expect(init?.method).toBe('PATCH');
+    expect(bodyOf(init)).toEqual({ floor: '5', name: 'Phòng 501', zone: 'Bắc', version: 3 });
+  });
+
+  it('should PATCH /buildings/:id/locations/:locationId/status with the active flag and version', async () => {
+    const mock = mockFetch(() => jsonResponse(200, successBody({ ...LOCATION_VIEW, isActive: false, version: 4 })));
+
+    await expect(
+      executeApiCommand(
+        createCommand(
+          { locationId: 'loc-9', active: false },
+          { subjectType: 'BUILDING', action: 'setLocationActive', subjectId: 'bld-9', expectedVersion: 3 },
+        ),
+      ),
+    ).resolves.toEqual({ ok: true, subjectId: 'bld-9' });
+
+    const [url, init] = mock.mock.calls[0];
+    expect(String(url)).toBe('/api/buildings/bld-9/locations/loc-9/status');
+    expect(init?.method).toBe('PATCH');
+    expect(bodyOf(init)).toEqual({ active: false, version: 3 });
+  });
+
+  it('should refuse building/location writes without ids or expectedVersion before hitting the network', async () => {
+    const mock = mockFetch(() => jsonResponse(200, successBody(LOCATION_VIEW)));
+
+    const noBuilding = await captureAppError(
+      executeApiCommand(createCommand({}, { subjectType: 'BUILDING', action: 'createLocation' })),
+    );
+    expect(noBuilding.code).toBe(ERROR_CODE.NOT_FOUND);
+
+    const noLocation = await captureAppError(
+      executeApiCommand(createCommand({}, { subjectType: 'BUILDING', action: 'updateLocation', subjectId: 'bld-9', expectedVersion: 1 })),
+    );
+    expect(noLocation.code).toBe(ERROR_CODE.NOT_FOUND);
+    expect(noLocation.message).toBe('Không tìm thấy vị trí.');
+
+    const noVersion = await captureAppError(
+      executeApiCommand(createCommand({ name: 'Tòa T2C', address: '1 Lê Duẩn' }, { subjectType: 'BUILDING', action: 'updateBuilding', subjectId: 'bld-9' })),
+    );
+    expect(noVersion.code).toBe(ERROR_CODE.CONFLICT);
+
+    const noLocationVersion = await captureAppError(
+      executeApiCommand(createCommand({ locationId: 'loc-9', active: true }, { subjectType: 'BUILDING', action: 'setLocationActive', subjectId: 'bld-9' })),
+    );
+    expect(noLocationVersion.code).toBe(ERROR_CODE.CONFLICT);
+    expect(mock).not.toHaveBeenCalled();
+  });
+
+  it('should surface a duplicate location name as a field error under the name input', async () => {
+    mockFetch(() =>
+      jsonResponse(400, errorBody('VALIDATION_ERROR', 'Tầng này đã có vị trí cùng tên.', {
+        fields: [{ field: 'name', message: 'Tầng này đã có vị trí cùng tên.' }],
+      })),
+    );
+
+    const error = await captureAppError(
+      executeApiCommand(
+        createCommand(
+          { floor: '5', name: 'Phòng 501' },
+          { subjectType: 'BUILDING', action: 'createLocation', subjectId: 'bld-9' },
+        ),
+      ),
+    );
+
+    expect(error.code).toBe(ERROR_CODE.VALIDATION_ERROR);
+    expect(error.fieldErrors).toEqual({ name: 'Tầng này đã có vị trí cùng tên.' });
   });
 });
