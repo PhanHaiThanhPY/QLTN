@@ -1,9 +1,23 @@
-import { ROLE } from '@/domain/constants';
-import type { Role } from '@/domain/constants';
+import { BUSINESS_WORKFLOW_STEPS, REPAIR_STATUS, ROLE, SUBJECT_TYPE } from '@/domain/constants';
+import type { BusinessWorkflowStepKey, RepairStatus, Role, SubjectType, TaskKind } from '@/domain/constants';
+import { assignmentRulesOf, approvalStepKeysOf, CONFIG_DUE_KINDS, workflowApprovalDefinitionsOf, workflowStagesOf } from '@/domain/building-config';
 import { AppError, ERROR_CODE, validationError } from '@/domain/errors';
 import { CAPABILITY } from '@/domain/permissions';
 import type { Capability } from '@/domain/permissions';
-import type { Building, Department, Location, RoleDefinition, User } from '@/domain/types';
+import type {
+  AssignmentRule,
+  AuditEvent,
+  Building,
+  BuildingConfig,
+  Department,
+  Location,
+  RoleDefinition,
+  User,
+  WorkflowApprovalStep,
+  WorkflowStageConfig,
+  WorkflowStageKey,
+  WorkflowStepBinding,
+} from '@/domain/types';
 import { asOptionalString, asRecord, asString, asStringArray } from '@/domain/validation';
 
 /**
@@ -144,13 +158,15 @@ export const mapRoleDefinition = (row: ApiRole): RoleDefinition => ({
   updatedAt: row.updatedAt,
 });
 
-/** `GET /reference` → `buildings` row. The web building has no active flag; `address` is a string. */
+/** `GET /buildings` and `GET /reference` → `buildings` row. The web building has no active flag; `address` is a string. */
 export interface ApiReferenceBuilding {
   id: string;
   code: string;
   name: string;
   address: string | null;
   isActive: boolean;
+  /** Only `GET /buildings` returns it (`GET /reference` omits it). */
+  version?: number;
 }
 
 export const mapBuilding = (row: ApiReferenceBuilding): Building => ({
@@ -158,9 +174,13 @@ export const mapBuilding = (row: ApiReferenceBuilding): Building => ({
   code: row.code,
   name: row.name,
   address: optionalText(row.address) ?? '',
+  ...(typeof row.version === 'number' ? { version: row.version } : {}),
 });
 
-/** `GET /reference` → `locations` row; backend `isActive` becomes the optional web `active`. */
+/** A row of `GET /buildings` (`BuildingView` on the backend); same shape as the reference row plus `version`. */
+export type ApiBuilding = ApiReferenceBuilding;
+
+/** `GET /buildings/:id/locations` and `GET /reference` → `locations` row; backend `isActive` becomes web `active`. */
 export interface ApiReferenceLocation {
   id: string;
   buildingId: string;
@@ -168,6 +188,8 @@ export interface ApiReferenceLocation {
   zone: string | null;
   name: string;
   isActive: boolean;
+  /** Only the locations endpoint returns it; the reference address book omits it. */
+  version?: number;
 }
 
 export const mapLocation = (row: ApiReferenceLocation): Location => ({
@@ -177,7 +199,11 @@ export const mapLocation = (row: ApiReferenceLocation): Location => ({
   zone: optionalText(row.zone),
   name: row.name,
   active: row.isActive,
+  ...(typeof row.version === 'number' ? { version: row.version } : {}),
 });
+
+/** A row of `GET /buildings/:id/locations` (`LocationView` on the backend). */
+export type ApiLocation = ApiReferenceLocation;
 
 /** `GET /reference` → `users` row: a picker entry, deliberately without contact details or a version. */
 export interface ApiReferenceUser {
@@ -225,6 +251,203 @@ export const mapReferenceDepartment = (row: ApiReference['departments'][number])
   code: row.code,
   name: row.name,
   buildingIds: [...row.buildingIds],
+});
+
+// ---------- Building configuration and history (`api-qltn/src/modules/buildings`) ----------
+
+const WORKFLOW_STAGE_KEYS = new Set<string>(['INTAKE', 'PROPOSAL', 'ACCEPTANCE', 'PAYMENT']);
+const BUSINESS_STEP_KEYS = new Set<string>(BUSINESS_WORKFLOW_STEPS.map((step) => step.key));
+const REPAIR_STATUSES = new Set<string>(Object.values(REPAIR_STATUS));
+const SUBJECT_TYPES = new Set<string>(Object.values(SUBJECT_TYPE));
+
+const isBusinessStepKey = (value: string): value is BusinessWorkflowStepKey => BUSINESS_STEP_KEYS.has(value);
+
+const stageKeyOf = (value: string): WorkflowStageKey => {
+  if (!WORKFLOW_STAGE_KEYS.has(value)) {
+    throw new AppError(ERROR_CODE.NETWORK_ERROR, `Giai đoạn workflow không được hỗ trợ: ${value}.`);
+  }
+  return value as WorkflowStageKey;
+};
+
+/** Custom steps carry `PENDING_CUSTOM_APPROVAL`; any unknown backend status falls back to it. */
+const repairStatusOf = (value: string): RepairStatus =>
+  REPAIR_STATUSES.has(value) ? (value as RepairStatus) : 'PENDING_CUSTOM_APPROVAL';
+
+const subjectTypeOf = (value: string): SubjectType => {
+  if (!SUBJECT_TYPES.has(value)) {
+    throw new AppError(ERROR_CODE.NETWORK_ERROR, `Loại đối tượng lịch sử không được hỗ trợ: ${value}.`);
+  }
+  return value as SubjectType;
+};
+
+/** One approval step as returned inside `BuildingConfigView.workflowApprovalSteps`. */
+export interface ApiWorkflowApprovalStep {
+  key: string;
+  label: string;
+  actor: string;
+  role: string;
+  roleDefId?: string;
+  status: string;
+}
+
+const mapWorkflowApprovalStep = (row: ApiWorkflowApprovalStep): WorkflowApprovalStep => {
+  const roleDefId = optionalText(row.roleDefId);
+  return {
+    key: row.key,
+    label: row.label,
+    actor: row.actor,
+    role: mapRole(row.role),
+    status: repairStatusOf(row.status),
+    ...(roleDefId ? { roleDefId } : {}),
+  };
+};
+
+/** One stage as returned inside `BuildingConfigView.workflowStages`. */
+export interface ApiWorkflowStage {
+  key: string;
+  label: string;
+  description: string;
+  approvalStepKeys: readonly string[];
+  businessStepKeys?: readonly string[];
+  stepBindings?: readonly { businessStepKey: string; approvalStepKey?: string }[];
+  enabled?: boolean;
+}
+
+const mapWorkflowStage = (row: ApiWorkflowStage): WorkflowStageConfig => {
+  const stepBindings = (row.stepBindings ?? []).flatMap((binding): WorkflowStepBinding[] => {
+    if (!isBusinessStepKey(binding.businessStepKey)) return [];
+    const approvalStepKey = optionalText(binding.approvalStepKey);
+    return approvalStepKey
+      ? [{ businessStepKey: binding.businessStepKey, approvalStepKey }]
+      : [{ businessStepKey: binding.businessStepKey }];
+  });
+  return {
+    key: stageKeyOf(row.key),
+    label: row.label,
+    description: row.description,
+    approvalStepKeys: [...row.approvalStepKeys],
+    businessStepKeys: (row.businessStepKeys ?? []).filter(isBusinessStepKey),
+    stepBindings,
+    enabled: row.enabled ?? true,
+  };
+};
+
+/** One assignment rule as returned inside `BuildingConfigView.assignmentRules`. */
+export interface ApiAssignmentRule {
+  departmentId: string;
+  role: string;
+  locationIds?: string[];
+  priority: number;
+}
+
+const mapAssignmentRule = (row: ApiAssignmentRule): AssignmentRule => ({
+  departmentId: row.departmentId,
+  role: mapRole(row.role),
+  ...(row.locationIds && row.locationIds.length > 0 ? { locationIds: [...row.locationIds] } : {}),
+  priority: row.priority,
+});
+
+/** `GET /buildings/:id/config` and `GET /building-configs` row (`BuildingConfigView` on the backend). */
+export interface ApiBuildingConfig {
+  buildingId: string;
+  templateKey: string | null;
+  workflowName: string | null;
+  workflowDescription: string | null;
+  taskDueDays: Readonly<Record<string, number>>;
+  approvalStepKeys: readonly string[];
+  workflowApprovalSteps: readonly ApiWorkflowApprovalStep[];
+  workflowStages: readonly ApiWorkflowStage[];
+  assignmentRules: readonly ApiAssignmentRule[];
+  /** VND integer sent as a string (see the api-qltn README); the web config uses a number. */
+  emergencyLimitVnd: string;
+  emergencyDocHours: number;
+  recentRepairDays: number;
+  repeatMinRecords: number;
+  priceRatio: number;
+  version: number;
+  updatedAt: string;
+  updatedBy: string | null;
+}
+
+export const CONFIG_MONEY_MESSAGE = 'Hạn mức khẩn cấp từ máy chủ không hợp lệ.';
+
+/** Backend money strings are positive VND integers; a malformed one must not become 0 silently. */
+const vndAmount = (value: string): number => {
+  const text = typeof value === 'string' ? value.trim() : '';
+  if (!/^\d{1,15}$/.test(text)) throw new AppError(ERROR_CODE.NETWORK_ERROR, CONFIG_MONEY_MESSAGE);
+  return Number(text);
+};
+
+const taskDueDaysOf = (row: Readonly<Record<string, number>> | undefined): Partial<Record<TaskKind, number>> => {
+  const days: Partial<Record<TaskKind, number>> = {};
+  for (const { kind } of CONFIG_DUE_KINDS) {
+    const value = row?.[kind];
+    if (typeof value === 'number') days[kind] = value;
+  }
+  return days;
+};
+
+/**
+ * Explicit backend → web mapping for a building configuration.
+ * The money limit is converted from the backend VND string to the web `number`; nullable text becomes
+ * `undefined`, the approval library gains the web system steps, and assignment rules are normalized.
+ */
+export const mapBuildingConfig = (row: ApiBuildingConfig): BuildingConfig => {
+  const workflowApprovalSteps = workflowApprovalDefinitionsOf((row.workflowApprovalSteps ?? []).map(mapWorkflowApprovalStep));
+  return {
+    buildingId: row.buildingId,
+    templateKey: optionalText(row.templateKey),
+    workflowName: optionalText(row.workflowName),
+    workflowDescription: optionalText(row.workflowDescription),
+    workflowStages: workflowStagesOf((row.workflowStages ?? []).map(mapWorkflowStage)),
+    taskDueDays: taskDueDaysOf(row.taskDueDays),
+    approvalStepKeys: approvalStepKeysOf(row.approvalStepKeys, workflowApprovalSteps),
+    workflowApprovalSteps,
+    assignmentRules: assignmentRulesOf((row.assignmentRules ?? []).map(mapAssignmentRule)),
+    emergencyLimitVnd: vndAmount(row.emergencyLimitVnd),
+    emergencyDocHours: row.emergencyDocHours,
+    recentRepairDays: row.recentRepairDays,
+    repeatMinRecords: row.repeatMinRecords,
+    priceRatio: row.priceRatio,
+    version: row.version,
+    updatedAt: row.updatedAt,
+    updatedBy: optionalText(row.updatedBy) ?? '',
+  };
+};
+
+/** `GET /buildings/:id/audit` row (`AuditEventView` on the backend, newest first). */
+export interface ApiAuditEvent {
+  id: string;
+  subjectType: string;
+  subjectId: string;
+  buildingId: string | null;
+  action: string;
+  actorId: string | null;
+  actorName?: string | null;
+  entityVersion: number | null;
+  fromStatus: string | null;
+  toStatus: string | null;
+  reason: string | null;
+  createdAt: string;
+}
+
+/**
+ * Backend has no `commandId` on an audit row, so the web field stays empty; `actorId`/`buildingId`/
+ * `entityVersion` are nullable on the backend and map to empty/0 so the timeline still renders.
+ */
+export const mapAuditEvent = (row: ApiAuditEvent): AuditEvent => ({
+  id: row.id,
+  subjectType: subjectTypeOf(row.subjectType),
+  subjectId: row.subjectId,
+  buildingId: row.buildingId ?? '',
+  commandId: '',
+  action: row.action,
+  actorId: row.actorId ?? '',
+  entityVersion: row.entityVersion ?? 0,
+  fromStatus: optionalText(row.fromStatus),
+  toStatus: optionalText(row.toStatus),
+  reason: optionalText(row.reason),
+  createdAt: row.createdAt,
 });
 
 // ---------- Web payload → backend DTO (`api-qltn/src/modules/users/dto/user.dto.ts`) ----------
@@ -404,4 +627,86 @@ export const toUpdateRoleBody = (payload: unknown, expectedVersion: number | und
     capabilities: knownCapabilities(asStringArray(row.capabilities)),
     version: expectedVersion,
   };
+};
+
+// ---------- Web payload → backend DTO (`api-qltn/src/modules/buildings/dto/building.dto.ts`) ----------
+
+export interface ApiCreateBuildingBody {
+  code: string;
+  name: string;
+  address: string;
+  templateKey?: string;
+}
+
+export interface ApiUpdateBuildingBody {
+  name: string;
+  address: string;
+  version: number;
+}
+
+/**
+ * Web `createBuilding` payload → `CreateBuildingDto`. The code is upper-cased like the mock handler and the
+ * backend `TrimUpper`; an empty template is omitted so the backend applies `STANDARD`.
+ */
+export const toCreateBuildingBody = (payload: unknown): ApiCreateBuildingBody => {
+  const row = asRecord(payload);
+  const body: ApiCreateBuildingBody = {
+    code: asString(row.code).toUpperCase(),
+    name: asString(row.name),
+    address: asString(row.address),
+  };
+  const templateKey = asOptionalString(row.templateKey);
+  if (templateKey) body.templateKey = templateKey;
+  return body;
+};
+
+/** Web `updateBuilding` payload → `UpdateBuildingDto`; `version` is the optimistic lock the screen loaded. */
+export const toUpdateBuildingBody = (payload: unknown, expectedVersion: number | undefined): ApiUpdateBuildingBody => {
+  if (expectedVersion === undefined) throw new AppError(ERROR_CODE.CONFLICT, MISSING_VERSION_MESSAGE);
+  const row = asRecord(payload);
+  return {
+    name: asString(row.name),
+    address: asString(row.address),
+    version: expectedVersion,
+  };
+};
+
+export interface ApiCreateLocationBody {
+  floor: string;
+  name: string;
+  zone: string | null;
+}
+
+export interface ApiUpdateLocationBody extends ApiCreateLocationBody {
+  version: number;
+}
+
+export interface ApiSetLocationActiveBody {
+  active: boolean;
+  version: number;
+}
+
+/** Web `createLocation` payload → `CreateLocationDto`; an empty zone is sent as `null`. */
+export const toCreateLocationBody = (payload: unknown): ApiCreateLocationBody => {
+  const row = asRecord(payload);
+  return {
+    floor: asString(row.floor),
+    name: asString(row.name),
+    zone: asOptionalString(row.zone) ?? null,
+  };
+};
+
+/** Web `updateLocation` payload → `UpdateLocationDto`; `version` is the optimistic lock the screen loaded. */
+export const toUpdateLocationBody = (payload: unknown, expectedVersion: number | undefined): ApiUpdateLocationBody => {
+  if (expectedVersion === undefined) throw new AppError(ERROR_CODE.CONFLICT, MISSING_VERSION_MESSAGE);
+  return { ...toCreateLocationBody(payload), version: expectedVersion };
+};
+
+/** Web `setLocationActive` payload → `SetLocationActiveDto`; like the mock handler, only `true` activates. */
+export const toSetLocationActiveBody = (
+  payload: unknown,
+  expectedVersion: number | undefined,
+): ApiSetLocationActiveBody => {
+  if (expectedVersion === undefined) throw new AppError(ERROR_CODE.CONFLICT, MISSING_VERSION_MESSAGE);
+  return { active: asRecord(payload).active === true, version: expectedVersion };
 };

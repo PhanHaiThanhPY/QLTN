@@ -1,9 +1,12 @@
 import { AppError, ERROR_CODE } from '@/domain/errors';
 import { CAPABILITY } from '@/domain/permissions';
 import {
+  CONFIG_MONEY_MESSAGE,
   MISSING_VERSION_MESSAGE,
   PASSWORD_LENGTH_MESSAGE,
+  mapAuditEvent,
   mapBuilding,
+  mapBuildingConfig,
   mapDepartment,
   mapLocation,
   mapReferenceUser,
@@ -12,14 +15,19 @@ import {
   mapUser,
   mapUserProfile,
   passwordError,
+  toCreateBuildingBody,
   toCreateDepartmentBody,
+  toCreateLocationBody,
   toCreateRoleBody,
   toCreateUserBody,
+  toSetLocationActiveBody,
+  toUpdateBuildingBody,
   toUpdateDepartmentBody,
+  toUpdateLocationBody,
   toUpdateRoleBody,
   toUpdateUserBody,
 } from './mappers';
-import type { ApiDepartment, ApiReferenceLocation, ApiReferenceUser, ApiRole, ApiUserProfile } from './mappers';
+import type { ApiAuditEvent, ApiBuildingConfig, ApiDepartment, ApiReferenceLocation, ApiReferenceUser, ApiRole, ApiUserProfile } from './mappers';
 
 const profile = (overrides: Partial<ApiUserProfile> = {}): ApiUserProfile => ({
   id: '6f1b0d0a-0000-4000-8000-000000000001',
@@ -441,6 +449,197 @@ describe('role payload mappers', () => {
       throw new Error('Expected a conflict');
     } catch (error) {
       expect((error as AppError).code).toBe(ERROR_CODE.CONFLICT);
+    }
+  });
+});
+
+describe('building configuration mappers', () => {
+  const configView = (overrides: Partial<ApiBuildingConfig> = {}): ApiBuildingConfig => ({
+    buildingId: 'bld-a',
+    templateKey: 'STANDARD',
+    workflowName: null,
+    workflowDescription: 'Quy trình của tòa A',
+    taskDueDays: { CONFIRM_RECORD: 3, APPROVE_PROPOSAL: 4, REVIEW_ACCEPTANCE: 3, APPROVE_PAYMENT: 5, REVIEW_MAINTENANCE: 2, NOT_A_KIND: 9 },
+    approvalStepKeys: ['TECH', 'BOARD'],
+    workflowApprovalSteps: [
+      { key: 'CUSTOM_1', label: 'Bước riêng', actor: 'BQL', role: 'BQL', status: 'PENDING_CUSTOM_APPROVAL' },
+    ],
+    workflowStages: [
+      {
+        key: 'PROPOSAL',
+        label: 'Duyệt phương án',
+        description: 'Đánh giá phương án và chi phí.',
+        approvalStepKeys: ['TECH'],
+        businessStepKeys: ['PREPARE_PROPOSAL', 'NOT_A_STEP'],
+        stepBindings: [
+          { businessStepKey: 'PREPARE_PROPOSAL', approvalStepKey: 'TECH' },
+          { businessStepKey: 'NOT_A_STEP' },
+        ],
+        enabled: true,
+      },
+    ],
+    assignmentRules: [
+      { departmentId: 'dep-b', role: 'BQL', locationIds: ['loc-1'], priority: 2 },
+      { departmentId: 'dep-a', role: 'TECH_CONFIRMER', priority: 1 },
+    ],
+    emergencyLimitVnd: '20000000',
+    emergencyDocHours: 24,
+    recentRepairDays: 90,
+    repeatMinRecords: 2,
+    priceRatio: 1.5,
+    version: 4,
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    updatedBy: null,
+    ...overrides,
+  });
+
+  it('should convert the VND string to a number and map every configuration field explicitly', () => {
+    const config = mapBuildingConfig(configView());
+
+    expect(config.emergencyLimitVnd).toBe(20_000_000);
+    expect(config).toMatchObject({
+      buildingId: 'bld-a',
+      templateKey: 'STANDARD',
+      workflowName: undefined,
+      workflowDescription: 'Quy trình của tòa A',
+      emergencyDocHours: 24,
+      recentRepairDays: 90,
+      repeatMinRecords: 2,
+      priceRatio: 1.5,
+      version: 4,
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      updatedBy: '',
+    });
+    expect(config.taskDueDays).toEqual({
+      CONFIRM_RECORD: 3,
+      APPROVE_PROPOSAL: 4,
+      REVIEW_ACCEPTANCE: 3,
+      APPROVE_PAYMENT: 5,
+      REVIEW_MAINTENANCE: 2,
+    });
+  });
+
+  it('should merge the web system approval steps with custom backend steps', () => {
+    const config = mapBuildingConfig(configView());
+
+    expect(config.workflowApprovalSteps?.map((step) => step.key)).toEqual(['TECH_CONFIRM', 'TECH', 'BOARD', 'CUSTOM_1']);
+    expect(config.approvalStepKeys).toEqual(['TECH', 'BOARD']);
+  });
+
+  it('should normalize stages and sort assignment rules by priority', () => {
+    const config = mapBuildingConfig(configView());
+
+    expect(config.workflowStages).toEqual([
+      {
+        key: 'PROPOSAL',
+        label: 'Duyệt phương án',
+        description: 'Đánh giá phương án và chi phí.',
+        approvalStepKeys: ['TECH'],
+        businessStepKeys: ['PREPARE_PROPOSAL'],
+        stepBindings: [{ businessStepKey: 'PREPARE_PROPOSAL', approvalStepKey: 'TECH' }],
+        enabled: true,
+      },
+    ]);
+    expect(config.assignmentRules).toEqual([
+      { departmentId: 'dep-a', role: 'TECH_CONFIRMER', priority: 1 },
+      { departmentId: 'dep-b', role: 'BQL', locationIds: ['loc-1'], priority: 2 },
+    ]);
+  });
+
+  it('should refuse a malformed money value instead of silently storing 0', () => {
+    try {
+      mapBuildingConfig(configView({ emergencyLimitVnd: '20tr' }));
+      throw new Error('Expected an AppError');
+    } catch (error) {
+      expect((error as AppError).code).toBe(ERROR_CODE.NETWORK_ERROR);
+      expect((error as AppError).message).toBe(CONFIG_MONEY_MESSAGE);
+    }
+  });
+
+  it('should map an audit event and drop backend-only fields', () => {
+    const event: ApiAuditEvent = {
+      id: 'ev-1',
+      subjectType: 'BUILDING',
+      subjectId: 'bld-a',
+      buildingId: null,
+      action: 'updateBuilding',
+      actorId: null,
+      actorName: 'Quản trị viên',
+      entityVersion: null,
+      fromStatus: null,
+      toStatus: null,
+      reason: null,
+      createdAt: '2026-01-02T03:04:05.000Z',
+    };
+
+    const mapped = mapAuditEvent(event);
+    expect(mapped).toEqual({
+      id: 'ev-1',
+      subjectType: 'BUILDING',
+      subjectId: 'bld-a',
+      buildingId: '',
+      commandId: '',
+      action: 'updateBuilding',
+      actorId: '',
+      entityVersion: 0,
+      fromStatus: undefined,
+      toStatus: undefined,
+      reason: undefined,
+      createdAt: '2026-01-02T03:04:05.000Z',
+    });
+    expect(mapped).not.toHaveProperty('actorName');
+  });
+});
+
+describe('building and location payload mappers', () => {
+  it('should build a CreateBuildingDto with an upper-cased code and an optional template', () => {
+    expect(toCreateBuildingBody({ code: ' t2c-e ', name: ' Tòa T2C ', address: ' 1 Lê Duẩn ', templateKey: '' })).toEqual({
+      code: 'T2C-E',
+      name: 'Tòa T2C',
+      address: '1 Lê Duẩn',
+    });
+    expect(toCreateBuildingBody({ code: 'T2C-F', name: 'Tòa F', address: '2 Lê Duẩn', templateKey: 'OFFICE' }).templateKey).toBe('OFFICE');
+  });
+
+  it('should build an UpdateBuildingDto with version and refuse a missing expectedVersion', () => {
+    expect(toUpdateBuildingBody({ name: ' Tòa T2C (sửa) ', address: ' 1 Lê Duẩn ' }, 3)).toEqual({
+      name: 'Tòa T2C (sửa)',
+      address: '1 Lê Duẩn',
+      version: 3,
+    });
+    try {
+      toUpdateBuildingBody({ name: 'Tòa T2C', address: '1 Lê Duẩn' }, undefined);
+      throw new Error('Expected a conflict');
+    } catch (error) {
+      expect((error as AppError).code).toBe(ERROR_CODE.CONFLICT);
+      expect((error as AppError).message).toBe(MISSING_VERSION_MESSAGE);
+    }
+  });
+
+  it('should build location payloads with a null empty zone and the loaded version', () => {
+    expect(toCreateLocationBody({ floor: ' 5 ', name: ' Phòng 501 ', zone: ' ' })).toEqual({
+      floor: '5',
+      name: 'Phòng 501',
+      zone: null,
+    });
+    expect(toUpdateLocationBody({ floor: '5', name: 'Phòng 501', zone: 'Bắc' }, 2)).toEqual({
+      floor: '5',
+      name: 'Phòng 501',
+      zone: 'Bắc',
+      version: 2,
+    });
+    expect(toSetLocationActiveBody({ active: true }, 3)).toEqual({ active: true, version: 3 });
+    expect(toSetLocationActiveBody({ active: false }, 3)).toEqual({ active: false, version: 3 });
+  });
+
+  it('should refuse a location write without expectedVersion', () => {
+    for (const build of [toUpdateLocationBody, toSetLocationActiveBody]) {
+      try {
+        build({ floor: '5', name: 'Phòng 501', active: true }, undefined);
+        throw new Error('Expected a conflict');
+      } catch (error) {
+        expect((error as AppError).code).toBe(ERROR_CODE.CONFLICT);
+      }
     }
   });
 });

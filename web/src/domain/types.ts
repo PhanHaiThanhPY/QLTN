@@ -129,6 +129,8 @@ export interface Building {
   code: string;
   name: string;
   address: string;
+  /** Optimistic lock in api mode (`PATCH /buildings/:id`); mock buildings have no version. */
+  version?: number;
 }
 
 /** Organization unit used to resolve workflow assignees. */
@@ -151,6 +153,8 @@ export interface Location {
   name: string;
   /** Inactive locations stay on old records but cannot be chosen for new ones. */
   active?: boolean;
+  /** Optimistic lock in api mode (`PATCH /buildings/:id/locations/:locationId`); mock locations have no version. */
+  version?: number;
 }
 
 export interface Attachment {
