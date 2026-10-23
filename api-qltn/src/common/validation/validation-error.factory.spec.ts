@@ -56,7 +56,7 @@ describe('validationExceptionFactory', () => {
     const fields = flattenValidationErrors([
       error('buildingIds', {
         isArray: 'buildingIds must be an array',
-        isUUID: 'each value in buildingIds must be a UUID',
+        isUuid: 'buildingIds must be a UUID',
       }),
       error('fullName', { isLength: 'fullName must be longer than or equal to 3 characters' }, [], 'An'),
     ]);
@@ -108,8 +108,23 @@ describe('validationExceptionFactory', () => {
     ]);
   });
 
-  it('keeps unknown constraint text as-is', () => {
+  it('reports an invalid array element in Vietnamese for an each constraint', () => {
+    const fields = flattenValidationErrors([
+      error('buildingIds', { isUuid: 'each value in buildingIds must be a UUID' }, [], ['abc']),
+      error('roleDefId', { isUuid: 'roleDefId must be a UUID' }, [], 'abc'),
+    ]);
+
+    expect(fields).toEqual([
+      { field: 'buildingIds', message: 'Tòa nhà được giao có phần tử không hợp lệ.' },
+      { field: 'roleDefId', message: 'Vai trò không hợp lệ.' },
+    ]);
+  });
+
+  it('never falls back to the English class-validator text for an unknown constraint', () => {
     const nested = error('checklist', {}, [error('0', {}, [error('unit', { customRule: 'unit is odd' }, [], 3)])]);
-    expect(flattenValidationErrors([nested])).toEqual([{ field: 'checklist.0.unit', message: 'unit is odd' }]);
+    expect(flattenValidationErrors([nested])).toEqual([{ field: 'checklist.0.unit', message: 'unit không hợp lệ.' }]);
+    expect(flattenValidationErrors([error('description', { futureRule: 'description is odd' }, [], 'x')])).toEqual([
+      { field: 'description', message: 'Mô tả không hợp lệ.' },
+    ]);
   });
 });

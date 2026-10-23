@@ -23,9 +23,9 @@ const CONSTRAINT_PRIORITY: readonly string[] = [
   'isEnum',
   'isIn',
   'isEmail',
-  'isUUID',
+  'isUuid',
   'isDateString',
-  'isISO8601',
+  'isIso8601',
   'matches',
   'isLength',
   'minLength',
@@ -47,12 +47,12 @@ const CONSTRAINT_MESSAGES: Readonly<Record<string, string>> = {
   isNumber: '{label} phải là số.',
   isBoolean: '{label} phải là có/không.',
   isEmail: '{label} không đúng định dạng email.',
-  isUUID: '{label} không hợp lệ.',
+  isUuid: '{label} không hợp lệ.',
   isEnum: '{label} không thuộc danh sách cho phép.',
   isIn: '{label} không thuộc danh sách cho phép.',
   isArray: '{label} phải là danh sách.',
   isDateString: '{label} phải là ngày giờ hợp lệ.',
-  isISO8601: '{label} phải là ngày giờ hợp lệ.',
+  isIso8601: '{label} phải là ngày giờ hợp lệ.',
   matches: '{label} không đúng định dạng.',
   arrayUnique: '{label} không được trùng nhau.',
   whitelistValidation: 'Trường {label} không được phép gửi lên.',
@@ -99,6 +99,7 @@ function isLengthMessage(label: string, fallback: string, value: unknown): strin
 
 function messageFor(field: string, constraint: string, fallback: string, value: unknown): string {
   const label = fieldLabel(field);
+  if (fallback.startsWith('each value in ')) return `${label} có phần tử không hợp lệ.`;
   const template = CONSTRAINT_MESSAGES[constraint];
   if (template) return template.replace('{label}', label);
   const limit = limitOf(constraint, fallback);
@@ -118,7 +119,7 @@ function messageFor(field: string, constraint: string, fallback: string, value: 
     case 'arrayMaxSize':
       return limit ? `${label} tối đa ${limit} phần tử.` : `${label} quá nhiều phần tử.`;
     default:
-      return fallback;
+      return `${label} không hợp lệ.`;
   }
 }
 
