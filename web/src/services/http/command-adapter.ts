@@ -13,15 +13,18 @@ import {
   toCreateDepartmentBody,
   toCreateLocationBody,
   toCreateRoleBody,
+  toApplyConfigTemplateBody,
+  toBulkWorkflowUpdateBody,
   toCreateUserBody,
   toSetLocationActiveBody,
   toUpdateBuildingBody,
+  toUpdateBuildingConfigBody,
   toUpdateDepartmentBody,
   toUpdateLocationBody,
   toUpdateRoleBody,
   toUpdateUserBody,
 } from './mappers';
-import type { ApiBuilding, ApiDepartment, ApiLocation, ApiRole, ApiUser } from './mappers';
+import type { ApiBuilding, ApiConfigSaveResult, ApiDepartment, ApiLocation, ApiRole, ApiUser } from './mappers';
 
 /**
  * Command adapter for `VITE_DATA_SOURCE=api` (plan decision D4).
@@ -166,7 +169,49 @@ const setLocationActive: ApiCommandHandler = async (command) => {
   return { ok: true, subjectId: location.buildingId };
 };
 
-/** Actions wired to api-qltn. T2a covers accounts; T2b departments and custom roles; T2c buildings and locations. */
+/**
+ * `PUT /buildings/:id/config` — the DTO carries every value plus the loaded version; the backend answers
+ * `{ config, changes }`, of which only the change count is needed (the mock result shape).
+ */
+const updateBuildingConfig: ApiCommandHandler = async (command) => {
+  const buildingId = buildingIdOf(command);
+  const body = toUpdateBuildingConfigBody(command.payload, command.expectedVersion);
+  const result = await apiRequest<ApiConfigSaveResult>(
+    'PUT',
+    `/buildings/${encodeURIComponent(buildingId)}/config`,
+    { body },
+  );
+  broadcastChange();
+  return { ok: true, subjectId: buildingId, data: { changes: result.changes.length } };
+};
+
+/** `POST /buildings/:id/config/apply-template` — one source (template key or another building) plus version. */
+const applyConfigTemplate: ApiCommandHandler = async (command) => {
+  const buildingId = buildingIdOf(command);
+  const body = toApplyConfigTemplateBody(command.payload, command.expectedVersion);
+  const result = await apiRequest<ApiConfigSaveResult>(
+    'POST',
+    `/buildings/${encodeURIComponent(buildingId)}/config/apply-template`,
+    { body },
+  );
+  broadcastChange();
+  return { ok: true, subjectId: buildingId, data: { changes: result.changes.length } };
+};
+
+/** `PUT /building-configs/workflow` — all-or-nothing for several buildings; each target has its own version. */
+const updateWorkflowConfig: ApiCommandHandler = async (command) => {
+  const body = toBulkWorkflowUpdateBody(command.payload);
+  if (body.targets.length === 0) {
+    throw new AppError(ERROR_CODE.VALIDATION_ERROR, 'Cần có ít nhất một tòa nhà để áp dụng workflow.', {
+      targets: 'Cần có ít nhất một tòa nhà để áp dụng workflow.',
+    });
+  }
+  const result = await apiRequest<{ updated: number }>('PUT', '/building-configs/workflow', { body });
+  broadcastChange();
+  return { ok: true, subjectId: command.subjectId?.trim() || body.targets[0].buildingId, data: { updated: result.updated } };
+};
+
+/** Actions wired to api-qltn. T2a accounts; T2b departments and roles; T2c buildings and locations; T2d configuration. */
 const API_COMMANDS: Readonly<Record<string, ApiCommandHandler>> = {
   createUser,
   updateUser,
@@ -179,6 +224,9 @@ const API_COMMANDS: Readonly<Record<string, ApiCommandHandler>> = {
   createLocation,
   updateLocation,
   setLocationActive,
+  updateBuildingConfig,
+  applyConfigTemplate,
+  updateWorkflowConfig,
 };
 
 export const API_UNSUPPORTED_MESSAGE = 'Thao tác này chưa nối API.';

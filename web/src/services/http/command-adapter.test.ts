@@ -2,6 +2,7 @@
 import { AppError, ERROR_CODE, isAppError } from '@/domain/errors';
 import type { Command } from '../command-engine';
 import { executeApiCommand, isApiAction } from './command-adapter';
+import { MISSING_VERSION_MESSAGE } from './mappers';
 import { clearApiSession, saveApiSession } from './token-store';
 
 const jsonResponse = (status: number, body: unknown): Response =>
@@ -114,7 +115,7 @@ describe('api command adapter', () => {
     clearApiSession();
   });
 
-  it('should register the accounts, departments, roles, buildings and locations actions wired so far', () => {
+  it('should register the accounts, departments, roles, buildings, locations and configuration actions wired so far', () => {
     expect(isApiAction('createUser')).toBe(true);
     expect(isApiAction('updateUser')).toBe(true);
     expect(isApiAction('createDepartment')).toBe(true);
@@ -126,10 +127,10 @@ describe('api command adapter', () => {
     expect(isApiAction('createLocation')).toBe(true);
     expect(isApiAction('updateLocation')).toBe(true);
     expect(isApiAction('setLocationActive')).toBe(true);
-    // Out of scope: configuration/workflow writes and maintenance/profile actions stay unwired.
-    expect(isApiAction('updateBuildingConfig')).toBe(false);
-    expect(isApiAction('updateWorkflowConfig')).toBe(false);
-    expect(isApiAction('applyConfigTemplate')).toBe(false);
+    // Configuration/workflow writes are wired by T2d; maintenance/profile actions stay out of scope.
+    expect(isApiAction('updateBuildingConfig')).toBe(true);
+    expect(isApiAction('updateWorkflowConfig')).toBe(true);
+    expect(isApiAction('applyConfigTemplate')).toBe(true);
     expect(isApiAction('replaceManager')).toBe(false);
     // A prototype key must not count as a registered action.
     expect(isApiAction('toString')).toBe(false);
@@ -584,5 +585,266 @@ describe('api command adapter — buildings and locations', () => {
 
     expect(error.code).toBe(ERROR_CODE.VALIDATION_ERROR);
     expect(error.fieldErrors).toEqual({ name: 'Tầng này đã có vị trí cùng tên.' });
+  });
+});
+
+const CONFIG_PAYLOAD = {
+  templateKey: 'STANDARD',
+  workflowName: ' Quy trình sửa chữa ',
+  workflowDescription: 'Mô tả quy trình',
+  taskDueDays: { CONFIRM_RECORD: 3, APPROVE_PROPOSAL: 4, REVIEW_ACCEPTANCE: 3, APPROVE_PAYMENT: 5, REVIEW_MAINTENANCE: 2 },
+  approvalStepKeys: ['TECH', 'BOARD'],
+  workflowApprovalSteps: [
+    { key: 'TECH', label: 'TVKT thẩm định', actor: 'TVKT', role: 'TECH_CONSULTANT', status: 'PENDING_TECH_REVIEW' },
+    { key: 'CUSTOM_1', label: 'Bước riêng', actor: 'BQL', role: 'BQL', roleDefId: 'role-1', status: 'PENDING_CUSTOM_APPROVAL' },
+  ],
+  workflowStages: [
+    {
+      key: 'PROPOSAL',
+      label: 'Duyệt phương án',
+      description: 'Đánh giá phương án và chi phí.',
+      approvalStepKeys: ['TECH', 'CUSTOM_1'],
+      businessStepKeys: ['PREPARE_PROPOSAL'],
+      stepBindings: [{ businessStepKey: 'PREPARE_PROPOSAL', approvalStepKey: 'TECH' }],
+      enabled: true,
+    },
+  ],
+  assignmentRules: [{ departmentId: 'dep-1', role: 'BQL', locationIds: [], priority: 1 }],
+  emergencyLimitVnd: 20_000_000,
+  emergencyDocHours: 24,
+  recentRepairDays: 90,
+  repeatMinRecords: 2,
+  priceRatio: 1.5,
+};
+
+const CONFIG_SAVE_BODY = {
+  config: { buildingId: 'bld-9', version: 5 },
+  changes: [{ label: 'Hạn mức sửa chữa khẩn cấp', from: '10.000.000 ₫', to: '20.000.000 ₫' }, { label: 'Thời hạn: Nghiệm thu', from: '2 ngày', to: '3 ngày' }],
+};
+
+describe('api command adapter — configuration and workflow', () => {
+  beforeEach(() => {
+    vi.unstubAllGlobals();
+    clearApiSession();
+    saveApiSession({ accessToken: 'tok-1', refreshToken: 'ref-1' });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    clearApiSession();
+  });
+
+  it('should PUT /buildings/:id/config with every ConfigValuesDto field, a VND string and the loaded version', async () => {
+    const mock = mockFetch(() => jsonResponse(200, successBody(CONFIG_SAVE_BODY)));
+
+    await expect(
+      executeApiCommand(
+        createCommand(CONFIG_PAYLOAD, {
+          subjectType: 'BUILDING',
+          action: 'updateBuildingConfig',
+          subjectId: 'bld-9',
+          expectedVersion: 4,
+        }),
+      ),
+    ).resolves.toEqual({ ok: true, subjectId: 'bld-9', data: { changes: 2 } });
+
+    const [url, init] = mock.mock.calls[0];
+    expect(String(url)).toBe('/api/buildings/bld-9/config');
+    expect(init?.method).toBe('PUT');
+    expect(bodyOf(init)).toEqual({
+      templateKey: 'STANDARD',
+      workflowName: 'Quy trình sửa chữa',
+      workflowDescription: 'Mô tả quy trình',
+      taskDueDays: CONFIG_PAYLOAD.taskDueDays,
+      approvalStepKeys: ['TECH', 'BOARD'],
+      workflowApprovalSteps: [
+        { key: 'TECH', label: 'TVKT thẩm định', actor: 'TVKT', role: 'TECH_CONSULTANT' },
+        { key: 'CUSTOM_1', label: 'Bước riêng', actor: 'BQL', role: 'BQL', roleDefId: 'role-1' },
+      ],
+      workflowStages: [
+        {
+          key: 'PROPOSAL',
+          label: 'Duyệt phương án',
+          description: 'Đánh giá phương án và chi phí.',
+          approvalStepKeys: ['TECH', 'CUSTOM_1'],
+          businessStepKeys: ['PREPARE_PROPOSAL'],
+          stepBindings: [{ businessStepKey: 'PREPARE_PROPOSAL', approvalStepKey: 'TECH' }],
+          enabled: true,
+        },
+      ],
+      assignmentRules: [{ departmentId: 'dep-1', role: 'BQL', priority: 1 }],
+      emergencyLimitVnd: '20000000',
+      emergencyDocHours: 24,
+      recentRepairDays: 90,
+      repeatMinRecords: 2,
+      priceRatio: 1.5,
+      version: 4,
+    });
+  });
+
+  it('should POST /buildings/:id/config/apply-template with exactly one source and the version', async () => {
+    const mock = mockFetch(() => jsonResponse(200, successBody(CONFIG_SAVE_BODY)));
+
+    await expect(
+      executeApiCommand(
+        createCommand(
+          { templateKey: 'OFFICE' },
+          { subjectType: 'BUILDING', action: 'applyConfigTemplate', subjectId: 'bld-9', expectedVersion: 4 },
+        ),
+      ),
+    ).resolves.toEqual({ ok: true, subjectId: 'bld-9', data: { changes: 2 } });
+    expect(String(mock.mock.calls[0][0])).toBe('/api/buildings/bld-9/config/apply-template');
+    expect(mock.mock.calls[0][1]?.method).toBe('POST');
+    expect(bodyOf(mock.mock.calls[0][1])).toEqual({ templateKey: 'OFFICE', version: 4 });
+
+    await executeApiCommand(
+      createCommand(
+        { sourceBuildingId: 'bld-a', templateKey: 'OFFICE' },
+        { subjectType: 'BUILDING', action: 'applyConfigTemplate', subjectId: 'bld-9', expectedVersion: 4 },
+      ),
+    );
+    expect(bodyOf(mock.mock.calls[1][1])).toEqual({ sourceBuildingId: 'bld-a', version: 4 });
+  });
+
+  it('should PUT /building-configs/workflow with one target per building, each with its own version', async () => {
+    const mock = mockFetch(() => jsonResponse(200, successBody({ updated: 2 })));
+    const values = { ...CONFIG_PAYLOAD, workflowStages: CONFIG_PAYLOAD.workflowStages };
+    const payload = {
+      targets: [
+        { buildingId: 'bld-9', expectedVersion: 4, values },
+        { buildingId: 'bld-a', expectedVersion: 7, values },
+      ],
+    };
+
+    await expect(
+      executeApiCommand(
+        createCommand(payload, { subjectType: 'BUILDING', action: 'updateWorkflowConfig', subjectId: 'bld-9' }),
+      ),
+    ).resolves.toEqual({ ok: true, subjectId: 'bld-9', data: { updated: 2 } });
+
+    const [url, init] = mock.mock.calls[0];
+    expect(String(url)).toBe('/api/building-configs/workflow');
+    expect(init?.method).toBe('PUT');
+    const body = bodyOf(init) as { targets: { buildingId: string; version: number; values: Record<string, unknown> }[] };
+    expect(body.targets.map((target) => [target.buildingId, target.version])).toEqual([
+      ['bld-9', 4],
+      ['bld-a', 7],
+    ]);
+    expect(body.targets[0].values.emergencyLimitVnd).toBe('20000000');
+    expect(body.targets[0].values.workflowStages).toEqual([
+      {
+        key: 'PROPOSAL',
+        label: 'Duyệt phương án',
+        description: 'Đánh giá phương án và chi phí.',
+        approvalStepKeys: ['TECH', 'CUSTOM_1'],
+        businessStepKeys: ['PREPARE_PROPOSAL'],
+        stepBindings: [{ businessStepKey: 'PREPARE_PROPOSAL', approvalStepKey: 'TECH' }],
+        enabled: true,
+      },
+    ]);
+  });
+
+  it('should refuse configuration writes without an id or version before hitting the network', async () => {
+    const mock = mockFetch(() => jsonResponse(200, successBody(CONFIG_SAVE_BODY)));
+
+    const noId = await captureAppError(
+      executeApiCommand(
+        createCommand(CONFIG_PAYLOAD, { subjectType: 'BUILDING', action: 'updateBuildingConfig', expectedVersion: 4 }),
+      ),
+    );
+    expect(noId.code).toBe(ERROR_CODE.NOT_FOUND);
+
+    const noVersion = await captureAppError(
+      executeApiCommand(
+        createCommand(CONFIG_PAYLOAD, { subjectType: 'BUILDING', action: 'updateBuildingConfig', subjectId: 'bld-9' }),
+      ),
+    );
+    expect(noVersion.code).toBe(ERROR_CODE.CONFLICT);
+    expect(noVersion.message).toBe(MISSING_VERSION_MESSAGE);
+
+    const noTemplateVersion = await captureAppError(
+      executeApiCommand(
+        createCommand(
+          { templateKey: 'OFFICE' },
+          { subjectType: 'BUILDING', action: 'applyConfigTemplate', subjectId: 'bld-9' },
+        ),
+      ),
+    );
+    expect(noTemplateVersion.code).toBe(ERROR_CODE.CONFLICT);
+
+    expect(mock).not.toHaveBeenCalled();
+  });
+
+  it('should refuse a workflow update when any target has no version before hitting the network', async () => {
+    const mock = mockFetch(() => jsonResponse(200, successBody({ updated: 2 })));
+    const payload = {
+      targets: [
+        { buildingId: 'bld-9', expectedVersion: 4, values: CONFIG_PAYLOAD },
+        { buildingId: 'bld-a', values: CONFIG_PAYLOAD },
+      ],
+    };
+
+    const error = await captureAppError(
+      executeApiCommand(
+        createCommand(payload, { subjectType: 'BUILDING', action: 'updateWorkflowConfig', subjectId: 'bld-9' }),
+      ),
+    );
+
+    expect(error.code).toBe(ERROR_CODE.CONFLICT);
+    expect(error.message).toBe(MISSING_VERSION_MESSAGE);
+    expect(mock).not.toHaveBeenCalled();
+  });
+
+  it('should refuse a workflow update with no targets before hitting the network', async () => {
+    const mock = mockFetch(() => jsonResponse(200, successBody({ updated: 0 })));
+
+    const error = await captureAppError(
+      executeApiCommand(
+        createCommand({ targets: [] }, { subjectType: 'BUILDING', action: 'updateWorkflowConfig', subjectId: 'bld-9' }),
+      ),
+    );
+
+    expect(error.code).toBe(ERROR_CODE.VALIDATION_ERROR);
+    expect(mock).not.toHaveBeenCalled();
+  });
+
+  it('should map a stale configuration version (409) onto CONFLICT with the backend message', async () => {
+    mockFetch(() =>
+      jsonResponse(409, errorBody('CONFLICT', 'Dữ liệu đã được người khác cập nhật. Vui lòng tải lại trước khi lưu.')),
+    );
+
+    const error = await captureAppError(
+      executeApiCommand(
+        createCommand(CONFIG_PAYLOAD, {
+          subjectType: 'BUILDING',
+          action: 'updateBuildingConfig',
+          subjectId: 'bld-9',
+          expectedVersion: 3,
+        }),
+      ),
+    );
+
+    expect(error.code).toBe(ERROR_CODE.CONFLICT);
+    expect(error.message).toBe('Dữ liệu đã được người khác cập nhật. Vui lòng tải lại trước khi lưu.');
+  });
+
+  it('should keep a range error under the configuration field (400)', async () => {
+    mockFetch(() =>
+      jsonResponse(400, errorBody('VALIDATION_ERROR', 'Bổ sung hồ sơ khẩn cấp phải từ 4 đến 72 giờ.', {
+        fields: [{ field: 'emergencyDocHours', message: 'Bổ sung hồ sơ khẩn cấp phải từ 4 đến 72 giờ.' }],
+      })),
+    );
+
+    const error = await captureAppError(
+      executeApiCommand(
+        createCommand(
+          { ...CONFIG_PAYLOAD, emergencyDocHours: 100 },
+          { subjectType: 'BUILDING', action: 'updateBuildingConfig', subjectId: 'bld-9', expectedVersion: 4 },
+        ),
+      ),
+    );
+
+    expect(error.code).toBe(ERROR_CODE.VALIDATION_ERROR);
+    expect(error.fieldErrors).toEqual({ emergencyDocHours: 'Bổ sung hồ sơ khẩn cấp phải từ 4 đến 72 giờ.' });
   });
 });

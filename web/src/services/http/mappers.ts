@@ -18,7 +18,7 @@ import type {
   WorkflowStageKey,
   WorkflowStepBinding,
 } from '@/domain/types';
-import { asOptionalString, asRecord, asString, asStringArray } from '@/domain/validation';
+import { asNumber, asOptionalString, asRecord, asString, asStringArray, requireVndAmount } from '@/domain/validation';
 
 /**
  * Account profile as returned by api-qltn (`GET /api/auth/me`, `user` in the login payload).
@@ -709,4 +709,202 @@ export const toSetLocationActiveBody = (
 ): ApiSetLocationActiveBody => {
   if (expectedVersion === undefined) throw new AppError(ERROR_CODE.CONFLICT, MISSING_VERSION_MESSAGE);
   return { active: asRecord(payload).active === true, version: expectedVersion };
+};
+
+// ---------- Web configuration payload → backend `building-config.dto.ts` ----------
+
+/** `taskDueDays` of `ConfigValuesDto`; a missing day is left out so the backend reports the field. */
+export type ApiTaskDueDaysBody = Partial<Record<TaskKind, number>>;
+
+export interface ApiApprovalStepBody {
+  key: string;
+  label: string;
+  actor?: string;
+  role: string;
+  roleDefId?: string;
+}
+
+export interface ApiWorkflowStepBindingBody {
+  businessStepKey: string;
+  approvalStepKey?: string;
+}
+
+export interface ApiWorkflowStageBody {
+  key: string;
+  label: string;
+  description: string;
+  approvalStepKeys: string[];
+  businessStepKeys: string[];
+  stepBindings?: ApiWorkflowStepBindingBody[];
+  enabled?: boolean;
+}
+
+export interface ApiAssignmentRuleBody {
+  departmentId: string;
+  role: string;
+  locationIds?: string[];
+  priority: number;
+}
+
+/** `ConfigValuesDto` — the workflow parts are optional on purpose: omitted means "keep the current value". */
+export interface ApiConfigValuesBody {
+  templateKey?: string;
+  workflowName?: string | null;
+  workflowDescription?: string | null;
+  taskDueDays: ApiTaskDueDaysBody;
+  approvalStepKeys?: string[];
+  workflowApprovalSteps?: ApiApprovalStepBody[];
+  workflowStages?: ApiWorkflowStageBody[];
+  assignmentRules?: ApiAssignmentRuleBody[];
+  /** VND integer as a string (the backend DTO rejects numbers for this field). */
+  emergencyLimitVnd: string;
+  emergencyDocHours: number;
+  recentRepairDays: number;
+  repeatMinRecords: number;
+  priceRatio: number;
+}
+
+export interface ApiUpdateBuildingConfigBody extends ApiConfigValuesBody {
+  version: number;
+}
+
+export interface ApiApplyConfigTemplateBody {
+  templateKey?: string;
+  sourceBuildingId?: string;
+  version: number;
+}
+
+export interface ApiWorkflowTargetBody {
+  buildingId: string;
+  version: number;
+  values: ApiConfigValuesBody;
+}
+
+export interface ApiBulkWorkflowUpdateBody {
+  targets: ApiWorkflowTargetBody[];
+}
+
+/** `ConfigSaveResult` from api-qltn; only the change count is used by the mock-compatible result. */
+export interface ApiConfigSaveResult {
+  config: ApiBuildingConfig;
+  changes: readonly unknown[];
+}
+
+const taskDueDaysBody = (value: unknown): ApiTaskDueDaysBody => {
+  const row = asRecord(value);
+  const days: ApiTaskDueDaysBody = {};
+  for (const { kind } of CONFIG_DUE_KINDS) {
+    const day = asNumber(row[kind]);
+    if (day !== undefined) days[kind] = day;
+  }
+  return days;
+};
+
+/** The web `status` field is derived on the backend and is not part of `ApprovalStepDto`. */
+const toApprovalStepBody = (value: unknown): ApiApprovalStepBody => {
+  const row = asRecord(value);
+  const step: ApiApprovalStepBody = {
+    key: asString(row.key),
+    label: asString(row.label),
+    role: asString(row.role),
+  };
+  const actor = asOptionalString(row.actor);
+  if (actor) step.actor = actor;
+  const roleDefId = asOptionalString(row.roleDefId);
+  if (roleDefId) step.roleDefId = roleDefId;
+  return step;
+};
+
+const toStepBindingBody = (value: unknown): ApiWorkflowStepBindingBody => {
+  const row = asRecord(value);
+  const binding: ApiWorkflowStepBindingBody = { businessStepKey: asString(row.businessStepKey) };
+  const approvalStepKey = asOptionalString(row.approvalStepKey);
+  if (approvalStepKey) binding.approvalStepKey = approvalStepKey;
+  return binding;
+};
+
+const toWorkflowStageBody = (value: unknown): ApiWorkflowStageBody => {
+  const row = asRecord(value);
+  const stepBindings = Array.isArray(row.stepBindings) ? row.stepBindings.map(toStepBindingBody) : [];
+  const stage: ApiWorkflowStageBody = {
+    key: asString(row.key),
+    label: asString(row.label),
+    description: asString(row.description),
+    approvalStepKeys: asStringArray(row.approvalStepKeys),
+    businessStepKeys: asStringArray(row.businessStepKeys),
+  };
+  if (stepBindings.length > 0) stage.stepBindings = stepBindings;
+  if (typeof row.enabled === 'boolean') stage.enabled = row.enabled;
+  return stage;
+};
+
+const toAssignmentRuleBody = (value: unknown, index: number): ApiAssignmentRuleBody => {
+  const row = asRecord(value);
+  const locationIds = asStringArray(row.locationIds);
+  return {
+    departmentId: asString(row.departmentId),
+    role: asString(row.role),
+    ...(locationIds.length > 0 ? { locationIds } : {}),
+    priority: asNumber(row.priority) ?? index + 1,
+  };
+};
+
+/**
+ * Web `ConfigValues` payload → `ConfigValuesDto`. Money goes from `number` to a VND string, the web
+ * `WorkflowApprovalStep.status` is dropped, and optional parts are only sent when the screen included them
+ * (the backend keeps the current value otherwise).
+ */
+export const toConfigValuesBody = (payload: unknown): ApiConfigValuesBody => {
+  const row = asRecord(payload);
+  const body: ApiConfigValuesBody = {
+    taskDueDays: taskDueDaysBody(row.taskDueDays),
+    emergencyLimitVnd: String(requireVndAmount(row.emergencyLimitVnd, 'emergencyLimitVnd', 'Hạn mức khẩn cấp')),
+    emergencyDocHours: asNumber(row.emergencyDocHours) ?? 0,
+    recentRepairDays: asNumber(row.recentRepairDays) ?? 0,
+    repeatMinRecords: asNumber(row.repeatMinRecords) ?? 0,
+    priceRatio: asNumber(row.priceRatio) ?? 0,
+  };
+  const templateKey = asOptionalString(row.templateKey);
+  if (templateKey) body.templateKey = templateKey;
+  if (row.workflowName !== undefined) body.workflowName = asOptionalString(row.workflowName) ?? null;
+  if (row.workflowDescription !== undefined) body.workflowDescription = asOptionalString(row.workflowDescription) ?? null;
+  if (Array.isArray(row.approvalStepKeys)) body.approvalStepKeys = asStringArray(row.approvalStepKeys);
+  if (Array.isArray(row.workflowApprovalSteps)) body.workflowApprovalSteps = row.workflowApprovalSteps.map(toApprovalStepBody);
+  if (Array.isArray(row.workflowStages)) body.workflowStages = row.workflowStages.map(toWorkflowStageBody);
+  if (Array.isArray(row.assignmentRules)) body.assignmentRules = row.assignmentRules.map(toAssignmentRuleBody);
+  return body;
+};
+
+/** Web `updateBuildingConfig` payload → `UpdateBuildingConfigDto`; `version` is the lock the screen loaded. */
+export const toUpdateBuildingConfigBody = (
+  payload: unknown,
+  expectedVersion: number | undefined,
+): ApiUpdateBuildingConfigBody => {
+  if (expectedVersion === undefined) throw new AppError(ERROR_CODE.CONFLICT, MISSING_VERSION_MESSAGE);
+  return { ...toConfigValuesBody(payload), version: expectedVersion };
+};
+
+/** Web `applyConfigTemplate` payload → `ApplyTemplateDto`: exactly one source, plus the version lock. */
+export const toApplyConfigTemplateBody = (payload: unknown, expectedVersion: number | undefined): ApiApplyConfigTemplateBody => {
+  if (expectedVersion === undefined) throw new AppError(ERROR_CODE.CONFLICT, MISSING_VERSION_MESSAGE);
+  const row = asRecord(payload);
+  const sourceBuildingId = asOptionalString(row.sourceBuildingId);
+  if (sourceBuildingId) return { sourceBuildingId, version: expectedVersion };
+  return { templateKey: asString(row.templateKey), version: expectedVersion };
+};
+
+/** Web `updateWorkflowConfig` payload → `BulkWorkflowUpdateDto`; every target needs a version, checked offline. */
+export const toBulkWorkflowUpdateBody = (payload: unknown): ApiBulkWorkflowUpdateBody => {
+  const targets = asRecord(payload).targets;
+  const rows = Array.isArray(targets) ? targets : [];
+  return {
+    targets: rows.map((value): ApiWorkflowTargetBody => {
+      const row = asRecord(value);
+      const buildingId = asString(row.buildingId);
+      if (!buildingId) throw new AppError(ERROR_CODE.NOT_FOUND, 'Không tìm thấy tòa nhà.');
+      const version = asNumber(row.expectedVersion) ?? asNumber(row.version);
+      if (version === undefined) throw new AppError(ERROR_CODE.CONFLICT, MISSING_VERSION_MESSAGE);
+      return { buildingId, version, values: toConfigValuesBody(row.values) };
+    }),
+  };
 };

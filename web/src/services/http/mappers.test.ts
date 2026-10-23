@@ -15,6 +15,9 @@ import {
   mapUser,
   mapUserProfile,
   passwordError,
+  toApplyConfigTemplateBody,
+  toBulkWorkflowUpdateBody,
+  toConfigValuesBody,
   toCreateBuildingBody,
   toCreateDepartmentBody,
   toCreateLocationBody,
@@ -22,6 +25,7 @@ import {
   toCreateUserBody,
   toSetLocationActiveBody,
   toUpdateBuildingBody,
+  toUpdateBuildingConfigBody,
   toUpdateDepartmentBody,
   toUpdateLocationBody,
   toUpdateRoleBody,
@@ -640,6 +644,169 @@ describe('building and location payload mappers', () => {
       } catch (error) {
         expect((error as AppError).code).toBe(ERROR_CODE.CONFLICT);
       }
+    }
+  });
+});
+
+describe('configuration payload mappers', () => {
+  const payload = {
+    templateKey: ' STANDARD ',
+    workflowName: ' Quy trình sửa chữa ',
+    workflowDescription: ' ',
+    taskDueDays: { CONFIRM_RECORD: 3, APPROVE_PROPOSAL: 4, REVIEW_ACCEPTANCE: 3, APPROVE_PAYMENT: 5, REVIEW_MAINTENANCE: 2, UNKNOWN: 9 },
+    approvalStepKeys: ['TECH', 'BOARD'],
+    workflowApprovalSteps: [
+      { key: 'TECH', label: 'TVKT thẩm định', actor: 'TVKT', role: 'TECH_CONSULTANT', status: 'PENDING_TECH_REVIEW' },
+      { key: 'CUSTOM_1', label: 'Bước riêng', actor: ' ', role: 'BQL', roleDefId: ' role-1 ', status: 'PENDING_CUSTOM_APPROVAL' },
+    ],
+    workflowStages: [
+      {
+        key: 'PROPOSAL',
+        label: 'Duyệt phương án',
+        description: 'Đánh giá phương án và chi phí.',
+        approvalStepKeys: ['TECH', 'CUSTOM_1'],
+        businessStepKeys: ['PREPARE_PROPOSAL'],
+        stepBindings: [
+          { businessStepKey: 'PREPARE_PROPOSAL', approvalStepKey: 'TECH' },
+          { businessStepKey: 'CREATE_RECORD' },
+        ],
+        enabled: false,
+        extra: 'drop me',
+      },
+    ],
+    assignmentRules: [
+      { departmentId: ' dep-1 ', role: 'BQL', locationIds: [], priority: 1, extra: true },
+      { departmentId: 'dep-2', role: 'TECH_CONFIRMER', locationIds: ['loc-1'], priority: 2 },
+    ],
+    emergencyLimitVnd: 20_000_000,
+    emergencyDocHours: 24,
+    recentRepairDays: 90,
+    repeatMinRecords: 2,
+    priceRatio: 1.5,
+  };
+
+  it('should build a ConfigValuesDto with a VND string, only known fields and no web approval status', () => {
+    expect(toConfigValuesBody(payload)).toEqual({
+      templateKey: 'STANDARD',
+      workflowName: 'Quy trình sửa chữa',
+      workflowDescription: null,
+      taskDueDays: { CONFIRM_RECORD: 3, APPROVE_PROPOSAL: 4, REVIEW_ACCEPTANCE: 3, APPROVE_PAYMENT: 5, REVIEW_MAINTENANCE: 2 },
+      approvalStepKeys: ['TECH', 'BOARD'],
+      workflowApprovalSteps: [
+        { key: 'TECH', label: 'TVKT thẩm định', actor: 'TVKT', role: 'TECH_CONSULTANT' },
+        { key: 'CUSTOM_1', label: 'Bước riêng', role: 'BQL', roleDefId: 'role-1' },
+      ],
+      workflowStages: [
+        {
+          key: 'PROPOSAL',
+          label: 'Duyệt phương án',
+          description: 'Đánh giá phương án và chi phí.',
+          approvalStepKeys: ['TECH', 'CUSTOM_1'],
+          businessStepKeys: ['PREPARE_PROPOSAL'],
+          stepBindings: [
+            { businessStepKey: 'PREPARE_PROPOSAL', approvalStepKey: 'TECH' },
+            { businessStepKey: 'CREATE_RECORD' },
+          ],
+          enabled: false,
+        },
+      ],
+      assignmentRules: [
+        { departmentId: 'dep-1', role: 'BQL', priority: 1 },
+        { departmentId: 'dep-2', role: 'TECH_CONFIRMER', locationIds: ['loc-1'], priority: 2 },
+      ],
+      emergencyLimitVnd: '20000000',
+      emergencyDocHours: 24,
+      recentRepairDays: 90,
+      repeatMinRecords: 2,
+      priceRatio: 1.5,
+    });
+  });
+
+  it('should leave optional workflow parts out when the screen did not send them', () => {
+    const body = toConfigValuesBody({
+      templateKey: '',
+      taskDueDays: { CONFIRM_RECORD: 3 },
+      emergencyLimitVnd: 15_000_000,
+      emergencyDocHours: 24,
+      recentRepairDays: 90,
+      repeatMinRecords: 2,
+      priceRatio: 1.5,
+    });
+
+    expect(body).toEqual({
+      taskDueDays: { CONFIRM_RECORD: 3 },
+      emergencyLimitVnd: '15000000',
+      emergencyDocHours: 24,
+      recentRepairDays: 90,
+      repeatMinRecords: 2,
+      priceRatio: 1.5,
+    });
+  });
+
+  it('should refuse a money value that is not a positive VND integer', () => {
+    try {
+      toConfigValuesBody({ ...payload, emergencyLimitVnd: 0 });
+      throw new Error('Expected a validation error');
+    } catch (error) {
+      expect((error as AppError).code).toBe(ERROR_CODE.VALIDATION_ERROR);
+      expect((error as AppError).fieldErrors?.emergencyLimitVnd).toContain('VND');
+    }
+  });
+
+  it('should add the version lock to an UpdateBuildingConfigDto', () => {
+    expect(toUpdateBuildingConfigBody(payload, 7)).toMatchObject({ version: 7, emergencyLimitVnd: '20000000' });
+    try {
+      toUpdateBuildingConfigBody(payload, undefined);
+      throw new Error('Expected a conflict');
+    } catch (error) {
+      expect((error as AppError).code).toBe(ERROR_CODE.CONFLICT);
+      expect((error as AppError).message).toBe(MISSING_VERSION_MESSAGE);
+    }
+  });
+
+  it('should send exactly one apply-template source plus the version', () => {
+    expect(toApplyConfigTemplateBody({ templateKey: ' OFFICE ' }, 4)).toEqual({ templateKey: 'OFFICE', version: 4 });
+    expect(toApplyConfigTemplateBody({ templateKey: 'OFFICE', sourceBuildingId: ' bld-a ' }, 4)).toEqual({
+      sourceBuildingId: 'bld-a',
+      version: 4,
+    });
+    try {
+      toApplyConfigTemplateBody({ templateKey: 'OFFICE' }, undefined);
+      throw new Error('Expected a conflict');
+    } catch (error) {
+      expect((error as AppError).code).toBe(ERROR_CODE.CONFLICT);
+    }
+  });
+
+  it('should build a BulkWorkflowUpdateDto and refuse a target without a version', () => {
+    const body = toBulkWorkflowUpdateBody({
+      targets: [
+        { buildingId: ' bld-9 ', expectedVersion: 4, values: payload },
+        { buildingId: 'bld-a', version: 2, values: { ...payload, workflowName: 'Chung' } },
+      ],
+    });
+
+    expect(body.targets.map((target) => [target.buildingId, target.version, target.values.emergencyLimitVnd])).toEqual([
+      ['bld-9', 4, '20000000'],
+      ['bld-a', 2, '20000000'],
+    ]);
+    expect(body.targets[1].values.workflowName).toBe('Chung');
+
+    try {
+      toBulkWorkflowUpdateBody({ targets: [{ buildingId: 'bld-9', expectedVersion: 4, values: payload }, { buildingId: 'bld-a', values: payload }] });
+      throw new Error('Expected a conflict');
+    } catch (error) {
+      expect((error as AppError).code).toBe(ERROR_CODE.CONFLICT);
+      expect((error as AppError).message).toBe(MISSING_VERSION_MESSAGE);
+    }
+  });
+
+  it('should refuse a workflow target without a building id', () => {
+    try {
+      toBulkWorkflowUpdateBody({ targets: [{ expectedVersion: 4, values: payload }] });
+      throw new Error('Expected a not-found error');
+    } catch (error) {
+      expect((error as AppError).code).toBe(ERROR_CODE.NOT_FOUND);
     }
   });
 });
