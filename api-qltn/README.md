@@ -65,7 +65,7 @@ is audited in the same transaction. Out-of-scope buildings answer 404.
 | GET | `/api/buildings/:id/locations` | any | `?includeInactive=false` hides inactive |
 | POST / PATCH | `/api/buildings/:id/locations[/:locationId]`, `…/:locationId/status` | BUILDING_CONFIG | Name unique per floor |
 | GET / PUT | `/api/buildings/:id/config` | BUILDING_CONFIG | Omitted workflow parts are kept; returns `{ config, changes }` |
-| POST | `/api/buildings/:id/config/apply-template` | BUILDING_CONFIG | `templateKey` or `sourceBuildingId` |
+| POST | `/api/buildings/:id/config/apply-template` | BUILDING_CONFIG | `templateKey` or `sourceBuildingId`; returns `{ config, changes, skipped }` |
 | GET | `/api/building-configs` | BUILDING_CONFIG | Configs of buildings in scope |
 | GET | `/api/building-configs/catalog` | any | Approval/business steps, stages, templates, limits |
 | PUT | `/api/building-configs/workflow` | BUILDING_CONFIG | Several buildings, all-or-nothing |

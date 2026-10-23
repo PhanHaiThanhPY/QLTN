@@ -25,6 +25,7 @@ interface Role {
 interface Department {
   id: string;
   code: string;
+  name: string;
   buildingIds: string[];
   version: number;
 }
@@ -33,13 +34,18 @@ interface Config {
   version: number;
   emergencyLimitVnd: string;
   approvalStepKeys: string[];
-  assignmentRules: Array<{ departmentId: string; role: string; priority: number }>;
+  assignmentRules: Array<{ departmentId: string; role: string; priority: number; locationIds?: string[] }>;
   taskDueDays: Record<string, number>;
   workflowApprovalSteps: Array<{ key: string }>;
   emergencyDocHours: number;
   recentRepairDays: number;
   repeatMinRecords: number;
   priceRatio: number;
+}
+interface SkippedPart {
+  kind: string;
+  departmentId: string;
+  reason: string;
 }
 interface Profile {
   id: string;
@@ -423,10 +429,67 @@ describe('Catalog & administration (e2e)', () => {
           version: config.version,
         })
         .expect(201);
-      const saved = dataOf<{ config: Config }>(res).config;
-      expect(saved.emergencyLimitVnd).toBe('15000000');
-      expect(saved.approvalStepKeys).toEqual(['TECH']);
-      expect(saved.assignmentRules).toEqual(config.assignmentRules);
+      const saved = dataOf<{ config: Config; skipped: SkippedPart[] }>(res);
+      expect(saved.config.emergencyLimitVnd).toBe('15000000');
+      expect(saved.config.approvalStepKeys).toEqual(['TECH']);
+      expect(saved.config.assignmentRules).toEqual(config.assignmentRules);
+      expect(saved.skipped).toEqual([]);
+    });
+
+    it('copies another building, keeping assigned departments and dropping their source locations', async () => {
+      const buildingE = dataOf<Building[]>(await admin.get('/api/buildings')).find((b) => b.code === 'E');
+      if (!buildingE) throw new Error('building E missing');
+      const bql = dataOf<Department[]>(await admin.get('/api/departments')).find((d) => d.code === 'BQL');
+      if (!bql) throw new Error('department BQL missing');
+      await admin
+        .patch(`/api/departments/${bql.id}`, {
+          code: bql.code,
+          name: bql.name,
+          buildingIds: [...new Set([...bql.buildingIds, buildingE.id])],
+          version: bql.version,
+        })
+        .expect(200);
+
+      const locations = dataOf<Location[]>(await bqlA.get(`/api/buildings/${buildingA.id}/locations`));
+      const source = await configOf(bqlA, buildingA.id);
+      const rules = source.assignmentRules.map((rule) =>
+        rule.role === 'BQL' ? { ...rule, locationIds: [locations[0].id] } : rule,
+      );
+      const sourceAfter = dataOf<{ config: Config }>(
+        await bqlA
+          .put(`/api/buildings/${buildingA.id}/config`, configBody(source, { assignmentRules: rules }))
+          .expect(200),
+      ).config;
+      const sourceBql = sourceAfter.assignmentRules.find((rule) => rule.role === 'BQL');
+      expect(sourceBql?.locationIds).toEqual([locations[0].id]);
+
+      const target = await configOf(admin, buildingE.id);
+      const res = await admin
+        .post(`/api/buildings/${buildingE.id}/config/apply-template`, {
+          sourceBuildingId: buildingA.id,
+          version: target.version,
+        })
+        .expect(201);
+      const saved = dataOf<{ config: Config; skipped: SkippedPart[] }>(res);
+
+      expect(saved.config.version).toBe(target.version + 1);
+      expect(saved.config.assignmentRules).toEqual([
+        { departmentId: bql.id, role: 'BQL', priority: sourceBql?.priority },
+      ]);
+      expect(saved.skipped).toEqual(
+        expect.arrayContaining([
+          { kind: 'assignment_rule', departmentId: bql.id, reason: 'locations_belong_to_source' },
+          ...sourceAfter.assignmentRules
+            .filter((rule) => rule.role !== 'BQL')
+            .map((rule) => ({
+              kind: 'assignment_rule',
+              departmentId: rule.departmentId,
+              reason: 'department_not_in_building',
+            })),
+        ]),
+      );
+      expect(saved.skipped).toHaveLength(sourceAfter.assignmentRules.length);
+      expect((await configOf(bqlA, buildingA.id)).version).toBe(sourceAfter.version);
     });
 
     it('bulk workflow update is all-or-nothing', async () => {

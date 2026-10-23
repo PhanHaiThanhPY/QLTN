@@ -13,6 +13,7 @@ import {
   CONFIG_DUE_KINDS,
   CONFIG_LIMITS,
   CONFIG_TEMPLATES,
+  type AssignmentRule,
   type ConfigChange,
   type ConfigValues,
   CUSTOM_APPROVAL_STATUS,
@@ -50,9 +51,18 @@ export interface BuildingConfigView extends ConfigValues {
   updatedBy: string | null;
 }
 
+export type SkippedConfigPartReason = 'department_not_in_building' | 'locations_belong_to_source';
+
+export interface SkippedConfigPart {
+  kind: 'assignment_rule';
+  departmentId: string;
+  reason: SkippedConfigPartReason;
+}
+
 export interface ConfigSaveResult {
   config: BuildingConfigView;
   changes: ConfigChange[];
+  skipped: SkippedConfigPart[];
 }
 
 /** Static catalog the workflow designer needs (steps, templates, limits). */
@@ -228,12 +238,21 @@ export class BuildingConfigService {
       throw fieldError('sourceBuildingId', 'Chỉ sao chép từ tòa trong phạm vi của bạn.');
     }
     return this.dataSource.transaction(async (manager) => {
-      const source = dto.sourceBuildingId
-        ? await manager.getRepository(BuildingConfig).findOneBy({ buildingId: dto.sourceBuildingId })
-        : null;
-      if (dto.sourceBuildingId && !source) throw fieldError('sourceBuildingId', 'Tòa nguồn chưa có cấu hình.');
+      if (dto.sourceBuildingId) {
+        const source = await manager.getRepository(BuildingConfig).findOneBy({ buildingId: dto.sourceBuildingId });
+        if (!source) throw fieldError('sourceBuildingId', 'Tòa nguồn chưa có cấu hình.');
+        const copied = await this.copyValues(manager, buildingId, source);
+        const result = await this.save(
+          manager,
+          actor,
+          buildingId,
+          dto.version,
+          'applyConfigTemplate',
+          () => copied.values,
+        );
+        return { ...result, skipped: copied.skipped };
+      }
       return this.save(manager, actor, buildingId, dto.version, 'applyConfigTemplate', (current) => {
-        if (source) return toConfigValues(source);
         const template = templateValues(dto.templateKey ?? '');
         if (!template) throw fieldError('templateKey', 'Cần chọn cấu hình mẫu.');
         return {
@@ -249,6 +268,46 @@ export class BuildingConfigService {
         };
       });
     });
+  }
+
+  /**
+   * Configuration copied from another building. Assignment rules whose department is not assigned
+   * to the target are dropped; kept rules lose their locations because those belong to the source.
+   */
+  private async copyValues(
+    manager: EntityManager,
+    buildingId: string,
+    source: BuildingConfig,
+  ): Promise<{ values: ConfigValues; skipped: SkippedConfigPart[] }> {
+    const values = toConfigValues(source);
+    if (source.buildingId === buildingId) return { values, skipped: [] };
+
+    const departmentIds = [...new Set(values.assignmentRules.map((rule) => rule.departmentId))];
+    const departments = departmentIds.length
+      ? await manager
+          .getRepository(Department)
+          .find({ where: { id: In(departmentIds) }, relations: { buildings: true } })
+      : [];
+    const assigned = new Set(departments.filter((d) => d.buildings.some((b) => b.id === buildingId)).map((d) => d.id));
+
+    const skipped: SkippedConfigPart[] = [];
+    const assignmentRules = values.assignmentRules.flatMap((rule): AssignmentRule[] => {
+      if (!assigned.has(rule.departmentId)) {
+        skipped.push({
+          kind: 'assignment_rule',
+          departmentId: rule.departmentId,
+          reason: 'department_not_in_building',
+        });
+        return [];
+      }
+      if (!rule.locationIds || rule.locationIds.length === 0) return [rule];
+      skipped.push({ kind: 'assignment_rule', departmentId: rule.departmentId, reason: 'locations_belong_to_source' });
+      const rest = { ...rule };
+      delete rest.locationIds;
+      return [rest];
+    });
+
+    return { values: { ...values, assignmentRules: sortAssignmentRules(assignmentRules) }, skipped };
   }
 
   /** Inserts the first configuration of a new building (inside the creating transaction). */
@@ -292,7 +351,7 @@ export class BuildingConfigService {
           ? 'Không có thay đổi giá trị.'
           : changes.map((c) => `${c.label}: ${c.from} → ${c.to}`).join('\n'),
     });
-    return { config: toView(saved), changes };
+    return { config: toView(saved), changes, skipped: [] };
   }
 
   /** Rules that need the database: departments and locations of the building, custom roles of custom steps. */
