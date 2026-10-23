@@ -784,11 +784,38 @@ export interface ApiBulkWorkflowUpdateBody {
   targets: ApiWorkflowTargetBody[];
 }
 
-/** `ConfigSaveResult` from api-qltn; only the change count is used by the mock-compatible result. */
+/** `ConfigSaveResult` from api-qltn; only the change count and skipped parts matter to the web. */
 export interface ApiConfigSaveResult {
   config: ApiBuildingConfig;
   changes: readonly unknown[];
+  skipped?: readonly unknown[];
 }
+
+export type ApiConfigSkipReason = 'department_not_in_building' | 'locations_belong_to_source';
+
+export interface ApiSkippedConfigPart {
+  kind: 'assignment_rule';
+  departmentId: string;
+  reason: ApiConfigSkipReason;
+}
+
+const SKIP_REASONS: ReadonlySet<string> = new Set<ApiConfigSkipReason>([
+  'department_not_in_building',
+  'locations_belong_to_source',
+]);
+
+/** Parts the backend did not copy; unknown entries are ignored rather than shown to the user. */
+export const mapSkippedConfigParts = (value: unknown): ApiSkippedConfigPart[] => {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item): ApiSkippedConfigPart[] => {
+    const row = asRecord(item);
+    const kind = asOptionalString(row.kind);
+    const departmentId = asOptionalString(row.departmentId);
+    const reason = asOptionalString(row.reason);
+    if (kind !== 'assignment_rule' || !departmentId || !reason || !SKIP_REASONS.has(reason)) return [];
+    return [{ kind, departmentId, reason: reason as ApiConfigSkipReason }];
+  });
+};
 
 const taskDueDaysBody = (value: unknown): ApiTaskDueDaysBody => {
   const row = asRecord(value);

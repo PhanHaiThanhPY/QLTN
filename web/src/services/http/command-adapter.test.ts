@@ -692,7 +692,7 @@ describe('api command adapter — configuration and workflow', () => {
           { subjectType: 'BUILDING', action: 'applyConfigTemplate', subjectId: 'bld-9', expectedVersion: 4 },
         ),
       ),
-    ).resolves.toEqual({ ok: true, subjectId: 'bld-9', data: { changes: 2 } });
+    ).resolves.toEqual({ ok: true, subjectId: 'bld-9', data: { changes: 2, skipped: [] } });
     expect(String(mock.mock.calls[0][0])).toBe('/api/buildings/bld-9/config/apply-template');
     expect(mock.mock.calls[0][1]?.method).toBe('POST');
     expect(bodyOf(mock.mock.calls[0][1])).toEqual({ templateKey: 'OFFICE', version: 4 });
@@ -704,6 +704,40 @@ describe('api command adapter — configuration and workflow', () => {
       ),
     );
     expect(bodyOf(mock.mock.calls[1][1])).toEqual({ sourceBuildingId: 'bld-a', version: 4 });
+  });
+
+  it('should surface the skipped parts returned when copying another building', async () => {
+    mockFetch(() =>
+      jsonResponse(
+        200,
+        successBody({
+          ...CONFIG_SAVE_BODY,
+          skipped: [
+            { kind: 'assignment_rule', departmentId: 'dep-1', reason: 'department_not_in_building' },
+            { kind: 'assignment_rule', departmentId: 'dep-2', reason: 'locations_belong_to_source' },
+          ],
+        }),
+      ),
+    );
+
+    await expect(
+      executeApiCommand(
+        createCommand(
+          { sourceBuildingId: 'bld-a' },
+          { subjectType: 'BUILDING', action: 'applyConfigTemplate', subjectId: 'bld-9', expectedVersion: 4 },
+        ),
+      ),
+    ).resolves.toEqual({
+      ok: true,
+      subjectId: 'bld-9',
+      data: {
+        changes: 2,
+        skipped: [
+          { kind: 'assignment_rule', departmentId: 'dep-1', reason: 'department_not_in_building' },
+          { kind: 'assignment_rule', departmentId: 'dep-2', reason: 'locations_belong_to_source' },
+        ],
+      },
+    });
   });
 
   it('should PUT /building-configs/workflow with one target per building, each with its own version', async () => {

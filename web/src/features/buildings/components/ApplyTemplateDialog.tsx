@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { Notice } from '@/components/common/Notice';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
@@ -10,6 +11,8 @@ import type { Building, BuildingConfig } from '@/domain/types';
 import { useCommand } from '@/hooks/useCommand';
 import { useServiceQuery } from '@/hooks/useServiceQuery';
 import { listBuildingConfigs } from '@/services/building-service';
+import { mapSkippedConfigParts } from '@/services/http/mappers';
+import type { ApiSkippedConfigPart } from '@/services/http/mappers';
 
 interface ApplyTemplateDialogProps {
   building: Building;
@@ -20,11 +23,29 @@ interface ApplyTemplateDialogProps {
 
 const BUILDING_PREFIX = 'building:';
 
+const skippedNotice = (skipped: readonly ApiSkippedConfigPart[]): string | null => {
+  const droppedRules = skipped.filter((part) => part.reason === 'department_not_in_building').length;
+  const droppedLocations = skipped.filter((part) => part.reason === 'locations_belong_to_source').length;
+  const parts = [
+    droppedRules ? `bỏ ${droppedRules} quy tắc giao việc vì bộ phận chưa được gán cho tòa này` : '',
+    droppedLocations ? `bỏ vị trí của ${droppedLocations} quy tắc` : '',
+  ].filter(Boolean);
+  if (parts.length === 0) return null;
+  const detail = parts.join('; ');
+  return `Đã sao chép. ${detail.charAt(0).toUpperCase()}${detail.slice(1)}.`;
+};
+
 /** Copies a shared template or another building's settings, showing every change before applying. */
 export const ApplyTemplateDialog = ({ building, buildings, config, onClose }: ApplyTemplateDialogProps) => {
   const [source, setSource] = useState(CONFIG_TEMPLATES[0].key);
   const configs = useServiceQuery(['buildings', 'configs'], listBuildingConfigs);
-  const command = useCommand({ successMessage: 'Đã áp dụng cấu hình mẫu.', onSuccess: onClose });
+  const command = useCommand({
+    onSuccess: (result) => {
+      const notice = skippedNotice(mapSkippedConfigParts(result.data?.skipped));
+      toast.success(notice ?? 'Đã áp dụng cấu hình mẫu.');
+      onClose();
+    },
+  });
   const others = buildings.filter((row) => row.id !== building.id);
   const sourceBuildingId = source.startsWith(BUILDING_PREFIX) ? source.slice(BUILDING_PREFIX.length) : undefined;
   const values: ConfigValues | undefined = sourceBuildingId

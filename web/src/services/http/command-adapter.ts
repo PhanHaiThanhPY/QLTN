@@ -8,6 +8,7 @@ import {
   mapDepartment,
   mapLocation,
   mapRoleDefinition,
+  mapSkippedConfigParts,
   mapUserProfile,
   toCreateBuildingBody,
   toCreateDepartmentBody,
@@ -195,7 +196,11 @@ const applyConfigTemplate: ApiCommandHandler = async (command) => {
     { body },
   );
   broadcastChange();
-  return { ok: true, subjectId: buildingId, data: { changes: result.changes.length } };
+  return {
+    ok: true,
+    subjectId: buildingId,
+    data: { changes: result.changes.length, skipped: mapSkippedConfigParts(result.skipped) },
+  };
 };
 
 /** `PUT /building-configs/workflow` — all-or-nothing for several buildings; each target has its own version. */

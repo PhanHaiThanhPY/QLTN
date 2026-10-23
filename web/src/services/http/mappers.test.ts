@@ -12,6 +12,7 @@ import {
   mapReferenceUser,
   mapRole,
   mapRoleDefinition,
+  mapSkippedConfigParts,
   mapUser,
   mapUserProfile,
   passwordError,
@@ -808,5 +809,23 @@ describe('configuration payload mappers', () => {
     } catch (error) {
       expect((error as AppError).code).toBe(ERROR_CODE.NOT_FOUND);
     }
+  });
+
+  it('should map the skipped parts of a copied configuration and ignore unknown entries', () => {
+    expect(
+      mapSkippedConfigParts([
+        { kind: 'assignment_rule', departmentId: 'dep-1', reason: 'department_not_in_building' },
+        { kind: 'assignment_rule', departmentId: ' dep-2 ', reason: 'locations_belong_to_source' },
+        { kind: 'location', departmentId: 'dep-3', reason: 'department_not_in_building' },
+        { kind: 'assignment_rule', reason: 'locations_belong_to_source' },
+        { kind: 'assignment_rule', departmentId: 'dep-4', reason: 'other_reason' },
+        null,
+      ]),
+    ).toEqual([
+      { kind: 'assignment_rule', departmentId: 'dep-1', reason: 'department_not_in_building' },
+      { kind: 'assignment_rule', departmentId: 'dep-2', reason: 'locations_belong_to_source' },
+    ]);
+    expect(mapSkippedConfigParts(undefined)).toEqual([]);
+    expect(mapSkippedConfigParts({ kind: 'assignment_rule' })).toEqual([]);
   });
 });
