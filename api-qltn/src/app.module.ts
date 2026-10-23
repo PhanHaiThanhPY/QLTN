@@ -15,6 +15,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { BuildingsModule } from './modules/buildings/buildings.module';
 import { HealthModule } from './modules/health/health.module';
 import { OrganizationModule } from './modules/organization/organization.module';
+import { RecordsModule } from './modules/records/records.module';
 import { ReferenceModule } from './modules/reference/reference.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { UsersModule } from './modules/users/users.module';
@@ -46,6 +47,7 @@ import { UsersModule } from './modules/users/users.module';
     RolesModule,
     OrganizationModule,
     BuildingsModule,
+    RecordsModule,
     ReferenceModule,
   ],
   providers: [

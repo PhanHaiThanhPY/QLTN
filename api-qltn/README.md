@@ -72,6 +72,20 @@ is audited in the same transaction. Out-of-scope buildings answer 404.
 
 Money fields (`emergencyLimitVnd`) are VND integers sent and returned as strings.
 
+## Repair record endpoints (Đợt 2 · T1)
+
+Records run in the caller's building scope (another building answers 404). Writes are audited in the same
+transaction. The record keeps a snapshot of the building configuration taken when it was created: approval
+steps, workflow definitions, per-step assignees and `dueDays`. In T1 only create, draft save and detail are wired;
+submitting for confirmation (T3), files (T2) and lists (T4) are not. `maintenanceItemId` and `attachmentIds` are
+therefore rejected (400); `noMaintenanceItem` marks "Không thuộc thiết bị cụ thể".
+
+| Method | Path | Capability | Notes |
+| --- | --- | --- | --- |
+| POST | `/api/records` | RECORD_EDIT | Draft (`DRAFT`) with an `SC-…` code; optional draft fields |
+| PATCH | `/api/records/:id` | RECORD_EDIT | Draft save; `version` is the optimistic lock (stale → 409) |
+| GET | `/api/records/:id` | any | `{ record, audit }`; parts not built yet are left empty |
+
 ## Tests
 
 ```bash
