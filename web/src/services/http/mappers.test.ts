@@ -9,8 +9,10 @@ import {
   mapBuildingConfig,
   mapDepartment,
   mapLocation,
+  mapRecordDetail,
   mapReferenceUser,
   mapRole,
+  mapRepairRecord,
   mapRoleDefinition,
   mapSkippedConfigParts,
   mapUser,
@@ -21,6 +23,7 @@ import {
   toConfigValuesBody,
   toCreateBuildingBody,
   toCreateDepartmentBody,
+  toCreateRecordBody,
   toCreateLocationBody,
   toCreateRoleBody,
   toCreateUserBody,
@@ -29,10 +32,20 @@ import {
   toUpdateBuildingConfigBody,
   toUpdateDepartmentBody,
   toUpdateLocationBody,
+  toUpdateRecordDraftBody,
   toUpdateRoleBody,
   toUpdateUserBody,
 } from './mappers';
-import type { ApiAuditEvent, ApiBuildingConfig, ApiDepartment, ApiReferenceLocation, ApiReferenceUser, ApiRole, ApiUserProfile } from './mappers';
+import type {
+  ApiAuditEvent,
+  ApiBuildingConfig,
+  ApiDepartment,
+  ApiReferenceLocation,
+  ApiReferenceUser,
+  ApiRepairRecord,
+  ApiRole,
+  ApiUserProfile,
+} from './mappers';
 
 const profile = (overrides: Partial<ApiUserProfile> = {}): ApiUserProfile => ({
   id: '6f1b0d0a-0000-4000-8000-000000000001',
@@ -835,5 +848,155 @@ describe('configuration payload mappers', () => {
     ]);
     expect(mapSkippedConfigParts(undefined)).toEqual([]);
     expect(mapSkippedConfigParts({ kind: 'assignment_rule' })).toEqual([]);
+  });
+});
+
+describe('repair record mappers', () => {
+  const row: ApiRepairRecord = {
+    id: 'rec-1',
+    code: 'SC-001',
+    buildingId: 'bld-a',
+    locationId: 'loc-5',
+    noMaintenanceItem: true,
+    title: 'D2T1- Rò rỉ nước',
+    description: 'Nước nhỏ giọt ở mối nối.',
+    priority: 'HIGH',
+    status: 'DRAFT',
+    managerUserId: 'usr-bql',
+    confirmationUserId: null,
+    consultantUserId: 'usr-tvkt',
+    boardUserId: 'usr-bqt',
+    approvalStepKeys: ['TECH', 'BOARD'],
+    workflowApprovalSteps: [
+      { key: 'TECH', label: 'TVKT thẩm định', actor: 'TVKT', role: 'TECH_CONSULTANT', status: 'PENDING_TECH_REVIEW' },
+    ],
+    workflowStageApprovalStepKeys: { PROPOSAL: ['TECH', 'BOARD'] },
+    approvalAssigneeUserIds: { TECH: 'usr-tvkt', BOARD: 'usr-bqt' },
+    dueDays: { CONFIRM_RECORD: 3, APPROVE_PROPOSAL: 4, UNKNOWN: 9 },
+    attachmentIds: [],
+    createdBy: 'usr-bql',
+    version: 2,
+    createdAt: '2026-10-23T03:00:00.000Z',
+    updatedAt: '2026-10-23T04:00:00.000Z',
+  };
+
+  it('should map the backend record, including the configuration snapshot', () => {
+    const record = mapRepairRecord(row);
+
+    expect(record).toMatchObject({
+      id: 'rec-1',
+      code: 'SC-001',
+      buildingId: 'bld-a',
+      locationId: 'loc-5',
+      noMaintenanceItem: true,
+      priority: 'HIGH',
+      status: 'DRAFT',
+      confirmationUserId: '',
+      consultantUserId: 'usr-tvkt',
+      boardUserId: 'usr-bqt',
+      approvalStepKeys: ['TECH', 'BOARD'],
+      approvalAssigneeUserIds: { TECH: 'usr-tvkt', BOARD: 'usr-bqt' },
+      attachmentIds: [],
+      version: 2,
+    });
+    expect(record.workflowApprovalSteps?.map((step) => step.key)).toEqual(['TECH']);
+    expect(record.workflowStageApprovalStepKeys).toEqual({ PROPOSAL: ['TECH', 'BOARD'] });
+    expect(record.dueDays).toEqual({ CONFIRM_RECORD: 3, APPROVE_PROPOSAL: 4 });
+  });
+
+  it('should fill the detail parts that T1 does not have yet with empty values', () => {
+    const detail = mapRecordDetail({
+      record: { ...row, noMaintenanceItem: false },
+      audit: [
+        {
+          id: 'aud-1',
+          subjectType: 'REPAIR_RECORD',
+          subjectId: 'rec-1',
+          buildingId: 'bld-a',
+          action: 'createRecord',
+          actorId: 'usr-bql',
+          entityVersion: 1,
+          fromStatus: null,
+          toStatus: 'DRAFT',
+          reason: null,
+          createdAt: '2026-10-23T03:00:00.000Z',
+        },
+      ],
+    });
+
+    expect(detail.record.noMaintenanceItem).toBeUndefined();
+    expect(detail.audit[0]).toMatchObject({ action: 'createRecord', toStatus: 'DRAFT', entityVersion: 1 });
+    expect(detail.audit[0].commandId).toBe('');
+    expect(detail.confirmations).toEqual([]);
+    expect(detail.submissions).toEqual([]);
+    expect(detail.acceptances).toEqual([]);
+    expect(detail.paymentRequests).toEqual([]);
+    expect(detail.payments).toEqual([]);
+    expect(detail.attachments).toEqual([]);
+    expect(detail.alerts).toEqual([]);
+    expect(detail.inactiveSlots).toEqual([]);
+    expect(detail.isOverdue).toBe(false);
+  });
+
+  it('should build a CreateRecordDto without the fields T1 does not accept', () => {
+    const body = toCreateRecordBody({
+      buildingId: ' bld-a ',
+      title: ' D2T1- Rò rỉ ',
+      description: ' Mô tả ',
+      priority: 'URGENT',
+      locationId: ' loc-5 ',
+      confirmationUserId: ' usr-kt ',
+      noMaintenanceItem: true,
+      maintenanceItemId: '',
+      attachmentIds: ['att-1'],
+      consultantUserId: 'usr-tvkt',
+    });
+
+    expect(body).toEqual({
+      buildingId: 'bld-a',
+      title: 'D2T1- Rò rỉ',
+      description: 'Mô tả',
+      priority: 'URGENT',
+      locationId: 'loc-5',
+      confirmationUserId: 'usr-kt',
+      noMaintenanceItem: true,
+    });
+    expect(body).not.toHaveProperty('maintenanceItemId');
+    expect(body).not.toHaveProperty('attachmentIds');
+    expect(toCreateRecordBody({ buildingId: 'bld-a' })).toEqual({ buildingId: 'bld-a', title: '', description: '' });
+  });
+
+  it('should build a draft body with the loaded version and clear empty references', () => {
+    const body = toUpdateRecordDraftBody(
+      {
+        title: ' D2T1- mới ',
+        description: ' Đã kiểm tra ',
+        priority: 'NORMAL',
+        locationId: '',
+        confirmationUserId: '',
+        noMaintenanceItem: false,
+        maintenanceItemId: 'item-1',
+        attachmentIds: ['att-1'],
+      },
+      3,
+    );
+
+    expect(body).toEqual({
+      version: 3,
+      title: 'D2T1- mới',
+      description: 'Đã kiểm tra',
+      priority: 'NORMAL',
+      locationId: null,
+      confirmationUserId: null,
+      noMaintenanceItem: false,
+    });
+
+    try {
+      toUpdateRecordDraftBody({}, undefined);
+      throw new Error('Expected a conflict');
+    } catch (error) {
+      expect((error as AppError).code).toBe(ERROR_CODE.CONFLICT);
+      expect((error as AppError).message).toBe(MISSING_VERSION_MESSAGE);
+    }
   });
 });

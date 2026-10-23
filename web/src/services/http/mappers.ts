@@ -1,4 +1,4 @@
-import { BUSINESS_WORKFLOW_STEPS, REPAIR_STATUS, ROLE, SUBJECT_TYPE } from '@/domain/constants';
+import { BUSINESS_WORKFLOW_STEPS, PRIORITY, REPAIR_STATUS, ROLE, SUBJECT_TYPE } from '@/domain/constants';
 import type { BusinessWorkflowStepKey, RepairStatus, Role, SubjectType, TaskKind } from '@/domain/constants';
 import { assignmentRulesOf, approvalStepKeysOf, CONFIG_DUE_KINDS, workflowApprovalDefinitionsOf, workflowStagesOf } from '@/domain/building-config';
 import { AppError, ERROR_CODE, validationError } from '@/domain/errors';
@@ -11,6 +11,7 @@ import type {
   BuildingConfig,
   Department,
   Location,
+  RepairRecord,
   RoleDefinition,
   User,
   WorkflowApprovalStep,
@@ -19,6 +20,7 @@ import type {
   WorkflowStepBinding,
 } from '@/domain/types';
 import { asNumber, asOptionalString, asRecord, asString, asStringArray, requireVndAmount } from '@/domain/validation';
+import type { RecordDetail } from '../records-service';
 
 /**
  * Account profile as returned by api-qltn (`GET /api/auth/me`, `user` in the login payload).
@@ -940,4 +942,154 @@ export const toBulkWorkflowUpdateBody = (payload: unknown): ApiBulkWorkflowUpdat
       return { buildingId, version, values: toConfigValuesBody(row.values) };
     }),
   };
+};
+
+// ---------- Repair records (`api-qltn/src/modules/records`) ----------
+
+/** One record as returned by `POST /records`, `PATCH /records/:id` and inside `GET /records/:id`. */
+export interface ApiRepairRecord {
+  id: string;
+  code: string;
+  buildingId: string;
+  locationId: string | null;
+  noMaintenanceItem: boolean;
+  title: string;
+  description: string;
+  priority: string;
+  status: string;
+  managerUserId: string;
+  confirmationUserId: string | null;
+  consultantUserId: string | null;
+  boardUserId: string | null;
+  approvalStepKeys: readonly string[];
+  workflowApprovalSteps?: readonly ApiWorkflowApprovalStep[];
+  workflowStageApprovalStepKeys?: Readonly<Record<string, readonly string[]>>;
+  approvalAssigneeUserIds?: Readonly<Record<string, string>>;
+  dueDays?: Readonly<Record<string, number>>;
+  attachmentIds?: readonly string[];
+  createdBy: string;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const PRIORITIES = new Set<string>(Object.values(PRIORITY));
+
+const priorityOf = (value: string): RepairRecord['priority'] =>
+  PRIORITIES.has(value) ? (value as RepairRecord['priority']) : 'NORMAL';
+
+/** Backend → web `RepairRecord`; empty optional ids become the empty strings the demo uses. */
+export const mapRepairRecord = (row: ApiRepairRecord): RepairRecord => {
+  const stageKeys: Partial<Record<WorkflowStageKey, string[]>> = {};
+  for (const [key, value] of Object.entries(row.workflowStageApprovalStepKeys ?? {})) {
+    stageKeys[stageKeyOf(key)] = [...value];
+  }
+  return {
+    id: row.id,
+    code: row.code,
+    buildingId: row.buildingId,
+    locationId: row.locationId ?? '',
+    ...(row.noMaintenanceItem ? { noMaintenanceItem: true } : {}),
+    title: row.title,
+    description: row.description,
+    priority: priorityOf(row.priority),
+    status: repairStatusOf(row.status),
+    managerUserId: row.managerUserId,
+    confirmationUserId: row.confirmationUserId ?? '',
+    consultantUserId: row.consultantUserId ?? '',
+    boardUserId: row.boardUserId ?? '',
+    approvalStepKeys: [...row.approvalStepKeys],
+    workflowApprovalSteps: (row.workflowApprovalSteps ?? []).map(mapWorkflowApprovalStep),
+    workflowStageApprovalStepKeys: stageKeys,
+    approvalAssigneeUserIds: { ...(row.approvalAssigneeUserIds ?? {}) },
+    dueDays: taskDueDaysOf(row.dueDays),
+    attachmentIds: [...(row.attachmentIds ?? [])],
+    createdBy: row.createdBy,
+    version: row.version,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+};
+
+export interface ApiRecordDetail {
+  record: ApiRepairRecord;
+  audit?: readonly ApiAuditEvent[];
+}
+
+/**
+ * Backend detail → web `RecordDetail`. Đợt 2 T1 only has the record and its history; parts that arrive in
+ * later slices (proposal, construction, acceptance, payment, files) come back as empty values so tabs keep working.
+ */
+export const mapRecordDetail = (row: ApiRecordDetail): RecordDetail => ({
+  record: mapRepairRecord(row.record),
+  confirmations: [],
+  submissions: [],
+  signatures: [],
+  acceptances: [],
+  paymentRequests: [],
+  payments: [],
+  attachments: [],
+  audit: (row.audit ?? []).map(mapAuditEvent),
+  alerts: [],
+  inactiveSlots: [],
+  isOverdue: false,
+});
+
+export interface ApiCreateRecordBody {
+  buildingId: string;
+  title: string;
+  description: string;
+  priority?: string;
+  locationId?: string;
+  confirmationUserId?: string;
+  noMaintenanceItem?: boolean;
+}
+
+/**
+ * Web `createRecord` payload → `CreateRecordDto`. T1 does not accept equipment or files yet, so
+ * `maintenanceItemId` / `attachmentIds` are dropped instead of being sent as unknown fields.
+ */
+export const toCreateRecordBody = (payload: unknown): ApiCreateRecordBody => {
+  const row = asRecord(payload);
+  const body: ApiCreateRecordBody = {
+    buildingId: asString(row.buildingId),
+    title: asString(row.title),
+    description: asString(row.description),
+  };
+  const priority = asOptionalString(row.priority);
+  if (priority) body.priority = priority;
+  const locationId = asOptionalString(row.locationId);
+  if (locationId) body.locationId = locationId;
+  const confirmationUserId = asOptionalString(row.confirmationUserId);
+  if (confirmationUserId) body.confirmationUserId = confirmationUserId;
+  if (row.noMaintenanceItem === true) body.noMaintenanceItem = true;
+  return body;
+};
+
+export interface ApiUpdateRecordDraftBody {
+  version: number;
+  title?: string;
+  description?: string;
+  priority?: string;
+  locationId?: string | null;
+  confirmationUserId?: string | null;
+  noMaintenanceItem?: boolean;
+}
+
+/** Web `saveRecordDraft` payload → `UpdateRecordDraftDto`; `version` is the lock the screen loaded. */
+export const toUpdateRecordDraftBody = (
+  payload: unknown,
+  expectedVersion: number | undefined,
+): ApiUpdateRecordDraftBody => {
+  if (expectedVersion === undefined) throw new AppError(ERROR_CODE.CONFLICT, MISSING_VERSION_MESSAGE);
+  const row = asRecord(payload);
+  const body: ApiUpdateRecordDraftBody = { version: expectedVersion };
+  if (row.title !== undefined) body.title = asString(row.title);
+  if (row.description !== undefined) body.description = asString(row.description);
+  const priority = asOptionalString(row.priority);
+  if (priority) body.priority = priority;
+  body.locationId = asOptionalString(row.locationId) ?? null;
+  body.confirmationUserId = asOptionalString(row.confirmationUserId) ?? null;
+  body.noMaintenanceItem = row.noMaintenanceItem === true;
+  return body;
 };

@@ -39,6 +39,9 @@ const page = (node: ReactNode) => <Suspense fallback={<LoadingState />}>{node}</
 /** api mode (plan decision D2): modules still on IndexedDB show "chưa nối API" instead of failing on UUIDs. */
 const connected = (element: ReactNode): ReactNode => (IS_API_MODE ? <ApiUnavailablePage /> : element);
 
+/** Routes whose screens already read/write api-qltn (T1: create, draft edit and detail). */
+const apiConnected = (element: ReactNode): ReactNode => (IS_API_MODE ? element : <ApiUnavailablePage />);
+
 export const router = createBrowserRouter([
   { path: '/login', element: page(<LoginPage />), errorElement: <RouteErrorPage /> },
   {
@@ -50,9 +53,9 @@ export const router = createBrowserRouter([
       { path: 'tasks', element: connected(page(<TasksPage />)) },
       { path: 'records', element: connected(page(<RecordsPage />)) },
       { path: 'records/schedule', element: connected(page(<RepairSchedulePage />)) },
-      { path: 'records/new', element: connected(page(<RecordFormPage />)) },
-      { path: 'records/:recordId', element: connected(page(<RecordDetailPage />)) },
-      { path: 'records/:recordId/edit', element: connected(page(<RecordFormPage />)) },
+      { path: 'records/new', element: apiConnected(page(<RecordFormPage />)) },
+      { path: 'records/:recordId', element: apiConnected(page(<RecordDetailPage />)) },
+      { path: 'records/:recordId/edit', element: apiConnected(page(<RecordFormPage />)) },
       { path: 'maintenance/schedule', element: connected(page(<SchedulePage />)) },
       { path: 'maintenance/plans', element: connected(page(<PlansPage />)) },
       { path: 'maintenance/plans/new', element: connected(page(<PlanFormPage />)) },

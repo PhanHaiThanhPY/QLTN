@@ -1,4 +1,5 @@
 import { Notice } from '@/components/common/Notice';
+import { IS_API_MODE } from '@/config/data-source';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { useRecordContext } from '../../record-context';
 import { EmergencyCard } from '../emergency/EmergencyCard';
@@ -26,7 +27,11 @@ export const OverviewTab = () => {
         </Notice>
       ) : null}
       {record.status === 'DRAFT' ? (
-        <Notice title="Hồ sơ nháp">Hoàn thiện thông tin, thêm ít nhất 1 ảnh hiện trường rồi “Gửi xác nhận”.</Notice>
+        <Notice title="Hồ sơ nháp">
+          {IS_API_MODE
+            ? 'Hoàn thiện thông tin và lưu nháp; gửi xác nhận và ảnh hiện trường sẽ có ở bước tiếp theo.'
+            : 'Hoàn thiện thông tin, thêm ít nhất 1 ảnh hiện trường rồi “Gửi xác nhận”.'}
+        </Notice>
       ) : null}
       <ConfirmationActions />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

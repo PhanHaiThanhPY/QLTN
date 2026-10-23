@@ -104,6 +104,32 @@ const ROLE_VIEW = {
   updatedAt: '2026-01-01T00:00:00.000Z',
 };
 
+const RECORD_VIEW = {
+  id: 'rec-1',
+  code: 'SC-001',
+  buildingId: 'bld-a',
+  locationId: 'loc-5',
+  noMaintenanceItem: true,
+  title: 'D2T1- Rò rỉ',
+  description: 'Mô tả',
+  priority: 'HIGH',
+  status: 'DRAFT',
+  managerUserId: 'usr-bql',
+  confirmationUserId: 'usr-kt',
+  consultantUserId: 'usr-tvkt',
+  boardUserId: 'usr-bqt',
+  approvalStepKeys: ['TECH'],
+  workflowApprovalSteps: [],
+  workflowStageApprovalStepKeys: { PROPOSAL: ['TECH'] },
+  approvalAssigneeUserIds: { TECH: 'usr-tvkt' },
+  dueDays: { CONFIRM_RECORD: 3 },
+  attachmentIds: [],
+  createdBy: 'usr-bql',
+  version: 1,
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+};
+
 describe('api command adapter', () => {
   beforeEach(() => {
     vi.unstubAllGlobals();
@@ -131,6 +157,11 @@ describe('api command adapter', () => {
     expect(isApiAction('updateBuildingConfig')).toBe(true);
     expect(isApiAction('updateWorkflowConfig')).toBe(true);
     expect(isApiAction('applyConfigTemplate')).toBe(true);
+    // T1 repair records: create, draft save and detail are wired; later record actions stay out of scope.
+    expect(isApiAction('createRecord')).toBe(true);
+    expect(isApiAction('saveRecordDraft')).toBe(true);
+    expect(isApiAction('submitRecord')).toBe(false);
+    expect(isApiAction('withdrawRecord')).toBe(false);
     expect(isApiAction('replaceManager')).toBe(false);
     // A prototype key must not count as a registered action.
     expect(isApiAction('toString')).toBe(false);
@@ -840,6 +871,78 @@ describe('api command adapter — configuration and workflow', () => {
 
     expect(error.code).toBe(ERROR_CODE.VALIDATION_ERROR);
     expect(mock).not.toHaveBeenCalled();
+  });
+
+  it('should POST /records with the create body and return the new code and id', async () => {
+    const mock = mockFetch(() =>
+      jsonResponse(201, successBody({ ...RECORD_VIEW, code: 'SC-007', id: 'rec-7' })),
+    );
+
+    await expect(
+      executeApiCommand(
+        createCommand(
+          {
+            buildingId: 'bld-a',
+            title: ' D2T1- Rò rỉ ',
+            description: ' Mô tả ',
+            priority: 'HIGH',
+            locationId: 'loc-5',
+            confirmationUserId: 'usr-kt',
+            noMaintenanceItem: true,
+            maintenanceItemId: '',
+            attachmentIds: [],
+          },
+          { subjectType: 'REPAIR_RECORD', action: 'createRecord' },
+        ),
+      ),
+    ).resolves.toEqual({ ok: true, subjectId: 'rec-7', data: { code: 'SC-007' } });
+
+    const [url, init] = mock.mock.calls[0];
+    expect(String(url)).toBe('/api/records');
+    expect(init?.method).toBe('POST');
+    expect(bodyOf(init)).toEqual({
+      buildingId: 'bld-a',
+      title: 'D2T1- Rò rỉ',
+      description: 'Mô tả',
+      priority: 'HIGH',
+      locationId: 'loc-5',
+      confirmationUserId: 'usr-kt',
+      noMaintenanceItem: true,
+    });
+  });
+
+  it('should PATCH /records/:id with the draft body and version = expectedVersion', async () => {
+    const mock = mockFetch(() => jsonResponse(200, successBody({ ...RECORD_VIEW, version: 4 })));
+
+    await expect(
+      executeApiCommand(
+        createCommand(
+          {
+            title: ' D2T1- mới ',
+            description: ' Đã kiểm tra ',
+            priority: 'NORMAL',
+            locationId: '',
+            confirmationUserId: '',
+            noMaintenanceItem: false,
+            attachmentIds: [],
+          },
+          { subjectType: 'REPAIR_RECORD', action: 'saveRecordDraft', subjectId: 'rec-1', expectedVersion: 3 },
+        ),
+      ),
+    ).resolves.toEqual({ ok: true, subjectId: 'rec-1' });
+
+    const [url, init] = mock.mock.calls[0];
+    expect(String(url)).toBe('/api/records/rec-1');
+    expect(init?.method).toBe('PATCH');
+    expect(bodyOf(init)).toEqual({
+      version: 3,
+      title: 'D2T1- mới',
+      description: 'Đã kiểm tra',
+      priority: 'NORMAL',
+      locationId: null,
+      confirmationUserId: null,
+      noMaintenanceItem: false,
+    });
   });
 
   it('should map a stale configuration version (409) onto CONFLICT with the backend message', async () => {

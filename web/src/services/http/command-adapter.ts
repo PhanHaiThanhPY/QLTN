@@ -16,6 +16,7 @@ import {
   toCreateRoleBody,
   toApplyConfigTemplateBody,
   toBulkWorkflowUpdateBody,
+  toCreateRecordBody,
   toCreateUserBody,
   toSetLocationActiveBody,
   toUpdateBuildingBody,
@@ -23,9 +24,18 @@ import {
   toUpdateDepartmentBody,
   toUpdateLocationBody,
   toUpdateRoleBody,
+  toUpdateRecordDraftBody,
   toUpdateUserBody,
 } from './mappers';
-import type { ApiBuilding, ApiConfigSaveResult, ApiDepartment, ApiLocation, ApiRole, ApiUser } from './mappers';
+import type {
+  ApiBuilding,
+  ApiConfigSaveResult,
+  ApiDepartment,
+  ApiLocation,
+  ApiRepairRecord,
+  ApiRole,
+  ApiUser,
+} from './mappers';
 
 /**
  * Command adapter for `VITE_DATA_SOURCE=api` (plan decision D4).
@@ -216,6 +226,24 @@ const updateWorkflowConfig: ApiCommandHandler = async (command) => {
   return { ok: true, subjectId: command.subjectId?.trim() || body.targets[0].buildingId, data: { updated: result.updated } };
 };
 
+/** `POST /records` — draft with an `SC-…` code; the backend snapshots the building configuration. */
+const createRecord: ApiCommandHandler = async (command) => {
+  const body = toCreateRecordBody(command.payload);
+  const created = await apiRequest<ApiRepairRecord>('POST', '/records', { body });
+  broadcastChange();
+  return { ok: true, subjectId: created.id, data: { code: created.code } };
+};
+
+/** `PATCH /records/:id` — draft save; `version` is the optimistic lock (stale → 409). */
+const saveRecordDraft: ApiCommandHandler = async (command) => {
+  const id = command.subjectId?.trim() ?? '';
+  if (!id) throw new AppError(ERROR_CODE.NOT_FOUND, 'Không tìm thấy hồ sơ.');
+  const body = toUpdateRecordDraftBody(command.payload, command.expectedVersion);
+  const updated = await apiRequest<ApiRepairRecord>('PATCH', `/records/${encodeURIComponent(id)}`, { body });
+  broadcastChange();
+  return { ok: true, subjectId: updated.id };
+};
+
 /** Actions wired to api-qltn. T2a accounts; T2b departments and roles; T2c buildings and locations; T2d configuration. */
 const API_COMMANDS: Readonly<Record<string, ApiCommandHandler>> = {
   createUser,
@@ -232,6 +260,8 @@ const API_COMMANDS: Readonly<Record<string, ApiCommandHandler>> = {
   updateBuildingConfig,
   applyConfigTemplate,
   updateWorkflowConfig,
+  createRecord,
+  saveRecordDraft,
 };
 
 export const API_UNSUPPORTED_MESSAGE = 'Thao tác này chưa nối API.';
