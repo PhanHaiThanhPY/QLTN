@@ -99,12 +99,6 @@ export class CreateUserDto extends UserFieldsDto {
 }
 
 export class UpdateUserDto extends UserFieldsDto {
-  @ApiPropertyOptional({ description: 'Bỏ trống để giữ nguyên tên đăng nhập hiện tại' })
-  @IsOptional()
-  @Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim().toLowerCase() : value))
-  @Matches(/^[a-z0-9][a-z0-9._-]{1,49}$/)
-  username?: string;
-
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()

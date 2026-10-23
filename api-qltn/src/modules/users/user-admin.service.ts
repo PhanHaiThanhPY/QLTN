@@ -133,7 +133,7 @@ export class UserAdminService {
       const fields = await this.resolveFields(manager, actor, dto, keptOutside);
       const active = dto.active ?? current.isActive;
       const errors = new FieldErrors();
-      errors.merge((await this.uniquenessErrors(manager, { username: dto.username, email: dto.email }, id)).list);
+      errors.merge((await this.uniquenessErrors(manager, { email: dto.email }, id)).list);
       errors.when(
         fields.role.baseRole !== current.role,
         'roleDefId',
@@ -143,7 +143,6 @@ export class UserAdminService {
       errors.throwIfAny();
 
       current.fullName = dto.fullName;
-      if (dto.username !== undefined) current.username = dto.username;
       current.roleDefId = fields.role.isSystem ? null : fields.role.id;
       current.roleDef = fields.role;
       current.department = fields.department ?? current.department;
@@ -204,9 +203,7 @@ export class UserAdminService {
       errors.when(await query.getExists(), 'username', 'Tên đăng nhập đã tồn tại.');
     }
     if (input.email) {
-      const query = repo
-        .createQueryBuilder('u')
-        .where('lower(u.email) = :email', { email: input.email.toLowerCase() });
+      const query = repo.createQueryBuilder('u').where('lower(u.email) = :email', { email: input.email.toLowerCase() });
       if (excludeId) query.andWhere('u.id <> :excludeId', { excludeId });
       errors.when(await query.getExists(), 'email', 'Email đã được dùng.');
     }

@@ -571,40 +571,22 @@ describe('Catalog & administration (e2e)', () => {
       expect(errorOf(res).message).toBe('Email đã được dùng.');
     });
 
-    it('rejects a duplicate username when updating', async () => {
+    it('rejects a username sent when updating (login name is fixed after creation)', async () => {
       const res = await admin
-        .patch(
-          `/api/users/${second.id}`,
-          updateBody({ username: 'T4C-A', email: second.email, version: second.version }),
-        )
+        .patch(`/api/users/${second.id}`, updateBody({ username: 'T4C-A', version: second.version }))
         .expect(400);
       expect(errorOf(res).code).toBe('VALIDATION_ERROR');
       expect(errorFields(res)).toEqual(['username']);
-      expect(errorOf(res).message).toBe('Tên đăng nhập đã tồn tại.');
+      expect(errorOf(res).message).toContain('không được phép gửi lên');
     });
 
     it('rejects a duplicate email when updating, ignoring case', async () => {
       const res = await admin
-        .patch(
-          `/api/users/${second.id}`,
-          updateBody({ username: second.username, email: 'T4C-A@example.com', version: second.version }),
-        )
+        .patch(`/api/users/${second.id}`, updateBody({ email: 'T4C-A@example.com', version: second.version }))
         .expect(400);
       expect(errorOf(res).code).toBe('VALIDATION_ERROR');
       expect(errorFields(res)).toEqual(['email']);
       expect(errorOf(res).message).toBe('Email đã được dùng.');
-    });
-
-    it('keeps an account from colliding with its own unchanged username and email', async () => {
-      const res = await admin
-        .patch(
-          `/api/users/${second.id}`,
-          updateBody({ username: second.username, email: second.email, version: second.version }),
-        )
-        .expect(200);
-      const saved = dataOf<Account>(res);
-      expect(saved.username).toBe(second.username);
-      expect(saved.email).toBe(second.email);
     });
   });
 });
