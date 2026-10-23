@@ -25,6 +25,7 @@ interface Role {
 interface Department {
   id: string;
   code: string;
+  name: string;
   buildingIds: string[];
   version: number;
 }
@@ -33,13 +34,18 @@ interface Config {
   version: number;
   emergencyLimitVnd: string;
   approvalStepKeys: string[];
-  assignmentRules: Array<{ departmentId: string; role: string; priority: number }>;
+  assignmentRules: Array<{ departmentId: string; role: string; priority: number; locationIds?: string[] }>;
   taskDueDays: Record<string, number>;
   workflowApprovalSteps: Array<{ key: string }>;
   emergencyDocHours: number;
   recentRepairDays: number;
   repeatMinRecords: number;
   priceRatio: number;
+}
+interface SkippedPart {
+  kind: string;
+  departmentId: string;
+  reason: string;
 }
 interface Profile {
   id: string;
@@ -423,10 +429,67 @@ describe('Catalog & administration (e2e)', () => {
           version: config.version,
         })
         .expect(201);
-      const saved = dataOf<{ config: Config }>(res).config;
-      expect(saved.emergencyLimitVnd).toBe('15000000');
-      expect(saved.approvalStepKeys).toEqual(['TECH']);
-      expect(saved.assignmentRules).toEqual(config.assignmentRules);
+      const saved = dataOf<{ config: Config; skipped: SkippedPart[] }>(res);
+      expect(saved.config.emergencyLimitVnd).toBe('15000000');
+      expect(saved.config.approvalStepKeys).toEqual(['TECH']);
+      expect(saved.config.assignmentRules).toEqual(config.assignmentRules);
+      expect(saved.skipped).toEqual([]);
+    });
+
+    it('copies another building, keeping assigned departments and dropping their source locations', async () => {
+      const buildingE = dataOf<Building[]>(await admin.get('/api/buildings')).find((b) => b.code === 'E');
+      if (!buildingE) throw new Error('building E missing');
+      const bql = dataOf<Department[]>(await admin.get('/api/departments')).find((d) => d.code === 'BQL');
+      if (!bql) throw new Error('department BQL missing');
+      await admin
+        .patch(`/api/departments/${bql.id}`, {
+          code: bql.code,
+          name: bql.name,
+          buildingIds: [...new Set([...bql.buildingIds, buildingE.id])],
+          version: bql.version,
+        })
+        .expect(200);
+
+      const locations = dataOf<Location[]>(await bqlA.get(`/api/buildings/${buildingA.id}/locations`));
+      const source = await configOf(bqlA, buildingA.id);
+      const rules = source.assignmentRules.map((rule) =>
+        rule.role === 'BQL' ? { ...rule, locationIds: [locations[0].id] } : rule,
+      );
+      const sourceAfter = dataOf<{ config: Config }>(
+        await bqlA
+          .put(`/api/buildings/${buildingA.id}/config`, configBody(source, { assignmentRules: rules }))
+          .expect(200),
+      ).config;
+      const sourceBql = sourceAfter.assignmentRules.find((rule) => rule.role === 'BQL');
+      expect(sourceBql?.locationIds).toEqual([locations[0].id]);
+
+      const target = await configOf(admin, buildingE.id);
+      const res = await admin
+        .post(`/api/buildings/${buildingE.id}/config/apply-template`, {
+          sourceBuildingId: buildingA.id,
+          version: target.version,
+        })
+        .expect(201);
+      const saved = dataOf<{ config: Config; skipped: SkippedPart[] }>(res);
+
+      expect(saved.config.version).toBe(target.version + 1);
+      expect(saved.config.assignmentRules).toEqual([
+        { departmentId: bql.id, role: 'BQL', priority: sourceBql?.priority },
+      ]);
+      expect(saved.skipped).toEqual(
+        expect.arrayContaining([
+          { kind: 'assignment_rule', departmentId: bql.id, reason: 'locations_belong_to_source' },
+          ...sourceAfter.assignmentRules
+            .filter((rule) => rule.role !== 'BQL')
+            .map((rule) => ({
+              kind: 'assignment_rule',
+              departmentId: rule.departmentId,
+              reason: 'department_not_in_building',
+            })),
+        ]),
+      );
+      expect(saved.skipped).toHaveLength(sourceAfter.assignmentRules.length);
+      expect((await configOf(bqlA, buildingA.id)).version).toBe(sourceAfter.version);
     });
 
     it('bulk workflow update is all-or-nothing', async () => {
@@ -450,6 +513,80 @@ describe('Catalog & administration (e2e)', () => {
       const after = dataOf<Config>(await bqlB.get(`/api/buildings/${first.buildingId}/config`));
       expect(after.version).toBe(first.version);
       expect(after.emergencyDocHours).toBe(first.emergencyDocHours);
+    });
+  });
+
+  /** Login lower-cases the username and compares `lower(email)`, so duplicates are case-insensitive. */
+  describe('duplicate username and email', () => {
+    interface Account {
+      id: string;
+      username: string;
+      email: string | null;
+      version: number;
+    }
+    const accountBody = (overrides: Record<string, unknown>) => ({
+      fullName: 'Tài khoản thử trùng',
+      password: 'Mat-khau-moi-1',
+      roleDefId: role('BQL').id,
+      departmentId: department('BQL').id,
+      buildingIds: [buildingA.id],
+      ...overrides,
+    });
+    /** `PATCH /users/:id` does not accept `code`/`password` (whitelist rejects unknown fields). */
+    const updateBody = (overrides: Record<string, unknown>) => ({
+      fullName: 'Tài khoản thử trùng',
+      roleDefId: role('BQL').id,
+      departmentId: department('BQL').id,
+      buildingIds: [buildingA.id],
+      ...overrides,
+    });
+    let second: Account;
+
+    beforeAll(async () => {
+      await admin
+        .post('/api/users', accountBody({ code: 'T4C-A', username: 't4c-a', email: 't4c-a@example.com' }))
+        .expect(201);
+      second = dataOf<Account>(
+        await admin
+          .post('/api/users', accountBody({ code: 'T4C-B', username: 't4c-b', email: 't4c-b@example.com' }))
+          .expect(201),
+      );
+    });
+
+    it('rejects a duplicate username when creating', async () => {
+      const res = await admin
+        .post('/api/users', accountBody({ code: 'T4C-DUP-U', username: 'T4C-A', email: 't4c-dup-u@example.com' }))
+        .expect(400);
+      expect(errorOf(res).code).toBe('VALIDATION_ERROR');
+      expect(errorFields(res)).toEqual(['username']);
+      expect(errorOf(res).message).toBe('Tên đăng nhập đã tồn tại.');
+    });
+
+    it('rejects a duplicate email when creating, ignoring case', async () => {
+      const res = await admin
+        .post('/api/users', accountBody({ code: 'T4C-DUP-E', username: 't4c-dup-e', email: 'T4C-A@EXAMPLE.COM' }))
+        .expect(400);
+      expect(errorOf(res).code).toBe('VALIDATION_ERROR');
+      expect(errorFields(res)).toEqual(['email']);
+      expect(errorOf(res).message).toBe('Email đã được dùng.');
+    });
+
+    it('rejects a username sent when updating (login name is fixed after creation)', async () => {
+      const res = await admin
+        .patch(`/api/users/${second.id}`, updateBody({ username: 'T4C-A', version: second.version }))
+        .expect(400);
+      expect(errorOf(res).code).toBe('VALIDATION_ERROR');
+      expect(errorFields(res)).toEqual(['username']);
+      expect(errorOf(res).message).toContain('không được phép gửi lên');
+    });
+
+    it('rejects a duplicate email when updating, ignoring case', async () => {
+      const res = await admin
+        .patch(`/api/users/${second.id}`, updateBody({ email: 'T4C-A@example.com', version: second.version }))
+        .expect(400);
+      expect(errorOf(res).code).toBe('VALIDATION_ERROR');
+      expect(errorFields(res)).toEqual(['email']);
+      expect(errorOf(res).message).toBe('Email đã được dùng.');
     });
   });
 });

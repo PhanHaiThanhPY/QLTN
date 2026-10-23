@@ -1,6 +1,7 @@
 import type { UseFormReturn } from 'react-hook-form';
 import { bindSelect } from '@/components/ui/bind-select';
 import { Notice } from '@/components/common/Notice';
+import { IS_API_MODE } from '@/config/data-source';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { Input, NativeSelect, Textarea } from '@/components/ui/input';
@@ -73,23 +74,43 @@ export const RecordInfoFields = ({ form, reference, isNew, serverErrors }: Recor
           ))}
         </NativeSelect>
       </Field>
-      <Field
-        label="Thiết bị / hạng mục"
-        htmlFor="rf-item"
-        required
-        hint="Bắt buộc khi gửi xác nhận. Chọn “Không thuộc thiết bị cụ thể” cho sửa chữa kết cấu chung."
-        error={errors.maintenanceItemId?.message ?? serverErrors.maintenanceItemId}
-      >
-        <NativeSelect id="rf-item" aria-invalid={Boolean(errors.maintenanceItemId)} {...bindSelect(form, 'maintenanceItemId', onItemChange)}>
-          <option value="">Chọn thiết bị / hạng mục</option>
-          <option value={NO_ITEM_VALUE}>Không thuộc thiết bị cụ thể</option>
-          {items.map((row) => (
-            <option key={row.id} value={row.id}>
-              {row.code} – {row.name}
-            </option>
-          ))}
-        </NativeSelect>
-      </Field>
+      {IS_API_MODE ? (
+        <Field
+          label="Thiết bị / hạng mục"
+          htmlFor="rf-no-item"
+          hint="Thiết bị sẽ được nối ở bước tiếp theo."
+          error={errors.maintenanceItemId?.message ?? serverErrors.maintenanceItemId}
+        >
+          <label htmlFor="rf-no-item" className="flex items-center gap-2 text-sm text-ink">
+            <input
+              id="rf-no-item"
+              type="checkbox"
+              className="size-4 accent-accent"
+              checked={selectedItemId === NO_ITEM_VALUE}
+              onChange={(event) => setValue('maintenanceItemId', event.target.checked ? NO_ITEM_VALUE : '', { shouldValidate: true })}
+            />
+            Không thuộc thiết bị cụ thể
+          </label>
+        </Field>
+      ) : (
+        <Field
+          label="Thiết bị / hạng mục"
+          htmlFor="rf-item"
+          required
+          hint="Bắt buộc khi gửi xác nhận. Chọn “Không thuộc thiết bị cụ thể” cho sửa chữa kết cấu chung."
+          error={errors.maintenanceItemId?.message ?? serverErrors.maintenanceItemId}
+        >
+          <NativeSelect id="rf-item" aria-invalid={Boolean(errors.maintenanceItemId)} {...bindSelect(form, 'maintenanceItemId', onItemChange)}>
+            <option value="">Chọn thiết bị / hạng mục</option>
+            <option value={NO_ITEM_VALUE}>Không thuộc thiết bị cụ thể</option>
+            {items.map((row) => (
+              <option key={row.id} value={row.id}>
+                {row.code} – {row.name}
+              </option>
+            ))}
+          </NativeSelect>
+        </Field>
+      )}
       <Field label="Mức ưu tiên" htmlFor="rf-priority" required error={errors.priority?.message ?? serverErrors.priority} hint="“Khẩn cấp” không cho bỏ qua bước duyệt.">
         <NativeSelect id="rf-priority" {...bindSelect(form, 'priority')}>
           {PRIORITY_OPTIONS.map(([value, label]) => (

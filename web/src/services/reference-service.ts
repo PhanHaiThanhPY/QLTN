@@ -1,5 +1,9 @@
+import { IS_API_MODE } from '@/config/data-source';
 import type { Building, Department, Location, MaintenanceItem, User } from '@/domain/types';
 import { getDb } from '@/storage/db';
+import { apiRequest } from './http/client';
+import { mapBuilding, mapLocation, mapReferenceDepartment, mapReferenceUser } from './http/mappers';
+import type { ApiReference } from './http/mappers';
 import { requireViewer } from './viewer';
 
 export interface ReferenceData {
@@ -14,6 +18,18 @@ export interface ReferenceData {
 /** Lookup lists limited to the viewer's buildings. */
 export const getReferenceData = async (): Promise<ReferenceData> => {
   const viewer = await requireViewer();
+  // The backend already filters by the caller's building scope; maintenance items have no API yet (T2c).
+  if (IS_API_MODE) {
+    const data = await apiRequest<ApiReference>('GET', '/reference');
+    return {
+      viewer,
+      buildings: data.buildings.map(mapBuilding),
+      departments: data.departments.map(mapReferenceDepartment),
+      locations: data.locations.map(mapLocation),
+      users: data.users.map(mapReferenceUser),
+      items: [],
+    };
+  }
   const db = getDb();
   const scope = new Set(viewer.buildingIds);
   const [buildings, departments, locations, users, items] = await Promise.all([

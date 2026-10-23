@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useLocation, useNavigate } from 'react-router';
 import { Notice } from '@/components/common/Notice';
+import { IS_API_MODE } from '@/config/data-source';
 import { Button } from '@/components/ui/button';
 import { FormSection } from '@/components/ui/form-layout';
 import type { FieldErrors } from '@/domain/errors';
@@ -97,8 +98,10 @@ export const RecordForm = ({ reference, record, attachments, prefill }: RecordFo
           approvalStepKeys={record?.approvalStepKeys}
         />
       </FormSection>
-      <FormSection title="Ảnh hiện trường" description="Cần ít nhất 1 ảnh (JPEG/PNG/WebP) khi gửi xác nhận.">
-        {record ? (
+      <FormSection title="Ảnh hiện trường" description={IS_API_MODE ? 'Tải ảnh sẽ có ở bước tiếp theo.' : 'Cần ít nhất 1 ảnh (JPEG/PNG/WebP) khi gửi xác nhận.'}>
+        {IS_API_MODE ? (
+          <Notice tone="info" title="Ảnh hiện trường">Tải ảnh sẽ có ở bước tiếp theo.</Notice>
+        ) : record ? (
           <AttachmentField
             label="Ảnh/tệp hiện trường"
             recordId={record.id}
@@ -117,15 +120,17 @@ export const RecordForm = ({ reference, record, attachments, prefill }: RecordFo
       </FormSection>
       <FieldErrorList errors={serverErrors} exclude={SHOWN_FIELDS} />
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        <Button variant="secondary" size="lg" disabled={submitter.isBusy} onClick={() => navigate(record ? `/records/${record.id}` : '/records')}>
+        <Button variant="secondary" size="lg" disabled={submitter.isBusy} onClick={() => navigate(record ? `/records/${record.id}` : IS_API_MODE ? '/' : '/records')}>
           Hủy
         </Button>
         <Button variant="secondary" size="lg" isLoading={submitter.pendingIntent === 'draft'} disabled={submitter.isBusy} onClick={form.handleSubmit(onValid('draft'))}>
           Lưu nháp
         </Button>
-        <Button size="lg" isLoading={submitter.pendingIntent === 'submit'} disabled={submitter.isBusy} onClick={form.handleSubmit(onValid('submit'))}>
-          Gửi xác nhận
-        </Button>
+        {IS_API_MODE ? null : (
+          <Button size="lg" isLoading={submitter.pendingIntent === 'submit'} disabled={submitter.isBusy} onClick={form.handleSubmit(onValid('submit'))}>
+            Gửi xác nhận
+          </Button>
+        )}
       </div>
     </form>
   );

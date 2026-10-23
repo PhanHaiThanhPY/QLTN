@@ -87,7 +87,7 @@ export class UserAdminService {
       const username = dto.username ?? dto.code.toLowerCase();
       const errors = new FieldErrors();
       errors.when(await repo.existsBy({ code: dto.code }), 'code', 'Mã tài khoản đã tồn tại.');
-      errors.when(await repo.existsBy({ username }), 'username', 'Tên đăng nhập đã tồn tại.');
+      errors.merge((await this.uniquenessErrors(manager, { username, email: dto.email })).list);
       errors.when(!dto.departmentId, 'departmentId', 'Cần chọn bộ phận.');
       errors.throwIfAny();
 
@@ -133,6 +133,7 @@ export class UserAdminService {
       const fields = await this.resolveFields(manager, actor, dto, keptOutside);
       const active = dto.active ?? current.isActive;
       const errors = new FieldErrors();
+      errors.merge((await this.uniquenessErrors(manager, { email: dto.email }, id)).list);
       errors.when(
         fields.role.baseRole !== current.role,
         'roleDefId',
@@ -180,6 +181,33 @@ export class UserAdminService {
       await this.recordAudit(manager, actor, user, 'resetPassword', user.code);
     });
     return { reset: true };
+  }
+
+  /**
+   * Login matches `username` after lower-casing the input and e-mail via `lower(email)`
+   * (`UsersService.findForLogin`), so duplicates are detected the same way. `excludeId` keeps an
+   * account from colliding with its own row when it is saved without changing those fields.
+   */
+  private async uniquenessErrors(
+    manager: EntityManager,
+    input: { username?: string | null; email?: string | null },
+    excludeId?: string,
+  ): Promise<FieldErrors> {
+    const repo = manager.getRepository(User);
+    const errors = new FieldErrors();
+    if (input.username) {
+      const query = repo
+        .createQueryBuilder('u')
+        .where('lower(u.username) = :username', { username: input.username.toLowerCase() });
+      if (excludeId) query.andWhere('u.id <> :excludeId', { excludeId });
+      errors.when(await query.getExists(), 'username', 'Tên đăng nhập đã tồn tại.');
+    }
+    if (input.email) {
+      const query = repo.createQueryBuilder('u').where('lower(u.email) = :email', { email: input.email.toLowerCase() });
+      if (excludeId) query.andWhere('u.id <> :excludeId', { excludeId });
+      errors.when(await query.getExists(), 'email', 'Email đã được dùng.');
+    }
+    return errors;
   }
 
   private async resolveFields(

@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router';
 import { LogOut } from 'lucide-react';
+import { IS_API_MODE } from '@/config/data-source';
 import { ROLE_LABEL } from '@/domain/constants';
 import type { User } from '@/domain/types';
 import { Tooltip } from '@/components/ui/tooltip';
@@ -18,8 +19,9 @@ export const SidebarUser = ({ user, isCollapsed }: { user?: User; isCollapsed: b
   const navigate = useNavigate();
   const signOut = useSessionStore((state) => state.signOut);
   if (!user) return null;
+  const actionLabel = IS_API_MODE ? 'Đăng xuất' : 'Đổi tài khoản demo';
   const handleSwitch = () => {
-    signOut();
+    void signOut();
     navigate('/login');
   };
   const avatar = (
@@ -30,8 +32,8 @@ export const SidebarUser = ({ user, isCollapsed }: { user?: User; isCollapsed: b
   if (isCollapsed) {
     return (
       <div className="flex shrink-0 justify-center border-t border-white/10 py-3">
-        <Tooltip content={`${user.fullName} · Đổi tài khoản`}>
-          <button type="button" onClick={handleSwitch} aria-label="Đổi tài khoản demo">
+        <Tooltip content={`${user.fullName} · ${actionLabel}`}>
+          <button type="button" onClick={handleSwitch} aria-label={actionLabel}>
             {avatar}
           </button>
         </Tooltip>
@@ -48,12 +50,12 @@ export const SidebarUser = ({ user, isCollapsed }: { user?: User; isCollapsed: b
             {user.code} · {ROLE_LABEL[user.role]}
           </p>
         </div>
-        <Tooltip content="Đổi tài khoản demo">
+        <Tooltip content={actionLabel}>
           <button
             type="button"
             onClick={handleSwitch}
             className="flex size-8 shrink-0 items-center justify-center rounded-lg text-sky-100/65 transition-colors hover:bg-white/10 hover:text-white"
-            aria-label="Đổi tài khoản demo"
+            aria-label={actionLabel}
           >
             <LogOut className="size-4" />
           </button>

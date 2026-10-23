@@ -33,7 +33,16 @@ export default defineConfig({
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
-  server: { port: 5190 },
+  server: {
+    port: 5190,
+    // api-qltn runs on 5300; keep the browser same-origin so no CORS setup is needed in dev.
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5300',
+        changeOrigin: true,
+      },
+    },
+  },
   build: {
     rollupOptions: {
       output: {

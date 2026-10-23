@@ -25,8 +25,12 @@ import type { AssigneeSlot } from '@/domain/permissions';
 import { computeRepairAlerts } from '@/domain/repair-alerts';
 import { RECORD_ITEM_LINK, recordItemLink } from '@/domain/record-item-link';
 import type { ItemRepairHistory, RepairAlert } from '@/domain/repair-alerts';
+import { IS_API_MODE } from '@/config/data-source';
 import { getDb } from '@/storage/db';
 import { toVnDate } from '@/utils/date';
+import { apiRequest } from './http/client';
+import { mapRecordDetail } from './http/mappers';
+import type { ApiRecordDetail } from './http/mappers';
 import { now } from './runtime';
 import { todayVn } from './runtime';
 import { assertInScope, requireViewer, scopedBuildingIds } from './viewer';
@@ -212,6 +216,9 @@ const byRecord = <T extends { recordId: string }>(rows: T[], id: string): T[] =>
 
 /** Full record view; a record outside the viewer's buildings is reported as not found. */
 export const getRecordDetail = async (recordId: string): Promise<RecordDetail> => {
+  if (IS_API_MODE) {
+    return mapRecordDetail(await apiRequest<ApiRecordDetail>('GET', `/records/${encodeURIComponent(recordId)}`));
+  }
   const viewer = await requireViewer();
   const db = getDb();
   const record = assertInScope(viewer, await db.records.get(recordId));

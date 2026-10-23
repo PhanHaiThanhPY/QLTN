@@ -1,4 +1,6 @@
 export const ERROR_CODE = {
+  /** Missing/expired session: the caller must sign in again (HTTP 401). */
+  UNAUTHORIZED: 'UNAUTHORIZED',
   FORBIDDEN: 'FORBIDDEN',
   NOT_FOUND: 'NOT_FOUND',
   VALIDATION_ERROR: 'VALIDATION_ERROR',
@@ -24,6 +26,9 @@ export class AppError extends Error {
 
 export const forbidden = (message = 'Bạn không có quyền thực hiện thao tác này.'): AppError =>
   new AppError(ERROR_CODE.FORBIDDEN, message);
+
+export const unauthorized = (message = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'): AppError =>
+  new AppError(ERROR_CODE.UNAUTHORIZED, message);
 
 export const notFound = (message = 'Không tìm thấy dữ liệu hoặc dữ liệu ngoài phạm vi của bạn.'): AppError =>
   new AppError(ERROR_CODE.NOT_FOUND, message);

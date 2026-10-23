@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
+import { IS_API_MODE } from '@/config/data-source';
 import { toErrorMessage } from '@/domain/errors';
 import type { FieldErrors } from '@/domain/errors';
 import type { RepairRecord } from '@/domain/types';
@@ -67,6 +68,11 @@ export const useRecordFormSubmit = ({ record, photoIds, pendingFiles, carriedErr
     const recordId = created?.subjectId;
     if (!recordId) return;
     const code = typeof created.data?.code === 'string' ? created.data.code : '';
+    if (IS_API_MODE) {
+      toast.success(`Đã tạo hồ sơ nháp ${code}.`);
+      navigate(`/records/${recordId}`, { replace: true });
+      return;
+    }
     setIsUploading(true);
     const ids = await uploadPending(recordId, pendingFiles);
     setIsUploading(false);

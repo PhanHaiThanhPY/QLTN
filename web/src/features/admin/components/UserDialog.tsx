@@ -3,9 +3,11 @@ import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Input, NativeSelect } from '@/components/ui/input';
+import { IS_API_MODE } from '@/config/data-source';
 import type { Department, RoleDefinition, User } from '@/domain/types';
 import { useCommand } from '@/hooks/useCommand';
 import { useReferenceData } from '@/hooks/useReferenceData';
+import { PASSWORD_LIMITS, passwordError } from '@/services/http/mappers';
 
 interface UserDialogProps {
   user?: User;
@@ -21,6 +23,7 @@ const roleIdOf = (user: User | undefined, roles: RoleDefinition[]): string =>
 export const UserDialog = ({ user, departments, roles, onClose }: UserDialogProps) => {
   const { data } = useReferenceData();
   const [code, setCode] = useState(user?.code ?? '');
+  const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState(user?.fullName ?? '');
   const [departmentId, setDepartmentId] = useState(user?.departmentId ?? '');
   const [jobTitle, setJobTitle] = useState(user?.jobTitle ?? '');
@@ -29,6 +32,9 @@ export const UserDialog = ({ user, departments, roles, onClose }: UserDialogProp
   const [roleDefId, setRoleDefId] = useState(roleIdOf(user, roles));
   const [buildingIds, setBuildingIds] = useState<string[]>(user?.buildingIds ?? []);
   const [locationIds, setLocationIds] = useState<string[]>(user?.locationIds ?? []);
+  // api-qltn requires a password when creating an account; the demo (mock) account has none.
+  const [password, setPassword] = useState('');
+  const [passwordIssue, setPasswordIssue] = useState<string>();
   const command = useCommand({ successMessage: user ? 'Đã lưu tài khoản.' : 'Đã tạo tài khoản.', onSuccess: onClose });
   const errors = command.fieldErrors;
   // An existing account keeps its system role; only roles derived from it are offered.
@@ -42,12 +48,21 @@ export const UserDialog = ({ user, departments, roles, onClose }: UserDialogProp
     if (removing) setLocationIds((prev) => prev.filter((locationId) => data?.locations.some((location) => location.id === locationId && location.buildingId !== id) ?? true));
   };
   const toggleLocation = (id: string) => setLocationIds((prev) => (prev.includes(id) ? prev.filter((row) => row !== id) : [...prev, id]));
-  const submit = () =>
+  const createsWithPassword = !user && IS_API_MODE;
+  const submit = () => {
+    if (createsWithPassword) {
+      const issue = passwordError(password);
+      setPasswordIssue(issue);
+      if (issue) return;
+    }
+    const passwordField = createsWithPassword ? { password } : {};
+    const usernameField = username.trim() || undefined;
     void command.execute(
       user
         ? { subjectType: 'ACCOUNT', subjectId: user.id, expectedVersion: user.version, action: 'updateUser', payload: { fullName, departmentId, jobTitle, email, phone, roleDefId, buildingIds, locationIds } }
-        : { subjectType: 'ACCOUNT', action: 'createUser', payload: { code, fullName, departmentId, jobTitle, email, phone, roleDefId, buildingIds, locationIds } },
+        : { subjectType: 'ACCOUNT', action: 'createUser', payload: { code, username: usernameField, fullName, departmentId, jobTitle, email, phone, roleDefId, buildingIds, locationIds, ...passwordField } },
     );
+  };
   return (
     <Dialog
       open
@@ -72,6 +87,45 @@ export const UserDialog = ({ user, departments, roles, onClose }: UserDialogProp
         <Field label="Họ tên" htmlFor="usr-name" required error={errors.fullName}>
           <Input id="usr-name" maxLength={80} placeholder="VD: Nguyễn Văn A" value={fullName} onChange={(event) => setFullName(event.target.value)} />
         </Field>
+        {user ? null : (
+          <Field
+            label="Tên đăng nhập"
+            htmlFor="usr-username"
+            error={errors.username}
+            hint={username.trim() ? 'Đăng nhập không phân biệt hoa thường.' : 'Bỏ trống để dùng mã tài khoản viết thường.'}
+          >
+            <Input
+              id="usr-username"
+              maxLength={50}
+              placeholder="VD: bql-a"
+              autoComplete="off"
+              value={username}
+              onChange={(event) => setUsername(event.target.value.toLowerCase())}
+            />
+          </Field>
+        )}
+        {createsWithPassword ? (
+          <Field
+            label="Mật khẩu ban đầu"
+            htmlFor="usr-password"
+            required
+            error={passwordIssue ?? errors.password}
+            hint={`${PASSWORD_LIMITS.MIN}–${PASSWORD_LIMITS.MAX} ký tự; người dùng nên đổi sau lần đăng nhập đầu.`}
+          >
+            <Input
+              id="usr-password"
+              type="password"
+              autoComplete="new-password"
+              minLength={PASSWORD_LIMITS.MIN}
+              maxLength={PASSWORD_LIMITS.MAX}
+              value={password}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                setPasswordIssue(undefined);
+              }}
+            />
+          </Field>
+        ) : null}
         <Field label="Bộ phận" htmlFor="usr-department" required error={errors.departmentId}>
           <NativeSelect id="usr-department" value={departmentId} onChange={(event) => setDepartmentId(event.target.value)}>
             <option value="">— Chọn bộ phận —</option>

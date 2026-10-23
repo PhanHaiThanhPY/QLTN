@@ -1,4 +1,5 @@
 import { PageHeader } from '@/components/common/PageHeader';
+import { IS_API_MODE } from '@/config/data-source';
 import { RepairStatusBadge } from '@/components/common/StatusBadge';
 import { Badge, Tag } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -45,19 +46,25 @@ export const RecordDetailHeader = () => {
             <p className="text-xs text-ink-3">Cập nhật {formatDateTime(record.updatedAt)}</p>
           </div>
           <div className="flex flex-wrap gap-2 lg:justify-end">
-            <DialogActionButton action="startEmergencyRepair" variant="danger" renderDialog={(close) => <EmergencyDialog onClose={close} />} />
+            {IS_API_MODE ? null : (
+              <DialogActionButton action="startEmergencyRepair" variant="danger" renderDialog={(close) => <EmergencyDialog onClose={close} />} />
+            )}
             <EditRecordButton />
-            <RecordDocumentButton />
-            <ReassignButton />
-            <ReasonActionButton
-              action="withdrawRecord"
-              field="reason"
-              dialogTitle="Rút hồ sơ"
-              dialogDescription="Hồ sơ chuyển sang “Đóng do rút hồ sơ”, toàn bộ lịch sử được giữ. Không mở lại được."
-              confirmVariant="danger"
-              variant="secondary"
-              successMessage="Đã rút hồ sơ."
-            />
+            {IS_API_MODE ? null : (
+              <>
+                <RecordDocumentButton />
+                <ReassignButton />
+                <ReasonActionButton
+                  action="withdrawRecord"
+                  field="reason"
+                  dialogTitle="Rút hồ sơ"
+                  dialogDescription="Hồ sơ chuyển sang “Đóng do rút hồ sơ”, toàn bộ lịch sử được giữ. Không mở lại được."
+                  confirmVariant="danger"
+                  variant="secondary"
+                  successMessage="Đã rút hồ sơ."
+                />
+              </>
+            )}
           </div>
         </div>
         <RecordWorkflowStepper status={record.status} />

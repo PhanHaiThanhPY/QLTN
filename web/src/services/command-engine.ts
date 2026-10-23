@@ -2,9 +2,11 @@ import { SYSTEM_ACTOR_ID } from '@/domain/constants';
 import type { SubjectType } from '@/domain/constants';
 import { AppError, ERROR_CODE, conflict, forbidden } from '@/domain/errors';
 import type { CommandSuccess, DemoSettings, User } from '@/domain/types';
+import { IS_API_MODE } from '@/config/data-source';
 import { getDb } from '@/storage/db';
 import type { CommandContext } from './command-context';
 import { broadcastChange } from './change-channel';
+import { executeApiCommand } from './http/command-adapter';
 import { getSessionUserId, now, todayVn } from './runtime';
 import { getSettings, saveSettings } from './settings-service';
 
@@ -128,10 +130,18 @@ const run = async (command: Command, options: RunOptions): Promise<CommandResult
   return result;
 };
 
-/** Executes a business command as the demo session user (actor never comes from the payload). */
-export const executeCommand = (command: Command): Promise<CommandResult> =>
-  run(command, { actorId: getSessionUserId(), isSystem: false });
+/**
+ * Executes a business command as the demo session user (actor never comes from the payload).
+ * In api mode the REST adapter runs instead of the Dexie handlers; mock keeps the old path.
+ */
+export const executeCommand = (command: Command): Promise<CommandResult> => {
+  if (IS_API_MODE) return executeApiCommand(command);
+  return run(command, { actorId: getSessionUserId(), isSystem: false });
+};
 
 /** Executes a command as SYSTEM, e.g. schedule generation triggered by opening a screen. */
-export const executeSystemCommand = (command: Command, triggeredBy?: string): Promise<CommandResult> =>
-  run(command, { actorId: null, triggeredBy, isSystem: true });
+export const executeSystemCommand = (command: Command, triggeredBy?: string): Promise<CommandResult> => {
+  // No server-side background commands are wired yet; hooks skip this call in api mode.
+  if (IS_API_MODE) return executeApiCommand(command);
+  return run(command, { actorId: null, triggeredBy, isSystem: true });
+};
