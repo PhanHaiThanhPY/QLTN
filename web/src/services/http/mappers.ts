@@ -484,8 +484,6 @@ export interface ApiCreateUserBody {
 }
 
 export interface ApiUpdateUserBody {
-  /** Omitted when empty so the backend keeps the current login name. */
-  username?: string;
   fullName: string;
   roleDefId: string;
   buildingIds: string[];
@@ -524,7 +522,8 @@ export const toCreateUserBody = (payload: unknown): ApiCreateUserBody => {
 
 /**
  * Web `updateUser` payload → `UpdateUserDto`. `expectedVersion` is the optimistic lock the screen loaded
- * and is mandatory; `active` is forwarded only when the caller sets it explicitly.
+ * and is mandatory; `active` is forwarded only when the caller sets it explicitly. The login name is fixed
+ * after creation, so `username` is never sent here.
  */
 export const MISSING_VERSION_MESSAGE = 'Thiếu phiên bản dữ liệu (expectedVersion). Vui lòng tải lại.';
 
@@ -544,8 +543,6 @@ export const toUpdateUserBody = (payload: unknown, expectedVersion: number | und
     phone: asOptionalString(row.phone) ?? null,
     version: expectedVersion,
   };
-  const username = asOptionalString(row.username);
-  if (username) body.username = username;
   if (typeof row.active === 'boolean') body.active = row.active;
   return body;
 };

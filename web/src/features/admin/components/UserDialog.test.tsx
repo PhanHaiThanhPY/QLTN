@@ -32,38 +32,45 @@ const account: User = {
   version: 1,
 };
 
-const renderDialog = () =>
+const renderDialog = (user?: User) =>
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <UserDialog user={account} departments={[]} roles={[]} onClose={() => undefined} />
+      <UserDialog user={user} departments={[]} roles={[]} onClose={() => undefined} />
     </QueryClientProvider>,
   );
 
 describe('UserDialog duplicate account errors', () => {
   afterEach(() => vi.clearAllMocks());
 
-  it('should show username and email errors under their own fields and keep what was typed', async () => {
+  it('should not offer the login name when editing and still show the email error under its field', async () => {
+    mocks.executeCommand.mockRejectedValue(
+      new AppError(ERROR_CODE.VALIDATION_ERROR, 'Dữ liệu chưa hợp lệ.', { email: 'Email đã được dùng.' }),
+    );
+    renderDialog(account);
+    expect(screen.queryByLabelText('Tên đăng nhập')).toBeNull();
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 't4c-b@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu' }));
+
+    const alerts = await screen.findAllByRole('alert');
+    expect(alerts.map((alert) => alert.textContent)).toEqual(['Email đã được dùng.']);
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('t4c-b@example.com');
+    const payload = (mocks.executeCommand.mock.calls[0][0] as { payload: Record<string, unknown> }).payload;
+    expect(payload).not.toHaveProperty('username');
+  });
+
+  it('should keep the login name when creating and show its error under that field', async () => {
     mocks.executeCommand.mockRejectedValue(
       new AppError(ERROR_CODE.VALIDATION_ERROR, 'Dữ liệu chưa hợp lệ.', {
         username: 'Tên đăng nhập đã tồn tại.',
-        email: 'Email đã được dùng.',
       }),
     );
     renderDialog();
 
     fireEvent.change(screen.getByLabelText('Tên đăng nhập'), { target: { value: 'T4C-B' } });
-    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 't4c-b@example.com' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Lưu' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tạo tài khoản' }));
 
-    const alerts = await screen.findAllByRole('alert');
-    expect(alerts.map((alert) => alert.textContent)).toEqual([
-      'Tên đăng nhập đã tồn tại.',
-      'Email đã được dùng.',
-    ]);
+    expect((await screen.findByRole('alert')).textContent).toBe('Tên đăng nhập đã tồn tại.');
     expect((screen.getByLabelText('Tên đăng nhập') as HTMLInputElement).value).toBe('t4c-b');
-    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('t4c-b@example.com');
-    expect(mocks.executeCommand).toHaveBeenCalledWith(
-      expect.objectContaining({ payload: expect.objectContaining({ username: 't4c-b', email: 't4c-b@example.com' }) }),
-    );
   });
 });

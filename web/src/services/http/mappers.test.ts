@@ -335,7 +335,6 @@ describe('user payload mappers', () => {
   it('should build an UpdateUserDto carrying version = expectedVersion and omitting an unset active', () => {
     const body = toUpdateUserBody(webPayload, 4);
     expect(body).toEqual({
-      username: 'kt-a3',
       fullName: 'Nguyễn Văn Minh',
       roleDefId: 'role-kt',
       buildingIds: ['bld-a', 'bld-b'],
@@ -348,12 +347,13 @@ describe('user payload mappers', () => {
     });
     expect(body).not.toHaveProperty('active');
     expect(body).not.toHaveProperty('password');
+    expect(body).not.toHaveProperty('username');
     expect(toUpdateUserBody({ ...webPayload, active: false }, 4).active).toBe(false);
   });
 
-  it('should omit an empty username so the backend derives or keeps it', () => {
+  it('should omit an empty username when creating and never send it when updating', () => {
     expect(toCreateUserBody({ ...webPayload, username: '  ' })).not.toHaveProperty('username');
-    expect(toUpdateUserBody({ ...webPayload, username: '' }, 4)).not.toHaveProperty('username');
+    expect(toUpdateUserBody(webPayload, 4)).not.toHaveProperty('username');
   });
 
   it('should refuse an update without expectedVersion', () => {
