@@ -6,6 +6,10 @@ export const notFound = (message = 'Không tìm thấy dữ liệu yêu cầu.')
 export const forbidden = (message = 'Bạn không có quyền thực hiện thao tác này.') =>
   new ForbiddenException({ code: 'FORBIDDEN', message });
 
+/** Business refusal with a stable machine-readable reason (`details.reason`, snake_case). */
+export const forbiddenWithReason = (reason: string, message: string) =>
+  new ForbiddenException({ code: 'FORBIDDEN', message, details: { reason } });
+
 export const conflict = (message = 'Dữ liệu đã được người khác cập nhật. Vui lòng tải lại trước khi lưu.') =>
   new ConflictException({ code: 'CONFLICT', message });
 

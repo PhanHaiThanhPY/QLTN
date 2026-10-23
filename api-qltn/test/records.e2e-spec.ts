@@ -16,6 +16,17 @@ interface Config {
   taskDueDays: Record<string, number>;
 }
 
+interface RoleRow {
+  id: string;
+  code: string;
+  isSystem: boolean;
+}
+
+interface DepartmentRow {
+  id: string;
+  code: string;
+}
+
 interface RecordView {
   id: string;
   code: string;
@@ -50,6 +61,7 @@ describe('Repair records (e2e)', () => {
   let bqlA: Session;
   let bqlB: Session;
   let ktA: Session;
+  let bqlA2: Session;
   let buildingA: Building;
   let buildingB: Building;
   let referenceA: Reference;
@@ -70,6 +82,23 @@ describe('Repair records (e2e)', () => {
     referenceA = dataOf<Reference>(await bqlA.get('/api/reference'));
     referenceB = dataOf<Reference>(await bqlB.get('/api/reference'));
     configA = dataOf<Config>(await bqlA.get(`/api/buildings/${buildingA.id}/config`));
+
+    // Same building, holds RECORD_EDIT, but is not the record manager (the slot rule under test).
+    const roles = dataOf<RoleRow[]>(await admin.get('/api/roles'));
+    const departments = dataOf<DepartmentRow[]>(await admin.get('/api/departments'));
+    const bqlRole = roles.find((row) => row.code === 'BQL' && row.isSystem) as RoleRow;
+    const bqlDepartment = departments.find((row) => row.code === 'BQL') as DepartmentRow;
+    await admin
+      .post('/api/users', {
+        code: 'BQL-A2',
+        fullName: 'Phạm BQL Tòa A',
+        password: 'E2e-bql-a2',
+        roleDefId: bqlRole.id,
+        departmentId: bqlDepartment.id,
+        buildingIds: [buildingA.id],
+      })
+      .expect(201);
+    bqlA2 = await signIn(server, 'bql-a2', 'E2e-bql-a2');
   });
 
   afterAll(async () => {
@@ -133,6 +162,25 @@ describe('Repair records (e2e)', () => {
     const detail = dataOf<DetailView>(await bqlA.get(`/api/records/${created.id}`).expect(200));
     expect(detail.audit.find((row) => row.action === 'saveRecordDraft')).toMatchObject({ entityVersion: 2 });
     expect(detail.audit.some((row) => row.action === 'createRecord')).toBe(true);
+  });
+
+  it('refuses a same-building BQL who is not the record manager, without changing the record', async () => {
+    const res = await bqlA2
+      .patch(`/api/records/${created.id}`, { version: 2, description: 'D2T1- sửa bởi người không phải quản lý' })
+      .expect(403);
+    expect(errorOf(res).code).toBe('FORBIDDEN');
+    expect((errorOf(res).details as { reason?: string } | null)?.reason).toBe('not_record_manager');
+
+    const detail = dataOf<DetailView>(await bqlA.get(`/api/records/${created.id}`).expect(200));
+    expect(detail.record.version).toBe(2);
+    expect(detail.record.description).toBe('Đã kiểm tra: rò rỉ tại mối nối ống cấp.');
+  });
+
+  it('refuses admin-demo because the ADMIN role has no RECORD_EDIT (capability guard)', async () => {
+    const res = await admin
+      .patch(`/api/records/${created.id}`, { version: 2, description: 'D2T1- admin sửa' })
+      .expect(403);
+    expect(errorOf(res).code).toBe('FORBIDDEN');
   });
 
   it('refuses a building outside the caller scope with 404', async () => {

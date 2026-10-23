@@ -3,7 +3,7 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, EntityManager } from 'typeorm';
 import type { AuthenticatedUser } from '../../common/auth/authenticated-user';
 import { assertBuildingInScope } from '../../common/auth/scope';
-import { assertVersion, conflict, notFound } from '../../common/errors';
+import { assertVersion, conflict, forbiddenWithReason, notFound } from '../../common/errors';
 import { FieldErrors } from '../../common/validation/field-errors';
 import { CodeCounterService } from '../../common/services/code-counter.service';
 import {
@@ -197,7 +197,7 @@ export class RecordsService {
       const locationId = dto.locationId ?? null;
       const errors = new FieldErrors();
       await this.validateLocation(manager, errors, dto.buildingId, locationId, null);
-      this.validateManager(assignment, errors, actor, dto.buildingId, locationId);
+      this.validateManager(assignment, errors, actor.id, dto.buildingId, locationId);
 
       const steps = workflowApprovalStepsOf(config);
       const defaultConfirmer = firstActiveInRole(assignment, 'TECH_CONFIRMER', dto.buildingId, locationId) ?? null;
@@ -248,6 +248,9 @@ export class RecordsService {
       const record = await repo.findOne({ where: { id }, lock: { mode: 'pessimistic_write' } });
       if (!record || !actor.buildingIds.includes(record.buildingId)) throw notFound('Không tìm thấy hồ sơ.');
       assertVersion(record.version, dto.version);
+      if (actor.id !== record.managerUserId) {
+        throw forbiddenWithReason('not_record_manager', 'Chỉ BQL quản lý được giao mới thực hiện được bước này.');
+      }
       if (record.status !== DRAFT_STATUS)
         throw conflict('Hồ sơ đã rời trạng thái nháp. Vui lòng tải lại trước khi thao tác.');
 
@@ -257,7 +260,7 @@ export class RecordsService {
         dto.confirmationUserId !== undefined ? dto.confirmationUserId : record.confirmationUserId;
       const errors = new FieldErrors();
       await this.validateLocation(manager, errors, record.buildingId, locationId, record.locationId);
-      this.validateManager(assignment, errors, actor, record.buildingId, locationId);
+      this.validateManager(assignment, errors, record.managerUserId, record.buildingId, locationId);
       this.validateConfirmer(assignment, errors, confirmationUserId, record.buildingId, locationId);
       errors.throwIfAny();
 
@@ -334,12 +337,12 @@ export class RecordsService {
   private validateManager(
     ctx: AssignmentContext,
     errors: FieldErrors,
-    actor: AuthenticatedUser,
+    managerUserId: string,
     buildingId: string,
     locationId: string | null,
   ): void {
     errors.when(
-      Boolean(locationId) && !isActiveUserInRole(ctx, actor.id, 'BQL', buildingId, locationId),
+      Boolean(locationId) && !isActiveUserInRole(ctx, managerUserId, 'BQL', buildingId, locationId),
       'locationId',
       'Người quản lý không có phạm vi xử lý tại khu vực này.',
     );
