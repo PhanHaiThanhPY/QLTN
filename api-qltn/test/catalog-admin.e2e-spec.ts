@@ -515,4 +515,96 @@ describe('Catalog & administration (e2e)', () => {
       expect(after.emergencyDocHours).toBe(first.emergencyDocHours);
     });
   });
+
+  /** Login lower-cases the username and compares `lower(email)`, so duplicates are case-insensitive. */
+  describe('duplicate username and email', () => {
+    interface Account {
+      id: string;
+      username: string;
+      email: string | null;
+      version: number;
+    }
+    const accountBody = (overrides: Record<string, unknown>) => ({
+      fullName: 'Tài khoản thử trùng',
+      password: 'Mat-khau-moi-1',
+      roleDefId: role('BQL').id,
+      departmentId: department('BQL').id,
+      buildingIds: [buildingA.id],
+      ...overrides,
+    });
+    /** `PATCH /users/:id` does not accept `code`/`password` (whitelist rejects unknown fields). */
+    const updateBody = (overrides: Record<string, unknown>) => ({
+      fullName: 'Tài khoản thử trùng',
+      roleDefId: role('BQL').id,
+      departmentId: department('BQL').id,
+      buildingIds: [buildingA.id],
+      ...overrides,
+    });
+    let second: Account;
+
+    beforeAll(async () => {
+      await admin
+        .post('/api/users', accountBody({ code: 'T4C-A', username: 't4c-a', email: 't4c-a@example.com' }))
+        .expect(201);
+      second = dataOf<Account>(
+        await admin
+          .post('/api/users', accountBody({ code: 'T4C-B', username: 't4c-b', email: 't4c-b@example.com' }))
+          .expect(201),
+      );
+    });
+
+    it('rejects a duplicate username when creating', async () => {
+      const res = await admin
+        .post('/api/users', accountBody({ code: 'T4C-DUP-U', username: 'T4C-A', email: 't4c-dup-u@example.com' }))
+        .expect(400);
+      expect(errorOf(res).code).toBe('VALIDATION_ERROR');
+      expect(errorFields(res)).toEqual(['username']);
+      expect(errorOf(res).message).toBe('Tên đăng nhập đã tồn tại.');
+    });
+
+    it('rejects a duplicate email when creating, ignoring case', async () => {
+      const res = await admin
+        .post('/api/users', accountBody({ code: 'T4C-DUP-E', username: 't4c-dup-e', email: 'T4C-A@EXAMPLE.COM' }))
+        .expect(400);
+      expect(errorOf(res).code).toBe('VALIDATION_ERROR');
+      expect(errorFields(res)).toEqual(['email']);
+      expect(errorOf(res).message).toBe('Email đã được dùng.');
+    });
+
+    it('rejects a duplicate username when updating', async () => {
+      const res = await admin
+        .patch(
+          `/api/users/${second.id}`,
+          updateBody({ username: 'T4C-A', email: second.email, version: second.version }),
+        )
+        .expect(400);
+      expect(errorOf(res).code).toBe('VALIDATION_ERROR');
+      expect(errorFields(res)).toEqual(['username']);
+      expect(errorOf(res).message).toBe('Tên đăng nhập đã tồn tại.');
+    });
+
+    it('rejects a duplicate email when updating, ignoring case', async () => {
+      const res = await admin
+        .patch(
+          `/api/users/${second.id}`,
+          updateBody({ username: second.username, email: 'T4C-A@example.com', version: second.version }),
+        )
+        .expect(400);
+      expect(errorOf(res).code).toBe('VALIDATION_ERROR');
+      expect(errorFields(res)).toEqual(['email']);
+      expect(errorOf(res).message).toBe('Email đã được dùng.');
+    });
+
+    it('keeps an account from colliding with its own unchanged username and email', async () => {
+      const res = await admin
+        .patch(
+          `/api/users/${second.id}`,
+          updateBody({ username: second.username, email: second.email, version: second.version }),
+        )
+        .expect(200);
+      const saved = dataOf<Account>(res);
+      expect(saved.username).toBe(second.username);
+      expect(saved.email).toBe(second.email);
+    });
+  });
 });
