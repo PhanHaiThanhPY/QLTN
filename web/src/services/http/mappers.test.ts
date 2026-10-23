@@ -63,6 +63,7 @@ describe('mapUserProfile', () => {
     expect(user).toEqual({
       id: '6f1b0d0a-0000-4000-8000-000000000001',
       code: 'BQL-A',
+      username: 'bql-a',
       fullName: 'Trần BQL Tòa A',
       role: 'BQL',
       departmentId: '2a0b0d0a-0000-4000-8000-000000000002',
@@ -78,9 +79,8 @@ describe('mapUserProfile', () => {
     });
   });
 
-  it('should not leak backend-only fields (username, departmentName, roleName, lastLoginAt)', () => {
+  it('should not leak backend-only fields (departmentName, roleName, lastLoginAt)', () => {
     const user = mapUserProfile(profile());
-    expect(user).not.toHaveProperty('username');
     expect(user).not.toHaveProperty('departmentName');
     expect(user).not.toHaveProperty('roleName');
     expect(user).not.toHaveProperty('lastLoginAt');
@@ -286,6 +286,7 @@ describe('mapReferenceUser / mapBuilding / mapLocation', () => {
 describe('user payload mappers', () => {
   const webPayload = {
     code: 'kt-a3',
+    username: 'kt-a3',
     fullName: '  Nguyễn Văn Minh ',
     departmentId: 'dep-kt',
     jobTitle: '',
@@ -300,6 +301,7 @@ describe('user payload mappers', () => {
   it('should build a CreateUserDto with trimmed values, null for empty optionals and an untrimmed password', () => {
     expect(toCreateUserBody(webPayload)).toEqual({
       code: 'kt-a3',
+      username: 'kt-a3',
       fullName: 'Nguyễn Văn Minh',
       roleDefId: 'role-kt',
       buildingIds: ['bld-a', 'bld-b'],
@@ -333,6 +335,7 @@ describe('user payload mappers', () => {
   it('should build an UpdateUserDto carrying version = expectedVersion and omitting an unset active', () => {
     const body = toUpdateUserBody(webPayload, 4);
     expect(body).toEqual({
+      username: 'kt-a3',
       fullName: 'Nguyễn Văn Minh',
       roleDefId: 'role-kt',
       buildingIds: ['bld-a', 'bld-b'],
@@ -346,6 +349,11 @@ describe('user payload mappers', () => {
     expect(body).not.toHaveProperty('active');
     expect(body).not.toHaveProperty('password');
     expect(toUpdateUserBody({ ...webPayload, active: false }, 4).active).toBe(false);
+  });
+
+  it('should omit an empty username so the backend derives or keeps it', () => {
+    expect(toCreateUserBody({ ...webPayload, username: '  ' })).not.toHaveProperty('username');
+    expect(toUpdateUserBody({ ...webPayload, username: '' }, 4)).not.toHaveProperty('username');
   });
 
   it('should refuse an update without expectedVersion', () => {

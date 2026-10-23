@@ -76,7 +76,7 @@ const mapCapabilities = (values: readonly string[] | undefined): Capability[] | 
 
 /**
  * Explicit field-by-field mapping from the backend profile to the web `User`.
- * Unused backend fields (`username`, `departmentName`, `roleName`, `lastLoginAt`) are dropped on purpose.
+ * Unused backend fields (`departmentName`, `roleName`, `lastLoginAt`) are dropped on purpose.
  */
 export const mapUserProfile = (profile: ApiUserProfile): User => {
   const buildingIds = [...(profile.buildingIds ?? [])];
@@ -84,6 +84,7 @@ export const mapUserProfile = (profile: ApiUserProfile): User => {
   return {
     id: profile.id,
     code: profile.code,
+    username: optionalText(profile.username),
     fullName: profile.fullName,
     role: mapRole(profile.role),
     departmentId: optionalText(profile.departmentId),
@@ -469,6 +470,8 @@ export const passwordError = (value: unknown): string | undefined => {
 
 export interface ApiCreateUserBody {
   code: string;
+  /** Omitted when empty so the backend derives it from `code`. */
+  username?: string;
   fullName: string;
   roleDefId: string;
   buildingIds: string[];
@@ -481,6 +484,8 @@ export interface ApiCreateUserBody {
 }
 
 export interface ApiUpdateUserBody {
+  /** Omitted when empty so the backend keeps the current login name. */
+  username?: string;
   fullName: string;
   roleDefId: string;
   buildingIds: string[];
@@ -495,14 +500,16 @@ export interface ApiUpdateUserBody {
 
 /**
  * Web `createUser` payload → `CreateUserDto`. Empty optional text becomes `null` (backend `TrimToNull`);
- * `username` is omitted so the backend derives it from the code.
+ * an empty `username` is omitted so the backend derives it from the code.
  */
 export const toCreateUserBody = (payload: unknown): ApiCreateUserBody => {
   const row = asRecord(payload);
   const passwordIssue = passwordError(row.password);
   if (passwordIssue) throw validationError({ password: passwordIssue }, passwordIssue);
+  const username = asOptionalString(row.username);
   return {
     code: asString(row.code),
+    ...(username ? { username } : {}),
     fullName: asString(row.fullName),
     roleDefId: asString(row.roleDefId),
     buildingIds: asStringArray(row.buildingIds),
@@ -537,6 +544,8 @@ export const toUpdateUserBody = (payload: unknown, expectedVersion: number | und
     phone: asOptionalString(row.phone) ?? null,
     version: expectedVersion,
   };
+  const username = asOptionalString(row.username);
+  if (username) body.username = username;
   if (typeof row.active === 'boolean') body.active = row.active;
   return body;
 };

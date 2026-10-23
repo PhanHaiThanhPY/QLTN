@@ -28,6 +28,8 @@ export interface Versioned {
 export interface User {
   id: string;
   code: string;
+  /** Login name; the backend stores it lower-case and matches it case-insensitively. */
+  username?: string;
   fullName: string;
   /** System role; drives which workflow slots the user can hold. */
   role: Role;

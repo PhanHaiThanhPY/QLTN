@@ -23,6 +23,7 @@ const roleIdOf = (user: User | undefined, roles: RoleDefinition[]): string =>
 export const UserDialog = ({ user, departments, roles, onClose }: UserDialogProps) => {
   const { data } = useReferenceData();
   const [code, setCode] = useState(user?.code ?? '');
+  const [username, setUsername] = useState(user?.username ?? '');
   const [fullName, setFullName] = useState(user?.fullName ?? '');
   const [departmentId, setDepartmentId] = useState(user?.departmentId ?? '');
   const [jobTitle, setJobTitle] = useState(user?.jobTitle ?? '');
@@ -55,10 +56,11 @@ export const UserDialog = ({ user, departments, roles, onClose }: UserDialogProp
       if (issue) return;
     }
     const passwordField = createsWithPassword ? { password } : {};
+    const usernameField = username.trim() || undefined;
     void command.execute(
       user
-        ? { subjectType: 'ACCOUNT', subjectId: user.id, expectedVersion: user.version, action: 'updateUser', payload: { fullName, departmentId, jobTitle, email, phone, roleDefId, buildingIds, locationIds } }
-        : { subjectType: 'ACCOUNT', action: 'createUser', payload: { code, fullName, departmentId, jobTitle, email, phone, roleDefId, buildingIds, locationIds, ...passwordField } },
+        ? { subjectType: 'ACCOUNT', subjectId: user.id, expectedVersion: user.version, action: 'updateUser', payload: { username: usernameField, fullName, departmentId, jobTitle, email, phone, roleDefId, buildingIds, locationIds } }
+        : { subjectType: 'ACCOUNT', action: 'createUser', payload: { code, username: usernameField, fullName, departmentId, jobTitle, email, phone, roleDefId, buildingIds, locationIds, ...passwordField } },
     );
   };
   return (
@@ -84,6 +86,21 @@ export const UserDialog = ({ user, departments, roles, onClose }: UserDialogProp
         </Field>
         <Field label="Họ tên" htmlFor="usr-name" required error={errors.fullName}>
           <Input id="usr-name" maxLength={80} placeholder="VD: Nguyễn Văn A" value={fullName} onChange={(event) => setFullName(event.target.value)} />
+        </Field>
+        <Field
+          label="Tên đăng nhập"
+          htmlFor="usr-username"
+          error={errors.username}
+          hint={username.trim() ? 'Đăng nhập không phân biệt hoa thường.' : 'Bỏ trống để dùng mã tài khoản viết thường.'}
+        >
+          <Input
+            id="usr-username"
+            maxLength={50}
+            placeholder="VD: bql-a"
+            autoComplete="off"
+            value={username}
+            onChange={(event) => setUsername(event.target.value.toLowerCase())}
+          />
         </Field>
         {createsWithPassword ? (
           <Field
