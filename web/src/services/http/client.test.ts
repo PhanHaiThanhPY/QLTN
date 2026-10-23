@@ -98,6 +98,28 @@ describe('http client', () => {
     expect(error.fieldErrors).toEqual({ fullName: 'Tên nhân viên không được để trống.', email: 'Email không đúng định dạng email.' } satisfies FieldErrors);
   });
 
+  it('should keep one message per field when an older backend sends several for the same field', async () => {
+    mockFetch(() =>
+      jsonResponse(
+        400,
+        errorBody('VALIDATION_ERROR', 'Mật khẩu quá dài.', {
+          fields: [
+            { field: 'password', message: 'Mật khẩu quá dài.' },
+            { field: 'password', message: 'Mật khẩu không được để trống.' },
+            { field: 'username', message: 'Tên đăng nhập là bắt buộc.' },
+          ],
+        }),
+      ),
+    );
+
+    const error = await captureAppError(apiRequest('POST', '/auth/login', { body: {} }));
+
+    expect(error.fieldErrors).toEqual({
+      password: 'Mật khẩu quá dài.',
+      username: 'Tên đăng nhập là bắt buộc.',
+    } satisfies FieldErrors);
+  });
+
   it('should map 409, 403 and 404 to their AppError codes and keep the Vietnamese message', async () => {
     const cases: { status: number; code: string; message: string; expected: string }[] = [
       { status: 409, code: 'CONFLICT', message: 'Dữ liệu đã được người khác cập nhật. Vui lòng tải lại trước khi lưu.', expected: ERROR_CODE.CONFLICT },
