@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource, EntityManager, In } from 'typeorm';
+import { Brackets, DataSource, EntityManager, In } from 'typeorm';
 import type { AuthenticatedUser } from '../../common/auth/authenticated-user';
 import { assertBuildingInScope } from '../../common/auth/scope';
 import { assertVersion, notFound } from '../../common/errors';
+import type { PaginatedResult } from '../../common/interfaces/paginated.interface';
+import { pageWindow, toPaginated } from '../../common/utils/pagination';
 import { FieldErrors } from '../../common/validation/field-errors';
 import { CodeCounterService } from '../../common/services/code-counter.service';
 import {
@@ -22,9 +24,11 @@ import { Attachment } from '../attachments/entities/attachment.entity';
 import { BuildingConfig } from '../buildings/entities/building-config.entity';
 import { Location } from '../buildings/entities/location.entity';
 import { User } from '../users/entities/user.entity';
+import type { ListRecordsQueryDto } from './dto/list-records-query.dto';
 import type { CreateRecordDto, SubmitRecordDto, UpdateRecordDraftDto, WithdrawRecordDto } from './dto/record.dto';
 import { RepairRecord } from './entities/repair-record.entity';
 import { assertRecordAction, type RecordAction } from './record-actions';
+import { statusesOfGroup } from './record-status-groups';
 
 const CODE_PREFIX = 'SC';
 const CODE_WIDTH = 3;
@@ -39,6 +43,29 @@ const DESCRIPTION_MIN = 10;
 const DESCRIPTION_MAX = 2000;
 const REASON_MIN = 5;
 const REASON_MAX = 1000;
+
+/** Placeholder scope for an account without buildings, so `IN (:...scope)` stays valid SQL. */
+const NO_BUILDING = '00000000-0000-0000-0000-000000000000';
+
+/**
+ * Diacritic folding for `search`: the database has no `unaccent` extension, so `translate()` maps Vietnamese
+ * letters to their ASCII base before comparing (`lower()` alone does not remove the marks). Upper-case forms
+ * are included because `lower()` depends on the database collation.
+ */
+const FOLD_BASES: ReadonlyArray<readonly [string, string]> = [
+  ['a', 'àáạảãâầấậẩẫăằắặẳẵ'],
+  ['e', 'èéẹẻẽêềếệểễ'],
+  ['i', 'ìíịỉĩ'],
+  ['o', 'òóọỏõôồốộổỗơờớợởỡ'],
+  ['u', 'ùúụủũưừứựửữ'],
+  ['y', 'ỳýỵỷỹ'],
+  ['d', 'đ'],
+];
+const FOLD_FROM = FOLD_BASES.map(([base, marks]) => base + marks + marks.toUpperCase()).join('');
+const FOLD_TO = FOLD_BASES.map(([base, marks]) => base.repeat(1 + marks.length * 2)).join('');
+
+/** Escapes LIKE wildcards so a literal `%` or `_` in the search box stays literal. */
+const escapeLike = (value: string): string => value.replace(/[\\%_]/g, (char) => `\\${char}`);
 
 /** Legacy approval steps that resolve their assignee from a record column; custom steps use the snapshot map. */
 const APPROVAL_STEP_SLOT: Partial<Record<string, 'confirmationUserId' | 'consultantUserId' | 'boardUserId'>> = {
@@ -355,6 +382,66 @@ export class RecordsService {
       });
       return toRecordView(saved);
     });
+  }
+
+  /**
+   * Paginated record list inside the caller's buildings, newest update first.
+   * A `buildingId` outside the scope answers an empty page instead of 404, so the list never reveals
+   * whether that building exists. Every filter runs in SQL; `meta.total` is the count after filtering.
+   */
+  async list(actor: AuthenticatedUser, query: ListRecordsQueryDto): Promise<PaginatedResult<RepairRecordView>> {
+    const window = pageWindow(query);
+    if (query.buildingId && !actor.buildingIds.includes(query.buildingId)) return toPaginated([], 0, window);
+
+    const qb = this.dataSource.getRepository(RepairRecord).createQueryBuilder('r');
+    qb.andWhere(
+      query.buildingId ? 'r.building_id = :buildingId' : 'r.building_id IN (:...scope)',
+      query.buildingId
+        ? { buildingId: query.buildingId }
+        : { scope: actor.buildingIds.length > 0 ? actor.buildingIds : [NO_BUILDING] },
+    );
+    if (query.status) qb.andWhere('r.status = :status', { status: query.status });
+    if (query.statusGroup) {
+      qb.andWhere('r.status IN (:...statuses)', { statuses: statusesOfGroup(query.statusGroup) });
+    }
+    if (query.locationId) qb.andWhere('r.location_id = :locationId', { locationId: query.locationId });
+    if (query.assigneeId) {
+      qb.andWhere(
+        new Brackets((w) =>
+          w
+            .where('r.manager_user_id = :assigneeId', { assigneeId: query.assigneeId })
+            .orWhere('r.confirmation_user_id = :assigneeId')
+            .orWhere('r.consultant_user_id = :assigneeId')
+            .orWhere('r.board_user_id = :assigneeId'),
+        ),
+      );
+    }
+    if (query.search) {
+      // Both sides are folded, so "tham tran" and "thấm trần" find the same records.
+      const search = escapeLike(query.search);
+      const pattern = `'%' || translate(lower(:search), :foldFrom, :foldTo) || '%'`;
+      qb.andWhere(
+        new Brackets((w) =>
+          w
+            .where(`translate(lower(r.code), :foldFrom, :foldTo) LIKE ${pattern} ESCAPE '\\'`, { search })
+            .orWhere(`translate(lower(r.title), :foldFrom, :foldTo) LIKE ${pattern} ESCAPE '\\'`),
+        ),
+        { foldFrom: FOLD_FROM, foldTo: FOLD_TO },
+      );
+    }
+    if (query.dateFrom) {
+      qb.andWhere("(r.created_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date >= :dateFrom", { dateFrom: query.dateFrom });
+    }
+    if (query.dateTo) {
+      qb.andWhere("(r.created_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date <= :dateTo", { dateTo: query.dateTo });
+    }
+    const [page, total] = await qb
+      .orderBy('r.updated_at', 'DESC')
+      .addOrderBy('r.id', 'DESC')
+      .skip(window.skip)
+      .take(window.limit)
+      .getManyAndCount();
+    return toPaginated(page.map(toRecordView), total, window);
   }
 
   /** Record + history for the detail screen; another building's record answers 404. */

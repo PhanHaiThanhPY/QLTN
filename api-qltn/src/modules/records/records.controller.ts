@@ -1,8 +1,10 @@
-import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { AuthenticatedUser } from '../../common/auth/authenticated-user';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireCapabilities } from '../../common/decorators/require-capabilities.decorator';
+import type { PaginatedResult } from '../../common/interfaces/paginated.interface';
+import { ListRecordsQueryDto } from './dto/list-records-query.dto';
 import { CreateRecordDto, SubmitRecordDto, UpdateRecordDraftDto, WithdrawRecordDto } from './dto/record.dto';
 import { RecordsService, type RecordDetailView, type RepairRecordView } from './records.service';
 
@@ -11,6 +13,16 @@ import { RecordsService, type RecordDetailView, type RepairRecordView } from './
 @Controller('records')
 export class RecordsController {
   constructor(private readonly records: RecordsService) {}
+
+  @Get()
+  @RequireCapabilities('VIEW')
+  @ApiOperation({ summary: 'Danh sách hồ sơ trong phạm vi tòa (phân trang, tìm, lọc ở máy chủ)' })
+  list(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: ListRecordsQueryDto,
+  ): Promise<PaginatedResult<RepairRecordView>> {
+    return this.records.list(user, query);
+  }
 
   @Post()
   @RequireCapabilities('RECORD_EDIT')

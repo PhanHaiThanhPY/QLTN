@@ -8,6 +8,8 @@ import { User } from '../../users/entities/user.entity';
 @Entity('repair_records')
 @Check('CHK_repair_records_priority', `priority IN ('LOW', 'NORMAL', 'HIGH', 'URGENT')`)
 @Index('IDX_repair_records_building_created', ['buildingId', 'createdAt'])
+@Index('IDX_repair_records_scope_updated', ['buildingId', 'updatedAt'])
+@Index('IDX_repair_records_status', ['status'])
 export class RepairRecord extends BaseEntity {
   @Index('UQ_repair_records_code', { unique: true })
   @Column({ type: 'varchar', length: 20 })
