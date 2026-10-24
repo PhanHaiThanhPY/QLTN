@@ -1130,3 +1130,21 @@ export const toUpdateRecordDraftBody = (
   if (row.attachmentIds !== undefined) body.attachmentIds = asStringArray(row.attachmentIds);
   return body;
 };
+
+/** Web `submitRecord` payload → `SubmitRecordDto` (same optional draft fields as a draft save). */
+export const toSubmitRecordBody = (payload: unknown, expectedVersion: number | undefined): ApiUpdateRecordDraftBody =>
+  toUpdateRecordDraftBody(payload, expectedVersion);
+
+export interface ApiWithdrawRecordBody {
+  version: number;
+  reason: string;
+}
+
+/** Web `withdrawRecord` payload → `WithdrawRecordDto`. */
+export const toWithdrawRecordBody = (
+  payload: unknown,
+  expectedVersion: number | undefined,
+): ApiWithdrawRecordBody => {
+  if (expectedVersion === undefined) throw new AppError(ERROR_CODE.CONFLICT, MISSING_VERSION_MESSAGE);
+  return { version: expectedVersion, reason: asString(asRecord(payload).reason) };
+};

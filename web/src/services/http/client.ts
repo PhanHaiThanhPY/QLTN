@@ -68,12 +68,23 @@ const codeOf = (body: unknown): string | undefined => {
   return typeof code === 'string' ? code : undefined;
 };
 
+/** Business refusals carry `details.reason` (snake_case); screens give it a dedicated message. */
+const reasonOf = (body: unknown): string | undefined => {
+  const details = errorEnvelope(body)?.details;
+  if (!isRecord(details)) return undefined;
+  const reason = details.reason;
+  return typeof reason === 'string' ? reason : undefined;
+};
+
 /**
  * Maps an api-qltn error response onto the web `AppError` contract.
  * The backend Vietnamese message always wins when present.
  */
 export const mapApiError = (status: number, body: unknown): AppError => {
   const fieldErrors = fieldErrorsOf(body);
+  if (status === 409 && reasonOf(body) === 'invalid_status_transition') {
+    return new AppError(ERROR_CODE.INVALID_TRANSITION, messageOf(body, CONFLICT_MESSAGE));
+  }
   if (status === 409) return new AppError(ERROR_CODE.CONFLICT, messageOf(body, CONFLICT_MESSAGE));
   if (status === 403) return new AppError(ERROR_CODE.FORBIDDEN, messageOf(body, FORBIDDEN_MESSAGE));
   if (status === 404) return new AppError(ERROR_CODE.NOT_FOUND, messageOf(body, NOT_FOUND_MESSAGE));

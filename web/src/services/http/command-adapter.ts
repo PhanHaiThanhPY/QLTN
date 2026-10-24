@@ -19,6 +19,7 @@ import {
   toCreateRecordBody,
   toCreateUserBody,
   toSetLocationActiveBody,
+  toSubmitRecordBody,
   toUpdateBuildingBody,
   toUpdateBuildingConfigBody,
   toUpdateDepartmentBody,
@@ -26,6 +27,7 @@ import {
   toUpdateRoleBody,
   toUpdateRecordDraftBody,
   toUpdateUserBody,
+  toWithdrawRecordBody,
 } from './mappers';
 import type {
   ApiBuilding,
@@ -244,6 +246,26 @@ const saveRecordDraft: ApiCommandHandler = async (command) => {
   return { ok: true, subjectId: updated.id };
 };
 
+/** `POST /records/:id/submit` — optional draft fields + `version`; failures carry field errors. */
+const submitRecord: ApiCommandHandler = async (command) => {
+  const id = command.subjectId?.trim() ?? '';
+  if (!id) throw new AppError(ERROR_CODE.NOT_FOUND, 'Không tìm thấy hồ sơ.');
+  const body = toSubmitRecordBody(command.payload, command.expectedVersion);
+  const updated = await apiRequest<ApiRepairRecord>('POST', `/records/${encodeURIComponent(id)}/submit`, { body });
+  broadcastChange();
+  return { ok: true, subjectId: updated.id };
+};
+
+/** `POST /records/:id/withdraw` — mandatory reason + `version`. */
+const withdrawRecord: ApiCommandHandler = async (command) => {
+  const id = command.subjectId?.trim() ?? '';
+  if (!id) throw new AppError(ERROR_CODE.NOT_FOUND, 'Không tìm thấy hồ sơ.');
+  const body = toWithdrawRecordBody(command.payload, command.expectedVersion);
+  const updated = await apiRequest<ApiRepairRecord>('POST', `/records/${encodeURIComponent(id)}/withdraw`, { body });
+  broadcastChange();
+  return { ok: true, subjectId: updated.id };
+};
+
 /** Actions wired to api-qltn. T2a accounts; T2b departments and roles; T2c buildings and locations; T2d configuration. */
 const API_COMMANDS: Readonly<Record<string, ApiCommandHandler>> = {
   createUser,
@@ -262,6 +284,8 @@ const API_COMMANDS: Readonly<Record<string, ApiCommandHandler>> = {
   updateWorkflowConfig,
   createRecord,
   saveRecordDraft,
+  submitRecord,
+  withdrawRecord,
 };
 
 export const API_UNSUPPORTED_MESSAGE = 'Thao tác này chưa nối API.';

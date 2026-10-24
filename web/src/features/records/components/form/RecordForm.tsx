@@ -68,8 +68,12 @@ export const RecordForm = ({ reference, record, attachments, prefill }: RecordFo
           if (typeof field === 'string') form.setError(field as keyof RecordFormValues, { type: 'manual', message: issue.message });
         }
       }
-      if (!hasImage) setPhotoError(NO_PHOTO);
-      if (!result.success || !hasImage) return;
+      if (!result.success) return;
+      // In api mode the server owns this rule, so a failed submit becomes a field error on the edit page.
+      if (!IS_API_MODE && !hasImage) {
+        setPhotoError(NO_PHOTO);
+        return;
+      }
     }
     void submitter.save(values, intent);
   };
@@ -124,11 +128,9 @@ export const RecordForm = ({ reference, record, attachments, prefill }: RecordFo
         <Button variant="secondary" size="lg" isLoading={submitter.pendingIntent === 'draft'} disabled={submitter.isBusy} onClick={form.handleSubmit(onValid('draft'))}>
           Lưu nháp
         </Button>
-        {IS_API_MODE ? null : (
-          <Button size="lg" isLoading={submitter.pendingIntent === 'submit'} disabled={submitter.isBusy} onClick={form.handleSubmit(onValid('submit'))}>
-            Gửi xác nhận
-          </Button>
-        )}
+        <Button size="lg" isLoading={submitter.pendingIntent === 'submit'} disabled={submitter.isBusy} onClick={form.handleSubmit(onValid('submit'))}>
+          Gửi xác nhận
+        </Button>
       </div>
     </form>
   );

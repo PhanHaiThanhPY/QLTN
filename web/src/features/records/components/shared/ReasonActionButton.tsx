@@ -21,6 +21,8 @@ interface ReasonActionButtonProps {
   /** Extra precondition applied on top of the permission check. */
   stateOverride?: ActionState;
   extraPayload?: Record<string, unknown>;
+  /** Min length shown before submitting; 0 lets the server answer instead (api mode). */
+  minLength?: number;
 }
 
 /** Business action that requires a reason/note (5–1.000 chars) before running. */
@@ -36,6 +38,7 @@ export const ReasonActionButton = ({
   confirmVariant = 'primary',
   stateOverride,
   extraPayload,
+  minLength,
 }: ReasonActionButtonProps) => {
   const [open, setOpen] = useState(false);
   const { relevant, state } = useRepairAction(action);
@@ -58,6 +61,7 @@ export const ReasonActionButton = ({
           confirmVariant={confirmVariant}
           isPending={command.isPending}
           error={command.fieldErrors[field]}
+          minLength={minLength}
           onConfirm={(text) => void command.run(action, { ...extraPayload, [field]: text })}
         />
       ) : null}
