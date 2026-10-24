@@ -126,8 +126,9 @@ const RecordsPage = () => {
             </Card>
           ) : null}
         </>
-      ) : apiSummaryQuery.data ? (
-        // A failed counter query hides the row silently (secondary query); the list below still runs.
+      ) : apiSummaryQuery.data && !apiSummaryQuery.error ? (
+        // A failed counter query hides the row silently (secondary query), even when a cached value is left
+        // in the query cache; the list below still runs.
         <RecordSummaryCards summary={apiSummaryQuery.data} buildingId={filters.buildingId} />
       ) : null}
       {reference.data ? (

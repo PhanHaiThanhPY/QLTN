@@ -61,6 +61,21 @@ describe('RecordsPage cards (api mode)', () => {
     expect(screen.getByText('Chưa có hồ sơ sửa chữa')).toBeTruthy();
   });
 
+  it('should hide cached numbers when a later counter call fails instead of showing stale counts', () => {
+    mockState.summary = {
+      data: { open: 12, needsUpdate: 3, completed: 25, total: 40, asOf: '2026-10-24T03:00:00.000Z' },
+      isLoading: false,
+      error: new Error('503'),
+      refetch: vi.fn(),
+    };
+
+    renderPage();
+
+    expect(screen.queryByText('hồ sơ đang mở')).toBeNull();
+    expect(screen.queryByText('12')).toBeNull();
+    expect(screen.getByText('Chưa có hồ sơ sửa chữa')).toBeTruthy();
+  });
+
   it('should render the cards from the server summary and link each to its filtered list', () => {
     mockState.summary = {
       data: { open: 12, needsUpdate: 3, completed: 25, total: 40, asOf: '2026-10-24T03:00:00.000Z' },
