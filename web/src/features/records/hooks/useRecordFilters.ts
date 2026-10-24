@@ -17,6 +17,8 @@ const PARAM = {
   dateFrom: 'dateFrom',
   dateTo: 'dateTo',
   overdue: 'overdue',
+  open: 'open',
+  attention: 'attention',
 } as const;
 
 export type RecordFilterField = keyof typeof PARAM;
@@ -37,6 +39,7 @@ export const useRecordFilters = () => {
 
   /** overdue=1 → only records whose current step is past due. */
   const overdueOnly = read('overdue') === '1';
+  const attention = read('attention');
   const filters: RecordFilters = {
     q: read('q'),
     buildingId: read('buildingId'),
@@ -49,6 +52,8 @@ export const useRecordFilters = () => {
     dateFrom: read('dateFrom'),
     dateTo: read('dateTo'),
     overdue: overdueOnly,
+    open: read('open') === '1',
+    attention: attention === 'needs_update' ? 'needs_update' : undefined,
     page: Number.isInteger(page) && page > 0 ? page : 1,
   };
 
@@ -57,7 +62,7 @@ export const useRecordFilters = () => {
     setParams(
       (previous) => {
         const next = new URLSearchParams(previous);
-        if (value) next.set(PARAM[field], field === 'overdue' ? '1' : value);
+        if (value) next.set(PARAM[field], field === 'overdue' || field === 'open' ? '1' : value);
         else next.delete(PARAM[field]);
         if (field === 'buildingId') {
           next.delete(PARAM.locationId);

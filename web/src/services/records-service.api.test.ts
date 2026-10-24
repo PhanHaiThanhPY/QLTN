@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { listRecords } from './records-service';
+import { getRecordSummary, listRecords } from './records-service';
 
 /** The API branch of the record list: server-side paging/search/filters, no IndexedDB. */
 vi.mock('@/config/data-source', () => ({
@@ -103,6 +103,17 @@ describe('record list (api mode)', () => {
     expect(page.items[0]?.needsReassignment).toBe(false);
   });
 
+  it('should send open and attention as the card links do', async () => {
+    const mock = mockFetch(() =>
+      jsonResponse(200, successBody({ data: [], meta: { page: 1, limit: 10, total: 0, totalPages: 0 } })),
+    );
+
+    await listRecords({ open: true, attention: 'needs_update', page: 1 });
+
+    const url = new URL(String(mock.mock.calls[0]?.[0]), 'http://localhost');
+    expect(Object.fromEntries(url.searchParams)).toEqual({ page: '1', limit: '10', open: '1', attention: 'needs_update' });
+  });
+
   it('should not send filters the backend does not have and should use the defaults', async () => {
     const mock = mockFetch(() =>
       jsonResponse(200, successBody({ data: [], meta: { page: 1, limit: 10, total: 0, totalPages: 0 } })),
@@ -118,5 +129,35 @@ describe('record list (api mode)', () => {
 
     const url = new URL(String(mock.mock.calls[0]?.[0]), 'http://localhost');
     expect(Object.fromEntries(url.searchParams)).toEqual({ page: '1', limit: '10' });
+  });
+
+  it('should GET /records/summary in the building scope and return its counters', async () => {
+    const mock = mockFetch(() =>
+      jsonResponse(
+        200,
+        successBody({ open: 12, needsUpdate: 3, completed: 25, total: 40, asOf: '2026-10-24T03:00:00.000Z' }),
+      ),
+    );
+
+    const summary = await getRecordSummary({ buildingId: 'bld-a' });
+
+    const url = new URL(String(mock.mock.calls[0]?.[0]), 'http://localhost');
+    expect(url.pathname).toBe('/api/records/summary');
+    expect(Object.fromEntries(url.searchParams)).toEqual({ buildingId: 'bld-a' });
+    expect(summary).toEqual({ open: 12, needsUpdate: 3, completed: 25, total: 40, asOf: '2026-10-24T03:00:00.000Z' });
+  });
+
+  it('should omit the building filter when the list is not narrowed to one building', async () => {
+    const mock = mockFetch(() =>
+      jsonResponse(
+        200,
+        successBody({ open: 0, needsUpdate: 0, completed: 0, total: 0, asOf: '2026-10-24T03:00:00.000Z' }),
+      ),
+    );
+
+    await getRecordSummary();
+
+    const url = new URL(String(mock.mock.calls[0]?.[0]), 'http://localhost');
+    expect(url.search).toBe('');
   });
 });

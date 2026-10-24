@@ -49,6 +49,10 @@ export interface RecordFilters {
   dateTo?: string;
   /** Only open records whose due time has passed. */
   overdue?: boolean;
+  /** api mode: only records outside the final statuses (count card "hồ sơ đang mở"). */
+  open?: boolean;
+  /** api mode: records waiting for the manager to supplement something (count card "hồ sơ cần bổ sung"). */
+  attention?: 'needs_update';
   page?: number;
   pageSize?: number;
 }
@@ -69,11 +73,22 @@ export interface Page<T> {
 export const isRecordOverdue = (record: RepairRecord, at: Date = now()): boolean =>
   Boolean(record.dueAt) && !REPAIR_FINAL_STATUSES.includes(record.status) && new Date(record.dueAt as string) < at;
 
+/** Same list as api-qltn `RECORD_NEEDS_UPDATE_STATUSES` (card "cần bổ sung"). */
+const NEEDS_UPDATE_STATUSES: readonly RepairStatus[] = [
+  'NEEDS_RECORD_UPDATE',
+  'NEEDS_SUBMISSION_UPDATE',
+  'NEEDS_PAYMENT_UPDATE',
+  'NEEDS_REPAIR',
+  'UNRESOLVED',
+];
+
 const matchesFilters = (record: RepairRecord, filters: RecordFilters): boolean => {
   const q = filters.q?.trim().toLowerCase();
   if (q && !record.code.toLowerCase().includes(q) && !record.title.toLowerCase().includes(q)) return false;
   if (filters.status && record.status !== filters.status) return false;
   if (filters.statusGroup && REPAIR_STATUS_GROUP_BY_STATUS[record.status] !== filters.statusGroup) return false;
+  if (filters.open && REPAIR_FINAL_STATUSES.includes(record.status)) return false;
+  if (filters.attention === 'needs_update' && !NEEDS_UPDATE_STATUSES.includes(record.status)) return false;
   if (filters.locationId && record.locationId !== filters.locationId) return false;
   if (filters.maintenanceItemId && record.maintenanceItemId !== filters.maintenanceItemId) return false;
   if (filters.itemLink && recordItemLink(record) !== filters.itemLink) return false;
@@ -110,6 +125,8 @@ const listApiRecords = async (filters: RecordFilters): Promise<Page<RecordListIt
       assigneeId: filters.assigneeId || undefined,
       dateFrom: filters.dateFrom || undefined,
       dateTo: filters.dateTo || undefined,
+      open: filters.open ? 1 : undefined,
+      attention: filters.attention,
     },
   });
   const meta = result.meta ?? { page, limit: pageSize, total: result.data.length, totalPages: 1 };
@@ -148,6 +165,25 @@ export const listRecords = async (filters: RecordFilters = {}): Promise<Page<Rec
   }));
   return { items, total: matched.length, page, pageSize };
 };
+
+/** Counters behind the card row on `/records` (`GET /records/summary`, api mode only). */
+export interface RecordSummary {
+  open: number;
+  needsUpdate: number;
+  completed: number;
+  total: number;
+  /** Instant the server counted at (ISO); the screen prints it as the "as of" line. */
+  asOf: string;
+}
+
+/**
+ * api mode: cards read one server-side query in the caller's building scope.
+ * Mock mode keeps its own count of the demo database on the page (unchanged).
+ */
+export const getRecordSummary = async (filters: Pick<RecordFilters, 'buildingId'> = {}): Promise<RecordSummary> =>
+  apiRequest<RecordSummary>('GET', '/records/summary', {
+    query: { buildingId: filters.buildingId || undefined },
+  });
 
 export interface RepairScheduleFilters {
   buildingId?: string;

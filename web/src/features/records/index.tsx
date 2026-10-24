@@ -13,9 +13,10 @@ import { AppError, ERROR_CODE } from '@/domain/errors';
 import { hasCapability } from '@/domain/permissions';
 import { useReferenceData } from '@/hooks/useReferenceData';
 import { useServiceQuery } from '@/hooks/useServiceQuery';
-import { listRecords } from '@/services/records-service';
+import { listRecords, getRecordSummary } from '@/services/records-service';
 import { RecordCardList } from './components/list/RecordCardList';
 import { RecordFiltersBar } from './components/list/RecordFiltersBar';
+import { RecordSummaryCards } from './components/list/RecordSummaryCards';
 import { RecordTable } from './components/list/RecordTable';
 import { useRecordFilters } from './hooks/useRecordFilters';
 
@@ -25,8 +26,13 @@ const RecordsPage = () => {
   const navigate = useNavigate();
   const { filters, overdueOnly, setFilter, setPage, clear, hasFilters } = useRecordFilters();
   const query = useServiceQuery(['records', filters], () => listRecords(filters));
-  // Counters come from a separate endpoint (D2-T4b); api mode must not count the loaded page.
+  // Mock counters read the demo database (unchanged); api counters come from one server query (D2-T4b).
   const summaryQuery = useServiceQuery(['records', 'summary'], () => listRecords({ page: 1, pageSize: 5000 }), !IS_API_MODE);
+  const apiSummaryQuery = useServiceQuery(
+    ['records', 'summary', 'api', filters.buildingId ?? ''],
+    () => getRecordSummary({ buildingId: filters.buildingId }),
+    IS_API_MODE,
+  );
   const viewer = reference.data?.viewer;
   const canCreate = viewer ? hasCapability(viewer, 'RECORD_EDIT') : false;
   const summaryRows = summaryQuery.data?.items ?? [];
@@ -120,6 +126,9 @@ const RecordsPage = () => {
             </Card>
           ) : null}
         </>
+      ) : apiSummaryQuery.data ? (
+        // A failed counter query hides the row silently (secondary query); the list below still runs.
+        <RecordSummaryCards summary={apiSummaryQuery.data} buildingId={filters.buildingId} />
       ) : null}
       {reference.data ? (
         <Card className="mb-4 shadow-none">

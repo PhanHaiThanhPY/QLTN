@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { Input, NativeSelect } from '@/components/ui/input';
 import { IS_API_MODE } from '@/config/data-source';
-import { REPAIR_STATUS_GROUP_LABEL } from '@/domain/constants';
+import { REPAIR_STATUS_GROUP_LABEL, REPAIR_STATUS_LABEL } from '@/domain/constants';
 import type { RepairStatusGroup } from '@/domain/constants';
 import type { ReferenceData } from '@/services/reference-service';
 import type { RecordFilters } from '@/services/records-service';
@@ -20,6 +20,16 @@ interface RecordFiltersBarProps {
 }
 
 const STATUS_GROUP_OPTIONS = Object.entries(REPAIR_STATUS_GROUP_LABEL) as [RepairStatusGroup, string][];
+
+/** Active filter that has no control in the bar (card links, assistant links); removable without clearing the rest. */
+const FilterChip = ({ label, onRemove }: { label: string; onRemove: () => void }) => (
+  <div className="inline-flex max-w-full items-center gap-1 rounded-full border border-line bg-surface-2 py-1 pl-3 pr-1 text-sm text-ink">
+    <span className="truncate">{label}</span>
+    <Button variant="ghost" size="icon" className="shrink-0" aria-label={`Bỏ ${label.toLowerCase()}`} onClick={onRemove}>
+      <X aria-hidden />
+    </Button>
+  </div>
+);
 
 /** Search + filters for the record list; values live in the URL. */
 export const RecordFiltersBar = ({ filters, reference, overdueOnly, hasFilters, onChange, onClear }: RecordFiltersBarProps) => {
@@ -99,6 +109,15 @@ export const RecordFiltersBar = ({ filters, reference, overdueOnly, hasFilters, 
             <X aria-hidden />
           </Button>
         </div>
+      ) : null}
+      {filters.open ? (
+        <FilterChip label="Đang lọc: hồ sơ đang mở" onRemove={() => onChange('open', '')} />
+      ) : null}
+      {filters.attention === 'needs_update' ? (
+        <FilterChip label="Đang lọc: hồ sơ cần bổ sung" onRemove={() => onChange('attention', '')} />
+      ) : null}
+      {filters.status ? (
+        <FilterChip label={`Đang lọc: ${REPAIR_STATUS_LABEL[filters.status]}`} onRemove={() => onChange('status', '')} />
       ) : null}
     </div>
   );
