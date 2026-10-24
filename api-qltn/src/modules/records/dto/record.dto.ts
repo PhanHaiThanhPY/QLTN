@@ -70,3 +70,19 @@ export class UpdateRecordDraftDto extends RecordDraftFieldsDto {
   @IsUUID(undefined, { each: true })
   attachmentIds?: string[];
 }
+
+/** Same optional draft fields as `PATCH` plus the version the screen loaded. */
+export class SubmitRecordDto extends UpdateRecordDraftDto {}
+
+export class WithdrawRecordDto {
+  @ApiProperty({ description: 'Lý do rút hồ sơ (5–1000 ký tự).' })
+  @Trim()
+  @IsString()
+  reason: string;
+
+  @ApiProperty()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  version: number;
+}

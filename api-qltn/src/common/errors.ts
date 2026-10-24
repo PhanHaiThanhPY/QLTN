@@ -17,6 +17,10 @@ export const badRequestWithReason = (reason: string, message: string) =>
 export const conflict = (message = 'Dữ liệu đã được người khác cập nhật. Vui lòng tải lại trước khi lưu.') =>
   new ConflictException({ code: 'CONFLICT', message });
 
+/** A refused status transition: the screen reads `details.reason` and reloads the record. */
+export const conflictWithReason = (reason: string, message: string) =>
+  new ConflictException({ code: 'CONFLICT', message, details: { reason } });
+
 /** Optimistic lock: the client must send the version it loaded. */
 export function assertVersion(current: number, expected: number): void {
   if (current !== expected) throw conflict();

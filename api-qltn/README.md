@@ -77,13 +77,18 @@ Money fields (`emergencyLimitVnd`) are VND integers sent and returned as strings
 Records run in the caller's building scope (another building answers 404). Writes are audited in the same
 transaction. The record keeps a snapshot of the building configuration taken when it was created: approval
 steps, workflow definitions, per-step assignees and `dueDays`. Site photos (T2) are attached after creation;
-submitting for confirmation (T3) and lists (T4) are not wired yet. `maintenanceItemId` is therefore rejected (400)
-and `POST /records` does not take `attachmentIds`; `noMaintenanceItem` marks "Không thuộc thiết bị cụ thể".
+transitions out of the draft (T3) are `submit` and `withdraw`, and lists (T4) are not wired yet.
+`maintenanceItemId` is therefore rejected (400) and `POST /records` does not take `attachmentIds`;
+`noMaintenanceItem` marks "Không thuộc thiết bị cụ thể". A refused source status answers 409 with
+`details.reason = invalid_status_transition`; every write is limited to the record's managing BQL
+(403 `not_record_manager`) and to the statuses listed in `record-actions.ts`.
 
 | Method | Path | Capability | Notes |
 | --- | --- | --- | --- |
 | POST | `/api/records` | RECORD_EDIT | Draft (`DRAFT`) with an `SC-…` code; optional draft fields |
-| PATCH | `/api/records/:id` | RECORD_EDIT | Draft save; `version` is the optimistic lock (stale → 409). `attachmentIds` replaces the record's file list (removing an id detaches the file, it is not deleted) |
+| PATCH | `/api/records/:id` | RECORD_EDIT | Draft save (`DRAFT`/`NEEDS_RECORD_UPDATE`); `version` is the optimistic lock (stale → 409). `attachmentIds` replaces the record's file list (removing an id detaches the file, it is not deleted) |
+| POST | `/api/records/:id/submit` | RECORD_EDIT | Optional draft fields + `version`; requires title/description/location/assignees, `noMaintenanceItem = true` and at least one image `SITE_PHOTO`; moves `DRAFT` → `PENDING_CONFIRMATION` |
+| POST | `/api/records/:id/withdraw` | RECORD_EDIT | `reason` (5–1000 chars) + `version`; moves an editable record to `CLOSED_WITHDRAWN` and audits the reason |
 | GET | `/api/records/:id` | any | `{ record, attachments, audit }`; parts not built yet are left empty |
 
 ## Attachment endpoints (Đợt 2 · T2)
