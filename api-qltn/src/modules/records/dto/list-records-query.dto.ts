@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsIn, IsISO8601, IsOptional, IsString, IsUUID, Matches, MaxLength } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsBoolean, IsIn, IsISO8601, IsOptional, IsString, IsUUID, Matches, MaxLength } from 'class-validator';
 import { PaginationQueryDto } from '../../../common/utils/pagination';
 import { Trim } from '../../../common/validation/trim.decorator';
 import { RECORD_STATUS_LABEL } from '../record-actions';
@@ -41,6 +42,20 @@ export class ListRecordsQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsUUID()
   assigneeId?: string;
+
+  @ApiPropertyOptional({ description: 'Chỉ hồ sơ đang mở (không thuộc trạng thái kết thúc).', example: '1' })
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true' || value === '1')
+  @IsBoolean()
+  open?: boolean;
+
+  @ApiPropertyOptional({
+    enum: ['needs_update'],
+    description: 'Hồ sơ đang chờ bổ sung thông tin/tờ trình/thanh toán hoặc cần khắc phục.',
+  })
+  @IsOptional()
+  @IsIn(['needs_update'])
+  attention?: 'needs_update';
 
   @ApiPropertyOptional({ description: 'Ngày tạo từ (YYYY-MM-DD, giờ Việt Nam).' })
   @IsOptional()

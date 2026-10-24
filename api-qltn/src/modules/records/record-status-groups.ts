@@ -46,3 +46,15 @@ export const statusesOfGroup = (group: RecordStatusGroup): string[] =>
   Object.entries(RECORD_STATUS_GROUP_BY_STATUS)
     .filter(([, value]) => value === group)
     .map(([status]) => status);
+
+/** Final statuses (web `REPAIR_FINAL_STATUSES`); an "open" record is any status outside this list. */
+export const RECORD_FINAL_STATUSES = ['COMPLETED', 'CLOSED_NO_REPAIR', 'UNRESOLVED', 'CLOSED_WITHDRAWN'] as const;
+
+/** Statuses where the manager still has to supplement the record (card "cần bổ sung" and `attention=needs_update`). */
+export const RECORD_NEEDS_UPDATE_STATUSES = [
+  'NEEDS_RECORD_UPDATE',
+  'NEEDS_SUBMISSION_UPDATE',
+  'NEEDS_PAYMENT_UPDATE',
+  'NEEDS_REPAIR',
+  'UNRESOLVED',
+] as const;

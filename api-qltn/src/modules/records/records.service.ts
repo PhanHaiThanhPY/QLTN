@@ -25,10 +25,11 @@ import { BuildingConfig } from '../buildings/entities/building-config.entity';
 import { Location } from '../buildings/entities/location.entity';
 import { User } from '../users/entities/user.entity';
 import type { ListRecordsQueryDto } from './dto/list-records-query.dto';
+import type { RecordSummaryQueryDto } from './dto/record-summary-query.dto';
 import type { CreateRecordDto, SubmitRecordDto, UpdateRecordDraftDto, WithdrawRecordDto } from './dto/record.dto';
 import { RepairRecord } from './entities/repair-record.entity';
 import { assertRecordAction, type RecordAction } from './record-actions';
-import { statusesOfGroup } from './record-status-groups';
+import { RECORD_FINAL_STATUSES, RECORD_NEEDS_UPDATE_STATUSES, statusesOfGroup } from './record-status-groups';
 
 const CODE_PREFIX = 'SC';
 const CODE_WIDTH = 3;
@@ -107,6 +108,18 @@ export interface RecordDetailView {
   /** Site photos (and later, other files) attached to the record, in the record's order. */
   attachments: AttachmentView[];
   audit: AuditEventView[];
+}
+
+/** Counters behind the card row on `/records` (one SQL query, same building scope as the list). */
+export interface RecordSummaryView {
+  /** Not in any final status. */
+  open: number;
+  /** Statuses in `RECORD_NEEDS_UPDATE_STATUSES`. */
+  needsUpdate: number;
+  completed: number;
+  /** Every record in scope (denominator on the cards). */
+  total: number;
+  asOf: Date;
 }
 
 export const toRecordView = (record: RepairRecord): RepairRecordView => ({
@@ -404,6 +417,12 @@ export class RecordsService {
     if (query.statusGroup) {
       qb.andWhere('r.status IN (:...statuses)', { statuses: statusesOfGroup(query.statusGroup) });
     }
+    if (query.open) {
+      qb.andWhere('r.status NOT IN (:...finalStatuses)', { finalStatuses: [...RECORD_FINAL_STATUSES] });
+    }
+    if (query.attention === 'needs_update') {
+      qb.andWhere('r.status IN (:...needsStatuses)', { needsStatuses: [...RECORD_NEEDS_UPDATE_STATUSES] });
+    }
     if (query.locationId) qb.andWhere('r.location_id = :locationId', { locationId: query.locationId });
     if (query.assigneeId) {
       qb.andWhere(
@@ -442,6 +461,40 @@ export class RecordsService {
       .take(window.limit)
       .getManyAndCount();
     return toPaginated(page.map(toRecordView), total, window);
+  }
+
+  /**
+   * Card counters for the record list, in one query with `COUNT(*) FILTER (WHERE …)`.
+   * The scope is the caller's buildings (or the requested building inside it); a building outside the
+   * scope answers zeros, matching the list's empty page. No per-status round trips.
+   */
+  async summary(actor: AuthenticatedUser, query: RecordSummaryQueryDto): Promise<RecordSummaryView> {
+    if (query.buildingId && !actor.buildingIds.includes(query.buildingId)) {
+      return { open: 0, needsUpdate: 0, completed: 0, total: 0, asOf: new Date() };
+    }
+    const qb = this.dataSource.getRepository(RepairRecord).createQueryBuilder('r');
+    if (query.buildingId) qb.where('r.building_id = :buildingId', { buildingId: query.buildingId });
+    else
+      qb.where('r.building_id IN (:...scope)', {
+        scope: actor.buildingIds.length > 0 ? actor.buildingIds : [NO_BUILDING],
+      });
+    qb.select('COUNT(*)', 'total')
+      .addSelect('COUNT(*) FILTER (WHERE r.status NOT IN (:...finalStatuses))', 'open')
+      .addSelect('COUNT(*) FILTER (WHERE r.status IN (:...needsStatuses))', 'needsUpdate')
+      .addSelect('COUNT(*) FILTER (WHERE r.status = :completedStatus)', 'completed')
+      .setParameters({
+        finalStatuses: [...RECORD_FINAL_STATUSES],
+        needsStatuses: [...RECORD_NEEDS_UPDATE_STATUSES],
+        completedStatus: 'COMPLETED',
+      });
+    const row = await qb.getRawOne<Record<string, string>>();
+    return {
+      open: Number(row?.open ?? 0),
+      needsUpdate: Number(row?.needsUpdate ?? 0),
+      completed: Number(row?.completed ?? 0),
+      total: Number(row?.total ?? 0),
+      asOf: new Date(),
+    };
   }
 
   /** Record + history for the detail screen; another building's record answers 404. */

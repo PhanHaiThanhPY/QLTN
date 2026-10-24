@@ -37,6 +37,8 @@ const FIELD_LABELS: Readonly<Record<string, string>> = {
   q: 'Từ khoá',
   search: 'Từ khoá',
   statusGroup: 'Nhóm trạng thái',
+  open: 'Chỉ hồ sơ đang mở',
+  attention: 'Nhóm cần bổ sung',
   assigneeId: 'Người phụ trách',
   dateFrom: 'Ngày bắt đầu',
   dateTo: 'Ngày kết thúc',

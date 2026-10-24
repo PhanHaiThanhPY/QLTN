@@ -5,8 +5,14 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireCapabilities } from '../../common/decorators/require-capabilities.decorator';
 import type { PaginatedResult } from '../../common/interfaces/paginated.interface';
 import { ListRecordsQueryDto } from './dto/list-records-query.dto';
+import { RecordSummaryQueryDto } from './dto/record-summary-query.dto';
 import { CreateRecordDto, SubmitRecordDto, UpdateRecordDraftDto, WithdrawRecordDto } from './dto/record.dto';
-import { RecordsService, type RecordDetailView, type RepairRecordView } from './records.service';
+import {
+  RecordsService,
+  type RecordDetailView,
+  type RecordSummaryView,
+  type RepairRecordView,
+} from './records.service';
 
 @ApiTags('Records')
 @ApiBearerAuth()
@@ -22,6 +28,13 @@ export class RecordsController {
     @Query() query: ListRecordsQueryDto,
   ): Promise<PaginatedResult<RepairRecordView>> {
     return this.records.list(user, query);
+  }
+
+  @Get('summary')
+  @RequireCapabilities('VIEW')
+  @ApiOperation({ summary: 'Số đếm cho hàng thẻ đầu danh sách hồ sơ (một truy vấn, phạm vi tòa)' })
+  summary(@CurrentUser() user: AuthenticatedUser, @Query() query: RecordSummaryQueryDto): Promise<RecordSummaryView> {
+    return this.records.summary(user, query);
   }
 
   @Post()
