@@ -68,11 +68,6 @@ export const useRecordFormSubmit = ({ record, photoIds, pendingFiles, carriedErr
     const recordId = created?.subjectId;
     if (!recordId) return;
     const code = typeof created.data?.code === 'string' ? created.data.code : '';
-    if (IS_API_MODE) {
-      toast.success(`Đã tạo hồ sơ nháp ${code}.`);
-      navigate(`/records/${recordId}`, { replace: true });
-      return;
-    }
     setIsUploading(true);
     const ids = await uploadPending(recordId, pendingFiles);
     setIsUploading(false);
@@ -92,7 +87,8 @@ export const useRecordFormSubmit = ({ record, photoIds, pendingFiles, carriedErr
       if (ids.length > 0) await saveCommand.execute({ ...base, action: 'saveRecordDraft' });
       toast.success(`Đã tạo hồ sơ nháp ${code}.`);
     }
-    navigate(`/records/${recordId}/edit`, { replace: true });
+    // API mode lands on the detail screen (T1 behaviour); the demo keeps its edit step.
+    navigate(IS_API_MODE ? `/records/${recordId}` : `/records/${recordId}/edit`, { replace: true });
   };
 
   const save = async (values: RecordFormValues, intent: RecordFormIntent) => {

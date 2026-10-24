@@ -29,7 +29,7 @@ export const OverviewTab = () => {
       {record.status === 'DRAFT' ? (
         <Notice title="Hồ sơ nháp">
           {IS_API_MODE
-            ? 'Hoàn thiện thông tin và lưu nháp; gửi xác nhận và ảnh hiện trường sẽ có ở bước tiếp theo.'
+            ? 'Hoàn thiện thông tin, thêm ảnh hiện trường và lưu nháp; gửi xác nhận sẽ có ở bước tiếp theo.'
             : 'Hoàn thiện thông tin, thêm ít nhất 1 ảnh hiện trường rồi “Gửi xác nhận”.'}
         </Notice>
       ) : null}

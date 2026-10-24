@@ -942,6 +942,7 @@ describe('api command adapter — configuration and workflow', () => {
       locationId: null,
       confirmationUserId: null,
       noMaintenanceItem: false,
+      attachmentIds: [],
     });
   });
 

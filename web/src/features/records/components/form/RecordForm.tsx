@@ -98,10 +98,8 @@ export const RecordForm = ({ reference, record, attachments, prefill }: RecordFo
           approvalStepKeys={record?.approvalStepKeys}
         />
       </FormSection>
-      <FormSection title="Ảnh hiện trường" description={IS_API_MODE ? 'Tải ảnh sẽ có ở bước tiếp theo.' : 'Cần ít nhất 1 ảnh (JPEG/PNG/WebP) khi gửi xác nhận.'}>
-        {IS_API_MODE ? (
-          <Notice tone="info" title="Ảnh hiện trường">Tải ảnh sẽ có ở bước tiếp theo.</Notice>
-        ) : record ? (
+      <FormSection title="Ảnh hiện trường" description="Cần ít nhất 1 ảnh (JPEG/PNG/WebP) khi gửi xác nhận.">
+        {record ? (
           <AttachmentField
             label="Ảnh/tệp hiện trường"
             recordId={record.id}

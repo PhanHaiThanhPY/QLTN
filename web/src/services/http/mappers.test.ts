@@ -9,6 +9,7 @@ import {
   mapBuildingConfig,
   mapDepartment,
   mapLocation,
+  mapAttachment,
   mapRecordDetail,
   mapReferenceUser,
   mapRole,
@@ -938,6 +939,39 @@ describe('repair record mappers', () => {
     expect(detail.isOverdue).toBe(false);
   });
 
+  it('should map the site photos attached to the record', () => {
+    const attachment = mapAttachment({
+      id: 'att-1',
+      subjectType: 'REPAIR_RECORD',
+      subjectId: 'rec-1',
+      buildingId: 'bld-a',
+      purpose: 'SITE_PHOTO',
+      fileName: 'hien-truong.png',
+      mimeType: 'image/png',
+      sizeBytes: 2048,
+      uploadedBy: 'usr-bql',
+      createdAt: '2026-10-24T02:00:00.000Z',
+    });
+
+    expect(attachment).toEqual({
+      id: 'att-1',
+      subjectType: 'REPAIR_RECORD',
+      subjectId: 'rec-1',
+      buildingId: 'bld-a',
+      purpose: 'SITE_PHOTO',
+      fileName: 'hien-truong.png',
+      mimeType: 'image/png',
+      sizeBytes: 2048,
+      contentRef: 'att-1',
+      uploadedBy: 'usr-bql',
+      createdAt: '2026-10-24T02:00:00.000Z',
+    });
+
+    const detail = mapRecordDetail({ record: row, attachments: [attachment] });
+    expect(detail.attachments).toEqual([attachment]);
+    expect(detail.record.attachmentIds).toEqual([]);
+  });
+
   it('should build a CreateRecordDto without the fields T1 does not accept', () => {
     const body = toCreateRecordBody({
       buildingId: ' bld-a ',
@@ -989,6 +1023,13 @@ describe('repair record mappers', () => {
       locationId: null,
       confirmationUserId: null,
       noMaintenanceItem: false,
+      attachmentIds: ['att-1'],
+    });
+
+    // Attachment-only save right after create: no other field is present, so none is cleared.
+    expect(toUpdateRecordDraftBody({ attachmentIds: ['att-1', 'att-2'] }, 4)).toEqual({
+      version: 4,
+      attachmentIds: ['att-1', 'att-2'],
     });
 
     try {

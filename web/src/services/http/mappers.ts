@@ -6,6 +6,7 @@ import { CAPABILITY } from '@/domain/permissions';
 import type { Capability } from '@/domain/permissions';
 import type {
   AssignmentRule,
+  Attachment,
   AuditEvent,
   Building,
   BuildingConfig,
@@ -1011,14 +1012,44 @@ export const mapRepairRecord = (row: ApiRepairRecord): RepairRecord => {
   };
 };
 
+/** One stored file as returned by `POST /attachments` and inside `GET /records/:id`. */
+export interface ApiAttachment {
+  id: string;
+  subjectType: string;
+  subjectId: string;
+  buildingId: string;
+  purpose: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  uploadedBy: string;
+  createdAt: string;
+}
+
+/** Backend attachment → web `Attachment`; the content is fetched separately by id. */
+export const mapAttachment = (row: ApiAttachment): Attachment => ({
+  id: row.id,
+  subjectType: row.subjectType as SubjectType,
+  subjectId: row.subjectId,
+  buildingId: row.buildingId,
+  purpose: row.purpose as Attachment['purpose'],
+  fileName: row.fileName,
+  mimeType: row.mimeType,
+  sizeBytes: row.sizeBytes,
+  contentRef: row.id,
+  uploadedBy: row.uploadedBy,
+  createdAt: row.createdAt,
+});
+
 export interface ApiRecordDetail {
   record: ApiRepairRecord;
+  attachments?: readonly ApiAttachment[];
   audit?: readonly ApiAuditEvent[];
 }
 
 /**
- * Backend detail → web `RecordDetail`. Đợt 2 T1 only has the record and its history; parts that arrive in
- * later slices (proposal, construction, acceptance, payment, files) come back as empty values so tabs keep working.
+ * Backend detail → web `RecordDetail`. Đợt 2 T2 has the record, its site photos and the history; parts that
+ * arrive in later slices (proposal, construction, acceptance, payment, other files) come back as empty values.
  */
 export const mapRecordDetail = (row: ApiRecordDetail): RecordDetail => ({
   record: mapRepairRecord(row.record),
@@ -1028,7 +1059,7 @@ export const mapRecordDetail = (row: ApiRecordDetail): RecordDetail => ({
   acceptances: [],
   paymentRequests: [],
   payments: [],
-  attachments: [],
+  attachments: (row.attachments ?? []).map(mapAttachment),
   audit: (row.audit ?? []).map(mapAuditEvent),
   alerts: [],
   inactiveSlots: [],
@@ -1074,6 +1105,8 @@ export interface ApiUpdateRecordDraftBody {
   locationId?: string | null;
   confirmationUserId?: string | null;
   noMaintenanceItem?: boolean;
+  /** Present = replace the record's file list (an empty array detaches every file). */
+  attachmentIds?: string[];
 }
 
 /** Web `saveRecordDraft` payload → `UpdateRecordDraftDto`; `version` is the lock the screen loaded. */
@@ -1088,8 +1121,12 @@ export const toUpdateRecordDraftBody = (
   if (row.description !== undefined) body.description = asString(row.description);
   const priority = asOptionalString(row.priority);
   if (priority) body.priority = priority;
-  body.locationId = asOptionalString(row.locationId) ?? null;
-  body.confirmationUserId = asOptionalString(row.confirmationUserId) ?? null;
-  body.noMaintenanceItem = row.noMaintenanceItem === true;
+  // A partial payload (e.g. attachment-only save right after create) must not clear the other fields.
+  if (row.locationId !== undefined) body.locationId = asOptionalString(row.locationId) ?? null;
+  if (row.confirmationUserId !== undefined) {
+    body.confirmationUserId = asOptionalString(row.confirmationUserId) ?? null;
+  }
+  if (row.noMaintenanceItem !== undefined) body.noMaintenanceItem = row.noMaintenanceItem === true;
+  if (row.attachmentIds !== undefined) body.attachmentIds = asStringArray(row.attachmentIds);
   return body;
 };
