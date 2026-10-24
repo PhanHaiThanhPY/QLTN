@@ -28,9 +28,9 @@ import type { ItemRepairHistory, RepairAlert } from '@/domain/repair-alerts';
 import { IS_API_MODE } from '@/config/data-source';
 import { getDb } from '@/storage/db';
 import { toVnDate } from '@/utils/date';
-import { apiRequest } from './http/client';
-import { mapRecordDetail } from './http/mappers';
-import type { ApiRecordDetail } from './http/mappers';
+import { apiList, apiRequest } from './http/client';
+import { mapRecordDetail, mapRepairRecord } from './http/mappers';
+import type { ApiRecordDetail, ApiRepairRecord } from './http/mappers';
 import { now } from './runtime';
 import { todayVn } from './runtime';
 import { assertInScope, requireViewer, scopedBuildingIds } from './viewer';
@@ -90,8 +90,40 @@ const matchesFilters = (record: RepairRecord, filters: RecordFilters): boolean =
   return true;
 };
 
+/**
+ * api mode: the backend pages, searches and filters (`GET /records`); `meta` is the source of the page numbers.
+ * Fields the backend does not have (`overdue`, `maintenanceItemId`, `itemLink`) are not sent, and the
+ * server-side flags are left `false` on purpose (T4b/Đợt 3 will supply them).
+ */
+const listApiRecords = async (filters: RecordFilters): Promise<Page<RecordListItem>> => {
+  const page = filters.page ?? 1;
+  const pageSize = filters.pageSize ?? LIMITS.PAGE_SIZE;
+  const result = await apiList<ApiRepairRecord>('GET', '/records', {
+    query: {
+      page,
+      limit: pageSize,
+      search: filters.q?.trim() || undefined,
+      buildingId: filters.buildingId || undefined,
+      statusGroup: filters.statusGroup || undefined,
+      status: filters.status || undefined,
+      locationId: filters.locationId || undefined,
+      assigneeId: filters.assigneeId || undefined,
+      dateFrom: filters.dateFrom || undefined,
+      dateTo: filters.dateTo || undefined,
+    },
+  });
+  const meta = result.meta ?? { page, limit: pageSize, total: result.data.length, totalPages: 1 };
+  return {
+    items: result.data.map((row) => ({ record: mapRepairRecord(row), isOverdue: false, needsReassignment: false })),
+    total: meta.total,
+    page: meta.page,
+    pageSize: meta.limit,
+  };
+};
+
 /** Lists records inside the viewer's buildings with filters and pagination. */
 export const listRecords = async (filters: RecordFilters = {}): Promise<Page<RecordListItem>> => {
+  if (IS_API_MODE) return listApiRecords(filters);
   const viewer = await requireViewer();
   const db = getDb();
   const buildingIds = scopedBuildingIds(viewer, filters.buildingId);

@@ -7,7 +7,9 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/common/States
 import { Button } from '@/components/ui/button';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { StatCard, StatCardRow } from '@/components/ui/stat-card';
+import { IS_API_MODE } from '@/config/data-source';
 import { REPAIR_FINAL_STATUSES } from '@/domain/constants';
+import { AppError, ERROR_CODE } from '@/domain/errors';
 import { hasCapability } from '@/domain/permissions';
 import { useReferenceData } from '@/hooks/useReferenceData';
 import { useServiceQuery } from '@/hooks/useServiceQuery';
@@ -23,7 +25,8 @@ const RecordsPage = () => {
   const navigate = useNavigate();
   const { filters, overdueOnly, setFilter, setPage, clear, hasFilters } = useRecordFilters();
   const query = useServiceQuery(['records', filters], () => listRecords(filters));
-  const summaryQuery = useServiceQuery(['records', 'summary'], () => listRecords({ page: 1, pageSize: 5000 }));
+  // Counters come from a separate endpoint (D2-T4b); api mode must not count the loaded page.
+  const summaryQuery = useServiceQuery(['records', 'summary'], () => listRecords({ page: 1, pageSize: 5000 }), !IS_API_MODE);
   const viewer = reference.data?.viewer;
   const canCreate = viewer ? hasCapability(viewer, 'RECORD_EDIT') : false;
   const summaryRows = summaryQuery.data?.items ?? [];
@@ -44,13 +47,24 @@ const RecordsPage = () => {
 
   const renderBody = () => {
     if (query.isLoading || reference.isLoading) return <LoadingState rows={5} />;
-    if (query.error) return <ErrorState error={query.error} onRetry={() => void query.refetch()} />;
+    // No data is never "empty": a paused/aborted/failed query must say so and offer a retry.
+    if (query.error || !query.data) {
+      const error = query.error ?? new AppError(ERROR_CODE.NETWORK_ERROR, 'Không tải được danh sách hồ sơ. Vui lòng thử lại.');
+      return <ErrorState error={error} onRetry={() => void query.refetch()} />;
+    }
     const page = query.data;
-    if (!page || page.items.length === 0) {
-      return (
+    if (page.items.length === 0) {
+      return hasFilters ? (
         <EmptyState
-          title={hasFilters ? 'Không có hồ sơ phù hợp' : 'Chưa có hồ sơ sửa chữa'}
-          description={hasFilters ? 'Thử đổi hoặc xóa bộ lọc.' : 'Hồ sơ sửa chữa trong phạm vi tòa nhà của bạn sẽ hiển thị ở đây.'}
+          title="Không có hồ sơ phù hợp"
+          description="Thử đổi hoặc xóa bộ lọc."
+          action={<Button variant="outline" size="sm" onClick={clear}>Xóa bộ lọc</Button>}
+        />
+      ) : (
+        <EmptyState
+          title="Chưa có hồ sơ sửa chữa"
+          description="Hồ sơ sửa chữa trong phạm vi tòa nhà của bạn sẽ hiển thị ở đây."
+          action={canCreate ? <Button onClick={() => navigate('/records/new')}>Tạo hồ sơ</Button> : null}
         />
       );
     }
@@ -81,27 +95,31 @@ const RecordsPage = () => {
           ) : null
         }
       />
-      <StatCardRow className="mb-4 xl:grid-cols-4">
-        <StatCard compact icon={ListTodo} value={summaryQuery.isLoading ? '—' : summary.open} label="Hồ sơ đang mở" tone="info" hint="Cần theo dõi" />
-        <StatCard compact icon={AlertTriangle} value={summaryQuery.isLoading ? '—' : summary.overdue} label="Quá hạn" tone="crit" hint="Ưu tiên xử lý" onClick={() => setFilter('overdue', '1')} />
-        <StatCard compact icon={Clock3} value={summaryQuery.isLoading ? '—' : summary.needsAction} label="Cần xử lý" tone="warn" hint="Có cảnh báo hoặc thiếu bước" />
-        <StatCard compact icon={CheckCircle2} value={summaryQuery.isLoading ? '—' : summary.completed} label="Hoàn tất" tone="good" hint="Đã kết thúc" />
-      </StatCardRow>
-      {summary.attention.length > 0 ? (
-        <Card className="mb-4 border-warn/30 shadow-none">
-          <CardHeader title={`Cần xử lý ngay (${summary.needsAction})`} description="Các hồ sơ quá hạn, thiếu phân công hoặc đang chờ bổ sung thông tin." actions={<button type="button" className="text-xs font-semibold text-accent hover:underline" onClick={() => setFilter('overdue', '1')}>Lọc hồ sơ quá hạn</button>} />
-          <CardBody className="grid gap-2 pt-0 md:grid-cols-2">
-            {summary.attention.map(({ record, isOverdue, needsReassignment }) => (
-              <Link key={record.id} to={`/records/${record.id}`} className="flex min-h-12 items-center justify-between gap-3 rounded-lg border border-line bg-surface-2 px-3 py-2 transition-colors hover:border-accent">
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-semibold text-ink">{record.code} · {record.title || 'Hồ sơ chưa đặt tên'}</span>
-                  <span className="block truncate text-xs text-ink-2">{reference.data ? `${reference.data.buildings.find((building) => building.id === record.buildingId)?.name ?? 'Chưa gán tòa'} · ${reference.data.locations.find((location) => location.id === record.locationId)?.name ?? 'Chưa gán vị trí'}` : 'Đang tải vị trí'}</span>
-                </span>
-                <span className="shrink-0 text-right text-[0.6875rem] font-semibold text-crit">{isOverdue ? 'Quá hạn' : needsReassignment ? 'Cần phân công' : 'Cần cập nhật'}</span>
-              </Link>
-            ))}
-          </CardBody>
-        </Card>
+      {!IS_API_MODE ? (
+        <>
+          <StatCardRow className="mb-4 xl:grid-cols-4">
+            <StatCard compact icon={ListTodo} value={summaryQuery.isLoading ? '—' : summary.open} label="Hồ sơ đang mở" tone="info" hint="Cần theo dõi" />
+            <StatCard compact icon={AlertTriangle} value={summaryQuery.isLoading ? '—' : summary.overdue} label="Quá hạn" tone="crit" hint="Ưu tiên xử lý" onClick={() => setFilter('overdue', '1')} />
+            <StatCard compact icon={Clock3} value={summaryQuery.isLoading ? '—' : summary.needsAction} label="Cần xử lý" tone="warn" hint="Có cảnh báo hoặc thiếu bước" />
+            <StatCard compact icon={CheckCircle2} value={summaryQuery.isLoading ? '—' : summary.completed} label="Hoàn tất" tone="good" hint="Đã kết thúc" />
+          </StatCardRow>
+          {summary.attention.length > 0 ? (
+            <Card className="mb-4 border-warn/30 shadow-none">
+              <CardHeader title={`Cần xử lý ngay (${summary.needsAction})`} description="Các hồ sơ quá hạn, thiếu phân công hoặc đang chờ bổ sung thông tin." actions={<button type="button" className="text-xs font-semibold text-accent hover:underline" onClick={() => setFilter('overdue', '1')}>Lọc hồ sơ quá hạn</button>} />
+              <CardBody className="grid gap-2 pt-0 md:grid-cols-2">
+                {summary.attention.map(({ record, isOverdue, needsReassignment }) => (
+                  <Link key={record.id} to={`/records/${record.id}`} className="flex min-h-12 items-center justify-between gap-3 rounded-lg border border-line bg-surface-2 px-3 py-2 transition-colors hover:border-accent">
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-semibold text-ink">{record.code} · {record.title || 'Hồ sơ chưa đặt tên'}</span>
+                      <span className="block truncate text-xs text-ink-2">{reference.data ? `${reference.data.buildings.find((building) => building.id === record.buildingId)?.name ?? 'Chưa gán tòa'} · ${reference.data.locations.find((location) => location.id === record.locationId)?.name ?? 'Chưa gán vị trí'}` : 'Đang tải vị trí'}</span>
+                    </span>
+                    <span className="shrink-0 text-right text-[0.6875rem] font-semibold text-crit">{isOverdue ? 'Quá hạn' : needsReassignment ? 'Cần phân công' : 'Cần cập nhật'}</span>
+                  </Link>
+                ))}
+              </CardBody>
+            </Card>
+          ) : null}
+        </>
       ) : null}
       {reference.data ? (
         <Card className="mb-4 shadow-none">
