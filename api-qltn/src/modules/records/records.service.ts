@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource, EntityManager } from 'typeorm';
+import { DataSource, EntityManager, In } from 'typeorm';
 import type { AuthenticatedUser } from '../../common/auth/authenticated-user';
 import { assertBuildingInScope } from '../../common/auth/scope';
-import { assertVersion, conflict, forbiddenWithReason, notFound } from '../../common/errors';
+import { assertVersion, notFound } from '../../common/errors';
 import { FieldErrors } from '../../common/validation/field-errors';
 import { CodeCounterService } from '../../common/services/code-counter.service';
 import {
+  APPROVAL_STEPS,
   approvalDefinitionsOf,
   type AssignmentRule,
   type TaskDueDays,
@@ -15,15 +16,36 @@ import {
 import type { Role } from '../../domain/permissions';
 import { AuditService, type AuditEventView } from '../audit/audit.service';
 import { SUBJECT_TYPE } from '../audit/entities/audit-event.entity';
+import { ATTACHMENT_DRAFT_MESSAGES } from '../attachments/attachments.service';
+import { toAttachmentView, type AttachmentView } from '../attachments/attachment-view';
+import { Attachment } from '../attachments/entities/attachment.entity';
 import { BuildingConfig } from '../buildings/entities/building-config.entity';
 import { Location } from '../buildings/entities/location.entity';
 import { User } from '../users/entities/user.entity';
-import type { CreateRecordDto, UpdateRecordDraftDto } from './dto/record.dto';
+import type { CreateRecordDto, SubmitRecordDto, UpdateRecordDraftDto, WithdrawRecordDto } from './dto/record.dto';
 import { RepairRecord } from './entities/repair-record.entity';
+import { assertRecordAction, type RecordAction } from './record-actions';
 
 const CODE_PREFIX = 'SC';
 const CODE_WIDTH = 3;
 const DRAFT_STATUS = 'DRAFT';
+const PENDING_CONFIRMATION = 'PENDING_CONFIRMATION';
+const CLOSED_WITHDRAWN = 'CLOSED_WITHDRAWN';
+
+/** Same bounds as web `LIMITS` (title/description/reason) and the demo submit rules. */
+const TITLE_MIN = 3;
+const TITLE_MAX = 120;
+const DESCRIPTION_MIN = 10;
+const DESCRIPTION_MAX = 2000;
+const REASON_MIN = 5;
+const REASON_MAX = 1000;
+
+/** Legacy approval steps that resolve their assignee from a record column; custom steps use the snapshot map. */
+const APPROVAL_STEP_SLOT: Partial<Record<string, 'confirmationUserId' | 'consultantUserId' | 'boardUserId'>> = {
+  TECH_CONFIRM: 'confirmationUserId',
+  TECH: 'consultantUserId',
+  BOARD: 'boardUserId',
+};
 
 export interface RepairRecordView {
   id: string;
@@ -45,7 +67,7 @@ export interface RepairRecordView {
   approvalAssigneeUserIds: Record<string, string>;
   /** Snapshot of the building's task due days when the record was created. */
   dueDays: TaskDueDays;
-  /** Files arrive in T2; the field stays so the detail screen keeps its shape. */
+  /** Ordered ids of the site photos attached to the record. */
   attachmentIds: string[];
   createdBy: string;
   version: number;
@@ -55,6 +77,8 @@ export interface RepairRecordView {
 
 export interface RecordDetailView {
   record: RepairRecordView;
+  /** Site photos (and later, other files) attached to the record, in the record's order. */
+  attachments: AttachmentView[];
   audit: AuditEventView[];
 }
 
@@ -77,7 +101,7 @@ export const toRecordView = (record: RepairRecord): RepairRecordView => ({
   workflowStageApprovalStepKeys: record.workflowStageApprovalStepKeys,
   approvalAssigneeUserIds: { ...record.approvalAssigneeUserIds },
   dueDays: { ...record.taskDueDays },
-  attachmentIds: [],
+  attachmentIds: [...record.attachmentIds],
   createdBy: record.createdBy,
   version: record.version,
   createdAt: record.createdAt,
@@ -119,6 +143,20 @@ const isActiveUserInRole = (
   const rules = ctx.rules.filter((rule) => rule.role === role);
   if (rules.length === 0) return true;
   return rulesFor(ctx, role, locationId).some((rule) => rule.departmentId === user.departmentId);
+};
+
+/** Mirrors web `isActiveUserForApprovalStep`: active, in the area, and holding the step's role. */
+const isActiveUserForApprovalStep = (
+  ctx: AssignmentContext,
+  userId: string | null | undefined,
+  step: WorkflowApprovalStep,
+  buildingId: string,
+  locationId: string | null,
+): boolean => {
+  const user = userId ? ctx.users.find((row) => row.id === userId) : undefined;
+  if (!user || !user.isActive || !canAccessLocation(user, buildingId, locationId)) return false;
+  if (step.roleDefId) return user.roleDefId === step.roleDefId;
+  return isActiveUserInRole(ctx, user.id, step.role, buildingId, locationId);
 };
 
 /** Mirrors web `firstActiveInRole`: the first active user selected by the building assignment rules. */
@@ -244,34 +282,12 @@ export class RecordsService {
   /** Draft save: only editable fields, version-locked, same audit trail as the demo command. */
   async updateDraft(actor: AuthenticatedUser, id: string, dto: UpdateRecordDraftDto): Promise<RepairRecordView> {
     return this.dataSource.transaction(async (manager) => {
-      const repo = manager.getRepository(RepairRecord);
-      const record = await repo.findOne({ where: { id }, lock: { mode: 'pessimistic_write' } });
-      if (!record || !actor.buildingIds.includes(record.buildingId)) throw notFound('Không tìm thấy hồ sơ.');
-      assertVersion(record.version, dto.version);
-      if (actor.id !== record.managerUserId) {
-        throw forbiddenWithReason('not_record_manager', 'Chỉ BQL quản lý được giao mới thực hiện được bước này.');
-      }
-      if (record.status !== DRAFT_STATUS)
-        throw conflict('Hồ sơ đã rời trạng thái nháp. Vui lòng tải lại trước khi thao tác.');
-
+      const record = await this.loadRecordForAction(manager, actor, id, dto.version, 'saveRecordDraft');
       const assignment = await this.loadAssignmentContext(manager, record.buildingId);
-      const locationId = dto.locationId !== undefined ? dto.locationId : record.locationId;
-      const confirmationUserId =
-        dto.confirmationUserId !== undefined ? dto.confirmationUserId : record.confirmationUserId;
-      const errors = new FieldErrors();
-      await this.validateLocation(manager, errors, record.buildingId, locationId, record.locationId);
-      this.validateManager(assignment, errors, record.managerUserId, record.buildingId, locationId);
-      this.validateConfirmer(assignment, errors, confirmationUserId, record.buildingId, locationId);
-      errors.throwIfAny();
-
-      record.locationId = locationId;
-      record.confirmationUserId = confirmationUserId;
-      if (dto.title !== undefined) record.title = dto.title;
-      if (dto.description !== undefined) record.description = dto.description;
-      if (dto.priority !== undefined) record.priority = dto.priority;
-      if (dto.noMaintenanceItem !== undefined) record.noMaintenanceItem = dto.noMaintenanceItem;
+      await this.applyDraftFields(manager, assignment, record, dto);
+      const fromStatus = record.status;
       record.version += 1;
-      const saved = await repo.save(record);
+      const saved = await manager.getRepository(RepairRecord).save(record);
       await this.audit.record(manager, {
         subjectType: SUBJECT_TYPE.REPAIR_RECORD,
         subjectId: saved.id,
@@ -279,8 +295,63 @@ export class RecordsService {
         action: 'saveRecordDraft',
         actorId: actor.id,
         entityVersion: saved.version,
-        fromStatus: DRAFT_STATUS,
+        fromStatus,
         toStatus: saved.status,
+      });
+      return toRecordView(saved);
+    });
+  }
+
+  /**
+   * Leaves the draft: applies the optional draft fields sent with the request, then runs the
+   * demo's `assertSubmittable` checks (all field errors at once, nothing persisted on failure).
+   */
+  async submit(actor: AuthenticatedUser, id: string, dto: SubmitRecordDto): Promise<RepairRecordView> {
+    return this.dataSource.transaction(async (manager) => {
+      const record = await this.loadRecordForAction(manager, actor, id, dto.version, 'submitRecord');
+      const assignment = await this.loadAssignmentContext(manager, record.buildingId);
+      await this.applyDraftFields(manager, assignment, record, dto);
+      await this.assertSubmittable(manager, assignment, record);
+      const fromStatus = record.status;
+      record.status = PENDING_CONFIRMATION;
+      record.version += 1;
+      const saved = await manager.getRepository(RepairRecord).save(record);
+      await this.audit.record(manager, {
+        subjectType: SUBJECT_TYPE.REPAIR_RECORD,
+        subjectId: saved.id,
+        buildingId: saved.buildingId,
+        action: 'submitRecord',
+        actorId: actor.id,
+        entityVersion: saved.version,
+        fromStatus,
+        toStatus: saved.status,
+      });
+      return toRecordView(saved);
+    });
+  }
+
+  /** Withdraws an editable draft (another status answers 409 `invalid_status_transition`); reason is mandatory. */
+  async withdraw(actor: AuthenticatedUser, id: string, dto: WithdrawRecordDto): Promise<RepairRecordView> {
+    return this.dataSource.transaction(async (manager) => {
+      const record = await this.loadRecordForAction(manager, actor, id, dto.version, 'withdrawRecord');
+      const reason = (dto.reason ?? '').trim();
+      const errors = new FieldErrors();
+      this.validateText(errors, 'reason', 'Lý do', reason, REASON_MIN, REASON_MAX);
+      errors.throwIfAny();
+      const fromStatus = record.status;
+      record.status = CLOSED_WITHDRAWN;
+      record.version += 1;
+      const saved = await manager.getRepository(RepairRecord).save(record);
+      await this.audit.record(manager, {
+        subjectType: SUBJECT_TYPE.REPAIR_RECORD,
+        subjectId: saved.id,
+        buildingId: saved.buildingId,
+        action: 'withdrawRecord',
+        actorId: actor.id,
+        entityVersion: saved.version,
+        fromStatus,
+        toStatus: saved.status,
+        reason,
       });
       return toRecordView(saved);
     });
@@ -290,8 +361,171 @@ export class RecordsService {
   async getDetail(actor: AuthenticatedUser, id: string): Promise<RecordDetailView> {
     const record = await this.dataSource.getRepository(RepairRecord).findOneBy({ id });
     if (!record || !actor.buildingIds.includes(record.buildingId)) throw notFound('Không tìm thấy hồ sơ.');
-    const audit = await this.audit.listForSubject(SUBJECT_TYPE.REPAIR_RECORD, id, { page: 1, limit: 100 });
-    return { record: toRecordView(record), audit: audit.data };
+    const [attachments, audit] = await Promise.all([
+      this.attachmentsOf(record),
+      this.audit.listForSubject(SUBJECT_TYPE.REPAIR_RECORD, id, { page: 1, limit: 100 }),
+    ]);
+    return { record: toRecordView(record), attachments, audit: audit.data };
+  }
+
+  /** Locks the record, hides other buildings (404), enforces the version then the shared action rules. */
+  private async loadRecordForAction(
+    manager: EntityManager,
+    actor: AuthenticatedUser,
+    id: string,
+    version: number,
+    action: RecordAction,
+  ): Promise<RepairRecord> {
+    const record = await manager
+      .getRepository(RepairRecord)
+      .findOne({ where: { id }, lock: { mode: 'pessimistic_write' } });
+    if (!record || !actor.buildingIds.includes(record.buildingId)) throw notFound('Không tìm thấy hồ sơ.');
+    assertVersion(record.version, version);
+    assertRecordAction(actor, record, action);
+    return record;
+  }
+
+  /**
+   * Applies the optional draft fields of a PATCH/submit request (same rules as web `applyDraftFields`).
+   * References must stay inside the record's building; assignees may not change once the record left DRAFT.
+   */
+  private async applyDraftFields(
+    manager: EntityManager,
+    assignment: AssignmentContext,
+    record: RepairRecord,
+    dto: UpdateRecordDraftDto,
+  ): Promise<void> {
+    const locationId = dto.locationId !== undefined ? dto.locationId : record.locationId;
+    const confirmationUserId =
+      dto.confirmationUserId !== undefined ? dto.confirmationUserId : record.confirmationUserId;
+    const errors = new FieldErrors();
+    await this.validateLocation(manager, errors, record.buildingId, locationId, record.locationId);
+    this.validateManager(assignment, errors, record.managerUserId, record.buildingId, locationId);
+    this.validateConfirmer(assignment, errors, confirmationUserId, record.buildingId, locationId);
+    errors.when(
+      Boolean(confirmationUserId) &&
+        record.status !== DRAFT_STATUS &&
+        (confirmationUserId ?? '') !== (record.confirmationUserId ?? ''),
+      'confirmationUserId',
+      'Hồ sơ đã gửi: dùng chức năng “Giao lại” để đổi người xử lý.',
+    );
+    const attachmentIds = await this.validateAttachments(manager, errors, record, dto.attachmentIds);
+    errors.throwIfAny();
+
+    if (attachmentIds) record.attachmentIds = attachmentIds;
+    record.locationId = locationId;
+    record.confirmationUserId = confirmationUserId;
+    if (dto.title !== undefined) record.title = dto.title;
+    if (dto.description !== undefined) record.description = dto.description;
+    if (dto.priority !== undefined) record.priority = dto.priority;
+    if (dto.noMaintenanceItem !== undefined) record.noMaintenanceItem = dto.noMaintenanceItem;
+  }
+
+  /** Mirrors web `assertSubmittable`; T3 only supports "no specific equipment" (maintenance items are Đợt 3). */
+  private async assertSubmittable(manager: EntityManager, ctx: AssignmentContext, record: RepairRecord): Promise<void> {
+    const errors = new FieldErrors();
+    this.validateText(errors, 'title', 'Tên hồ sơ', record.title, TITLE_MIN, TITLE_MAX);
+    this.validateText(errors, 'description', 'Mô tả hư hỏng', record.description, DESCRIPTION_MIN, DESCRIPTION_MAX);
+    const location = record.locationId
+      ? await manager.getRepository(Location).findOneBy({ id: record.locationId })
+      : null;
+    errors.when(
+      !location || location.buildingId !== record.buildingId,
+      'locationId',
+      'Vị trí phải thuộc tòa nhà của hồ sơ.',
+    );
+    errors.when(
+      !isActiveUserInRole(ctx, record.managerUserId, 'BQL', record.buildingId, record.locationId),
+      'managerUserId',
+      'BQL quản lý không còn hoạt động hoặc không đúng khu vực.',
+    );
+    errors.when(
+      !isActiveUserInRole(ctx, record.confirmationUserId, 'TECH_CONFIRMER', record.buildingId, record.locationId),
+      'confirmationUserId',
+      'Người xác nhận đã ngừng hoạt động, sai khu vực hoặc không hợp lệ. Cần phân công lại.',
+    );
+    for (const [index, step] of this.approvalStepsOf(record).entries()) {
+      const slot = APPROVAL_STEP_SLOT[step.key];
+      const userId = slot ? record[slot] : (record.approvalAssigneeUserIds?.[step.key] ?? null);
+      if (!isActiveUserForApprovalStep(ctx, userId, step, record.buildingId, record.locationId)) {
+        errors.add(
+          `approvalStepKeys.${index}`,
+          `Người xử lý bước ${step.label} đã ngừng hoạt động hoặc không hợp lệ. Cần kiểm tra lại phân công.`,
+        );
+      }
+    }
+    errors.when(
+      record.noMaintenanceItem !== true,
+      'maintenanceItemId',
+      'Chọn thiết bị/hạng mục, hoặc chọn “Không thuộc thiết bị cụ thể”.',
+    );
+    errors.when(
+      Boolean(record.confirmationUserId) && record.confirmationUserId === record.managerUserId,
+      'confirmationUserId',
+      'Người xác nhận phải khác người quản lý.',
+    );
+    if (!(await this.hasSitePhoto(manager, record))) {
+      errors.add('attachmentIds', 'Cần ít nhất 1 ảnh hiện trường.');
+    }
+    errors.throwIfAny();
+  }
+
+  /** Approval steps in the record's snapshot order (custom steps fall back to the built-in library). */
+  private approvalStepsOf(record: RepairRecord): WorkflowApprovalStep[] {
+    const available = record.workflowApprovalSteps?.length ? record.workflowApprovalSteps : APPROVAL_STEPS;
+    return record.approvalStepKeys
+      .map((key) => available.find((step) => step.key === key))
+      .filter((step): step is WorkflowApprovalStep => Boolean(step));
+  }
+
+  private async hasSitePhoto(manager: EntityManager, record: RepairRecord): Promise<boolean> {
+    if (record.attachmentIds.length === 0) return false;
+    const rows = await manager.getRepository(Attachment).findBy({ id: In(record.attachmentIds) });
+    return rows.some((row) => row.purpose === 'SITE_PHOTO' && row.mimeType.startsWith('image/'));
+  }
+
+  private validateText(
+    errors: FieldErrors,
+    field: string,
+    label: string,
+    value: string | null | undefined,
+    min: number,
+    max: number,
+  ): void {
+    const text = (value ?? '').trim();
+    if (text.length < min) errors.add(field, `${label} cần tối thiểu ${min} ký tự.`);
+    else if (text.length > max) errors.add(field, `${label} tối đa ${max} ký tự.`);
+  }
+
+  private async attachmentsOf(record: RepairRecord): Promise<AttachmentView[]> {
+    if (record.attachmentIds.length === 0) return [];
+    const rows = await this.dataSource.getRepository(Attachment).findBy({ id: In(record.attachmentIds) });
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    return record.attachmentIds
+      .map((attachmentId) => byId.get(attachmentId))
+      .filter((row): row is Attachment => Boolean(row))
+      .map(toAttachmentView);
+  }
+
+  /** Each id must be a site photo of this very record; duplicates collapse (same as the demo). */
+  private async validateAttachments(
+    manager: EntityManager,
+    errors: FieldErrors,
+    record: RepairRecord,
+    ids: string[] | undefined,
+  ): Promise<string[] | undefined> {
+    if (ids === undefined) return undefined;
+    const unique = [...new Set(ids)];
+    const rows = unique.length > 0 ? await manager.getRepository(Attachment).findBy({ id: In(unique) }) : [];
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    const foreign = unique.some((attachmentId) => {
+      const row = byId.get(attachmentId);
+      return !row || row.subjectType !== SUBJECT_TYPE.REPAIR_RECORD || row.subjectId !== record.id;
+    });
+    errors.when(foreign, 'attachmentIds', ATTACHMENT_DRAFT_MESSAGES.FOREIGN_FILE);
+    const wrongPurpose = unique.some((attachmentId) => byId.get(attachmentId)?.purpose !== 'SITE_PHOTO');
+    errors.when(!foreign && wrongPurpose, 'attachmentIds', ATTACHMENT_DRAFT_MESSAGES.WRONG_FILE_PURPOSE);
+    return unique;
   }
 
   private async loadConfig(manager: EntityManager, buildingId: string): Promise<BuildingConfig> {

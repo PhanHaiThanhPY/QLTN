@@ -54,17 +54,18 @@ export const RecordDetailHeader = () => {
               <>
                 <RecordDocumentButton />
                 <ReassignButton />
-                <ReasonActionButton
-                  action="withdrawRecord"
-                  field="reason"
-                  dialogTitle="Rút hồ sơ"
-                  dialogDescription="Hồ sơ chuyển sang “Đóng do rút hồ sơ”, toàn bộ lịch sử được giữ. Không mở lại được."
-                  confirmVariant="danger"
-                  variant="secondary"
-                  successMessage="Đã rút hồ sơ."
-                />
               </>
             )}
+            <ReasonActionButton
+              action="withdrawRecord"
+              field="reason"
+              dialogTitle="Rút hồ sơ"
+              dialogDescription="Hồ sơ chuyển sang “Đóng do rút hồ sơ”, toàn bộ lịch sử được giữ. Không mở lại được."
+              confirmVariant="danger"
+              variant="secondary"
+              successMessage="Đã rút hồ sơ."
+              minLength={IS_API_MODE ? 0 : undefined}
+            />
           </div>
         </div>
         <RecordWorkflowStepper status={record.status} />

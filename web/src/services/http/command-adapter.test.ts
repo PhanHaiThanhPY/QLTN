@@ -160,8 +160,8 @@ describe('api command adapter', () => {
     // T1 repair records: create, draft save and detail are wired; later record actions stay out of scope.
     expect(isApiAction('createRecord')).toBe(true);
     expect(isApiAction('saveRecordDraft')).toBe(true);
-    expect(isApiAction('submitRecord')).toBe(false);
-    expect(isApiAction('withdrawRecord')).toBe(false);
+    expect(isApiAction('submitRecord')).toBe(true);
+    expect(isApiAction('withdrawRecord')).toBe(true);
     expect(isApiAction('replaceManager')).toBe(false);
     // A prototype key must not count as a registered action.
     expect(isApiAction('toString')).toBe(false);
@@ -942,7 +942,81 @@ describe('api command adapter — configuration and workflow', () => {
       locationId: null,
       confirmationUserId: null,
       noMaintenanceItem: false,
+      attachmentIds: [],
     });
+  });
+
+  it('should POST /records/:id/submit with the draft fields, attachment ids and version', async () => {
+    const mock = mockFetch(() => jsonResponse(200, successBody({ ...RECORD_VIEW, status: 'PENDING_CONFIRMATION', version: 4 })));
+
+    await expect(
+      executeApiCommand(
+        createCommand(
+          {
+            title: ' D2T3- gửi ',
+            description: ' Đã kiểm tra hiện trường ',
+            priority: 'NORMAL',
+            locationId: 'loc-5',
+            confirmationUserId: 'usr-kt',
+            noMaintenanceItem: true,
+            attachmentIds: ['att-1', 'att-2'],
+          },
+          { subjectType: 'REPAIR_RECORD', action: 'submitRecord', subjectId: 'rec-1', expectedVersion: 3 },
+        ),
+      ),
+    ).resolves.toEqual({ ok: true, subjectId: 'rec-1' });
+
+    const [url, init] = mock.mock.calls[0];
+    expect(String(url)).toBe('/api/records/rec-1/submit');
+    expect(init?.method).toBe('POST');
+    expect(bodyOf(init)).toEqual({
+      version: 3,
+      title: 'D2T3- gửi',
+      description: 'Đã kiểm tra hiện trường',
+      priority: 'NORMAL',
+      locationId: 'loc-5',
+      confirmationUserId: 'usr-kt',
+      noMaintenanceItem: true,
+      attachmentIds: ['att-1', 'att-2'],
+    });
+  });
+
+  it('should POST /records/:id/withdraw with the reason and version', async () => {
+    const mock = mockFetch(() => jsonResponse(200, successBody({ ...RECORD_VIEW, status: 'CLOSED_WITHDRAWN', version: 4 })));
+
+    await expect(
+      executeApiCommand(
+        createCommand(
+          { reason: ' Cư dân đã tự xử lý. ' },
+          { subjectType: 'REPAIR_RECORD', action: 'withdrawRecord', subjectId: 'rec-1', expectedVersion: 3 },
+        ),
+      ),
+    ).resolves.toEqual({ ok: true, subjectId: 'rec-1' });
+
+    const [url, init] = mock.mock.calls[0];
+    expect(String(url)).toBe('/api/records/rec-1/withdraw');
+    expect(init?.method).toBe('POST');
+    expect(bodyOf(init)).toEqual({ version: 3, reason: 'Cư dân đã tự xử lý.' });
+  });
+
+  it('should map a refused status transition (409) onto INVALID_TRANSITION', async () => {
+    mockFetch(() =>
+      jsonResponse(
+        409,
+        errorBody('CONFLICT', 'Hồ sơ đang ở trạng thái «Chờ xác nhận», không thực hiện được «Gửi xác nhận». Vui lòng tải lại.', {
+          reason: 'invalid_status_transition',
+        }),
+      ),
+    );
+
+    const error = await captureAppError(
+      executeApiCommand(
+        createCommand({}, { subjectType: 'REPAIR_RECORD', action: 'submitRecord', subjectId: 'rec-1', expectedVersion: 3 }),
+      ),
+    );
+
+    expect(error.code).toBe(ERROR_CODE.INVALID_TRANSITION);
+    expect(error.message).toContain('Vui lòng tải lại.');
   });
 
   it('should map a stale configuration version (409) onto CONFLICT with the backend message', async () => {

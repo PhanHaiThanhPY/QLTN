@@ -9,6 +9,8 @@ export type QueryValue = string | number | boolean | null | undefined;
 
 export interface RequestOptions {
   body?: unknown;
+  /** Multipart request; the browser sets the boundary, so no Content-Type header is written. */
+  form?: FormData;
   query?: Readonly<Record<string, QueryValue>>;
   /** Public endpoint (login/refresh/logout): no bearer header, and a 401 never triggers a refresh. */
   anonymous?: boolean;
@@ -66,12 +68,23 @@ const codeOf = (body: unknown): string | undefined => {
   return typeof code === 'string' ? code : undefined;
 };
 
+/** Business refusals carry `details.reason` (snake_case); screens give it a dedicated message. */
+const reasonOf = (body: unknown): string | undefined => {
+  const details = errorEnvelope(body)?.details;
+  if (!isRecord(details)) return undefined;
+  const reason = details.reason;
+  return typeof reason === 'string' ? reason : undefined;
+};
+
 /**
  * Maps an api-qltn error response onto the web `AppError` contract.
  * The backend Vietnamese message always wins when present.
  */
 export const mapApiError = (status: number, body: unknown): AppError => {
   const fieldErrors = fieldErrorsOf(body);
+  if (status === 409 && reasonOf(body) === 'invalid_status_transition') {
+    return new AppError(ERROR_CODE.INVALID_TRANSITION, messageOf(body, CONFLICT_MESSAGE));
+  }
   if (status === 409) return new AppError(ERROR_CODE.CONFLICT, messageOf(body, CONFLICT_MESSAGE));
   if (status === 403) return new AppError(ERROR_CODE.FORBIDDEN, messageOf(body, FORBIDDEN_MESSAGE));
   if (status === 404) return new AppError(ERROR_CODE.NOT_FOUND, messageOf(body, NOT_FOUND_MESSAGE));
@@ -123,7 +136,8 @@ const request = async (
   if (options.body !== undefined) headers['Content-Type'] = 'application/json';
   if (!options.anonymous && accessToken) headers.Authorization = `Bearer ${accessToken}`;
   const init: RequestInit = { method, headers };
-  if (options.body !== undefined) init.body = JSON.stringify(options.body);
+  if (options.form) init.body = options.form;
+  else if (options.body !== undefined) init.body = JSON.stringify(options.body);
   try {
     const response = await fetch(buildUrl(path, options.query), init);
     return { status: response.status, body: await readBody(response) };
@@ -226,4 +240,29 @@ export const apiList = async <T>(method: HttpMethod, path: string, options: Requ
   }
   if (Array.isArray(data)) return { data: data as T[] };
   throw new AppError(ERROR_CODE.NETWORK_ERROR, INVALID_PAYLOAD_MESSAGE);
+};
+
+const fetchBlob = async (path: string, accessToken: string | null): Promise<Response> => {
+  const headers: Record<string, string> = { Accept: '*/*' };
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  try {
+    return await fetch(buildUrl(path, undefined), { method: 'GET', headers });
+  } catch (error) {
+    console.error('API request failed:', error);
+    throw new AppError(ERROR_CODE.NETWORK_ERROR, NETWORK_MESSAGE);
+  }
+};
+
+/**
+ * Fetches a file and returns its bytes. Shares the JSON path's token refresh: a 401 refreshes
+ * once and retries, so an expired session does not surface as a broken image.
+ */
+export const apiRequestBlob = async (path: string): Promise<Blob> => {
+  let response = await fetchBlob(path, readApiSession()?.accessToken ?? null);
+  if (response.status === 401) {
+    const refreshedToken = await refreshAccessToken();
+    response = await fetchBlob(path, refreshedToken);
+  }
+  if (response.status >= 200 && response.status < 300) return response.blob();
+  throw mapApiError(response.status, await readBody(response));
 };

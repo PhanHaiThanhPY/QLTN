@@ -1,9 +1,9 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { AuthenticatedUser } from '../../common/auth/authenticated-user';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireCapabilities } from '../../common/decorators/require-capabilities.decorator';
-import { CreateRecordDto, UpdateRecordDraftDto } from './dto/record.dto';
+import { CreateRecordDto, SubmitRecordDto, UpdateRecordDraftDto, WithdrawRecordDto } from './dto/record.dto';
 import { RecordsService, type RecordDetailView, type RepairRecordView } from './records.service';
 
 @ApiTags('Records')
@@ -34,5 +34,29 @@ export class RecordsController {
     @Body() dto: UpdateRecordDraftDto,
   ): Promise<RepairRecordView> {
     return this.records.updateDraft(user, id, dto);
+  }
+
+  @Post(':id/submit')
+  @HttpCode(200)
+  @RequireCapabilities('RECORD_EDIT')
+  @ApiOperation({ summary: 'Gửi hồ sơ nháp cho người xác nhận (kèm version)' })
+  submit(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SubmitRecordDto,
+  ): Promise<RepairRecordView> {
+    return this.records.submit(user, id, dto);
+  }
+
+  @Post(':id/withdraw')
+  @HttpCode(200)
+  @RequireCapabilities('RECORD_EDIT')
+  @ApiOperation({ summary: 'Rút hồ sơ còn xử lý (lý do bắt buộc, kèm version)' })
+  withdraw(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: WithdrawRecordDto,
+  ): Promise<RepairRecordView> {
+    return this.records.withdraw(user, id, dto);
   }
 }

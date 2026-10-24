@@ -1,6 +1,5 @@
 import { useParams, useSearchParams } from 'react-router';
 import { Notice } from '@/components/common/Notice';
-import { IS_API_MODE } from '@/config/data-source';
 import { PageHeader } from '@/components/common/PageHeader';
 import { ErrorState, LoadingState } from '@/components/common/States';
 import { REPAIR_STATUS_LABEL } from '@/domain/constants';
@@ -33,7 +32,7 @@ const RecordFormPage = () => {
   const header = (
     <PageHeader
       title={isNew ? 'Tạo hồ sơ sửa chữa' : `Sửa hồ sơ ${record?.code ?? ''}`}
-      description={isNew ? (IS_API_MODE ? 'Lưu nháp hồ sơ; gửi xác nhận sẽ có ở bước tiếp theo.' : 'Lưu nháp hoặc gửi ngay cho người xác nhận kỹ thuật.') : record?.title}
+      description={isNew ? 'Lưu nháp hoặc gửi ngay cho người xác nhận kỹ thuật.' : record?.title}
       breadcrumbs={
         isNew
           ? [{ label: 'Hồ sơ sửa chữa', to: '/records' }, { label: 'Tạo hồ sơ' }]

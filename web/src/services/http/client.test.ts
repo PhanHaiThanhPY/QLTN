@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { AppError, ERROR_CODE, isAppError } from '@/domain/errors';
 import type { FieldErrors } from '@/domain/errors';
-import { apiList, apiRequest } from './client';
+import { apiList, apiRequest, apiRequestBlob } from './client';
 import { clearApiSession, readApiSession, saveApiSession, subscribeApiSession } from './token-store';
 
 const jsonResponse = (status: number, body: unknown): Response =>
@@ -244,5 +244,43 @@ describe('http client', () => {
       data: [{ id: '1' }],
       meta: { page: 1, limit: 20, total: 1, totalPages: 1 },
     });
+  });
+
+  it('should send FormData as-is without forcing a JSON content type', async () => {
+    const mock = mockFetch(() => jsonResponse(201, successBody({ id: 'att-1' })));
+    const form = new FormData();
+    form.append('subjectType', 'REPAIR_RECORD');
+    form.append('file', new Blob(['png'], { type: 'image/png' }), 'anh.png');
+
+    await expect(apiRequest('POST', '/attachments', { form })).resolves.toEqual({ id: 'att-1' });
+
+    const [url, init] = mock.mock.calls[0];
+    expect(String(url)).toBe('/api/attachments');
+    expect(init?.method).toBe('POST');
+    expect(init?.body).toBe(form);
+    expect(headerOf(init, 'Content-Type')).toBeUndefined();
+  });
+
+  it('should return the Blob of a file response', async () => {
+    const blob = new Blob(['noi dung'], { type: 'image/png' });
+    mockFetch(
+      () =>
+        ({
+          status: 200,
+          blob: async () => blob,
+          headers: { get: () => 'image/png' },
+        }) as unknown as Response,
+    );
+
+    await expect(apiRequestBlob('/attachments/att-1/content')).resolves.toBe(blob);
+  });
+
+  it('should map a missing file (404) onto NOT_FOUND', async () => {
+    mockFetch(() => jsonResponse(404, errorBody('NOT_FOUND', 'Không tìm thấy tệp hoặc tệp ngoài phạm vi.')));
+
+    const error = await captureAppError(apiRequestBlob('/attachments/att-x/content'));
+
+    expect(error.code).toBe(ERROR_CODE.NOT_FOUND);
+    expect(error.message).toBe('Không tìm thấy tệp hoặc tệp ngoài phạm vi.');
   });
 });

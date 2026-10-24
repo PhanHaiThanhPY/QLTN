@@ -85,6 +85,10 @@ export class RepairRecord extends BaseEntity {
   @Column({ name: 'task_due_days', type: 'jsonb', default: () => `'{}'` })
   taskDueDays: TaskDueDays;
 
+  /** Ordered ids of the files attached to the record; removing an id detaches it without deleting the file. */
+  @Column({ name: 'attachment_ids', type: 'uuid', array: true, default: () => `'{}'` })
+  attachmentIds: string[];
+
   @Column({ name: 'created_by', type: 'uuid' })
   createdBy: string;
 

@@ -1,3 +1,4 @@
+import { IS_API_MODE } from '@/config/data-source';
 import { ATTACHMENT_PURPOSE, ATTACHMENT_PURPOSE_LABEL, LIMITS, OCCURRENCE_FINAL_STATUSES, REPAIR_FINAL_STATUSES } from '@/domain/constants';
 import type { AttachmentPurpose, SubjectType } from '@/domain/constants';
 import { forbidden, notFound, validationError } from '@/domain/errors';
@@ -6,6 +7,8 @@ import type { Capability } from '@/domain/permissions';
 import type { Attachment, AuditEvent, User } from '@/domain/types';
 import { getDb } from '@/storage/db';
 import { broadcastChange } from './change-channel';
+import { apiRequest, apiRequestBlob } from './http/client';
+import { mapAttachment, type ApiAttachment } from './http/mappers';
 import { getSessionUserId, newId, nowIso } from './runtime';
 
 export interface UploadInput {
@@ -124,7 +127,20 @@ const assertCanUpload = async (user: User, input: UploadInput): Promise<string> 
  * The permission/state check runs inside the same transaction as the writes, so a concurrent
  * command cannot change the step between the check and the upload.
  */
+/** API mode: the server owns the limits, permission and storage; its Vietnamese message reaches the screen. */
+const uploadAttachmentToApi = async (input: UploadInput): Promise<Attachment> => {
+  const form = new FormData();
+  form.append('subjectType', input.subjectType);
+  form.append('subjectId', input.subjectId);
+  form.append('purpose', input.purpose);
+  form.append('file', input.file, input.fileName);
+  const uploaded = await apiRequest<ApiAttachment>('POST', '/attachments', { form });
+  broadcastChange();
+  return mapAttachment(uploaded);
+};
+
 export const uploadAttachment = async (input: UploadInput): Promise<Attachment> => {
+  if (IS_API_MODE) return uploadAttachmentToApi(input);
   const db = getDb();
   const errors: Record<string, string> = {};
   const mimeType = input.file.type;
@@ -179,8 +195,14 @@ export const uploadAttachment = async (input: UploadInput): Promise<Attachment> 
   return attachment;
 };
 
-/** Returns the Blob of an attachment after checking the viewer's building scope (never by id alone). */
-export const readAttachmentBlob = async (attachmentId: string): Promise<{ attachment: Attachment; blob: Blob }> => {
+/**
+ * Returns the Blob of an attachment after checking the viewer's building scope (never by id alone).
+ * In API mode the backend checks the same scope and answers 404 outside it; metadata is not needed here.
+ */
+export const readAttachmentBlob = async (attachmentId: string): Promise<{ attachment?: Attachment; blob: Blob }> => {
+  if (IS_API_MODE) {
+    return { blob: await apiRequestBlob(`/attachments/${encodeURIComponent(attachmentId)}/content`) };
+  }
   const db = getDb();
   const user = await db.users.get(getSessionUserId() ?? '');
   const attachment = await db.attachments.get(attachmentId);

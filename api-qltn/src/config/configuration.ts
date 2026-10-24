@@ -61,6 +61,10 @@ export interface AppConfig {
     demoData: boolean;
     demoPassword: string | undefined;
   };
+  storage: {
+    /** Directory holding uploaded file content; relative paths resolve from the process cwd. */
+    dir: string;
+  };
 }
 
 export default (): AppConfig => ({
@@ -87,5 +91,8 @@ export default (): AppConfig => ({
   seed: {
     demoData: env('SEED_DEMO_DATA') === 'true',
     demoPassword: env('SEED_DEMO_PASSWORD'),
+  },
+  storage: {
+    dir: env('STORAGE_DIR') ?? 'storage',
   },
 });
