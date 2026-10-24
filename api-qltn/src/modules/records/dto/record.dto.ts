@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsBoolean, IsIn, IsInt, IsOptional, IsString, IsUUID, MaxLength, Min } from 'class-validator';
+import { IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, IsUUID, MaxLength, Min } from 'class-validator';
 import { Trim, TrimToNull } from '../../../common/validation/trim.decorator';
 
 export const RECORD_PRIORITIES = ['LOW', 'NORMAL', 'HIGH', 'URGENT'] as const;
@@ -60,4 +60,13 @@ export class UpdateRecordDraftDto extends RecordDraftFieldsDto {
   @IsInt()
   @Min(1)
   version: number;
+
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Danh sách tệp của hồ sơ; gửi danh sách mới thay cho danh sách cũ (bỏ id là gỡ tệp).',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUUID(undefined, { each: true })
+  attachmentIds?: string[];
 }

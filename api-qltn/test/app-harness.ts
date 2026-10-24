@@ -62,6 +62,27 @@ export async function signIn(server: App, username: string, password = DEMO_PASS
     post: (url: string, body: object) => request(server).post(url).set(auth).send(body),
     patch: (url: string, body: object) => request(server).patch(url).set(auth).send(body),
     put: (url: string, body: object) => request(server).put(url).set(auth).send(body),
+    /** Multipart upload: `file` is the only file part, every other field is sent as text. */
+    postMultipart: (
+      url: string,
+      fields: Readonly<Record<string, string>>,
+      file: { content: Buffer; filename: string; contentType: string },
+    ) => {
+      const req = request(server).post(url).set(auth);
+      for (const [name, value] of Object.entries(fields)) req.field(name, value);
+      return req.attach('file', file.content, { filename: file.filename, contentType: file.contentType });
+    },
+    /** Binary GET: collects the raw bytes instead of parsing them as JSON. */
+    getBinary: (url: string) =>
+      request(server)
+        .get(url)
+        .set(auth)
+        .buffer(true)
+        .parse((res, callback) => {
+          const chunks: Buffer[] = [];
+          res.on('data', (chunk: Buffer) => chunks.push(chunk));
+          res.on('end', () => callback(null, Buffer.concat(chunks)));
+        }),
   };
 }
 export type Session = Awaited<ReturnType<typeof signIn>>;

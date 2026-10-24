@@ -76,15 +76,27 @@ Money fields (`emergencyLimitVnd`) are VND integers sent and returned as strings
 
 Records run in the caller's building scope (another building answers 404). Writes are audited in the same
 transaction. The record keeps a snapshot of the building configuration taken when it was created: approval
-steps, workflow definitions, per-step assignees and `dueDays`. In T1 only create, draft save and detail are wired;
-submitting for confirmation (T3), files (T2) and lists (T4) are not. `maintenanceItemId` and `attachmentIds` are
-therefore rejected (400); `noMaintenanceItem` marks "Không thuộc thiết bị cụ thể".
+steps, workflow definitions, per-step assignees and `dueDays`. Site photos (T2) are attached after creation;
+submitting for confirmation (T3) and lists (T4) are not wired yet. `maintenanceItemId` is therefore rejected (400)
+and `POST /records` does not take `attachmentIds`; `noMaintenanceItem` marks "Không thuộc thiết bị cụ thể".
 
 | Method | Path | Capability | Notes |
 | --- | --- | --- | --- |
 | POST | `/api/records` | RECORD_EDIT | Draft (`DRAFT`) with an `SC-…` code; optional draft fields |
-| PATCH | `/api/records/:id` | RECORD_EDIT | Draft save; `version` is the optimistic lock (stale → 409) |
-| GET | `/api/records/:id` | any | `{ record, audit }`; parts not built yet are left empty |
+| PATCH | `/api/records/:id` | RECORD_EDIT | Draft save; `version` is the optimistic lock (stale → 409). `attachmentIds` replaces the record's file list (removing an id detaches the file, it is not deleted) |
+| GET | `/api/records/:id` | any | `{ record, attachments, audit }`; parts not built yet are left empty |
+
+## Attachment endpoints (Đợt 2 · T2)
+
+Only repair-record site photos (`subjectType = REPAIR_RECORD`, `purpose = SITE_PHOTO`) are enabled; any other
+combination answers 400 `details.reason = attachment_purpose_not_supported`. Allowed files are the demo's:
+JPEG/PNG/WebP/PDF, at most 10 MB, non-empty, and the content must match the declared type (magic bytes).
+Content lives under `STORAGE_DIR` (default `storage/`), named by a random id rather than the uploaded name.
+
+| Method | Path | Capability | Notes |
+| --- | --- | --- | --- |
+| POST | `/api/attachments` | RECORD_EDIT | Multipart `file`, `subjectType`, `subjectId`, `purpose` → 201 metadata. Only the record's manager may upload while it is `DRAFT`/`NEEDS_RECORD_UPDATE` (otherwise 403 `attachment_step_denied`) |
+| GET | `/api/attachments/:id/content` | any | Bytes with the stored `Content-Type`, `Content-Disposition: inline`; another building answers 404 |
 
 ## Tests
 

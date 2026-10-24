@@ -11,6 +11,7 @@ import configuration from './config/configuration';
 import { DatabaseModule } from './database/database.module';
 import { ALL_ENTITIES } from './database/entities';
 import { AuditModule } from './modules/audit/audit.module';
+import { AttachmentsModule } from './modules/attachments/attachments.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { BuildingsModule } from './modules/buildings/buildings.module';
 import { HealthModule } from './modules/health/health.module';
@@ -48,6 +49,7 @@ import { UsersModule } from './modules/users/users.module';
     OrganizationModule,
     BuildingsModule,
     RecordsModule,
+    AttachmentsModule,
     ReferenceModule,
   ],
   providers: [

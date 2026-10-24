@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource, EntityManager } from 'typeorm';
+import { DataSource, EntityManager, In } from 'typeorm';
 import type { AuthenticatedUser } from '../../common/auth/authenticated-user';
 import { assertBuildingInScope } from '../../common/auth/scope';
 import { assertVersion, conflict, forbiddenWithReason, notFound } from '../../common/errors';
@@ -15,6 +15,9 @@ import {
 import type { Role } from '../../domain/permissions';
 import { AuditService, type AuditEventView } from '../audit/audit.service';
 import { SUBJECT_TYPE } from '../audit/entities/audit-event.entity';
+import { ATTACHMENT_DRAFT_MESSAGES } from '../attachments/attachments.service';
+import { toAttachmentView, type AttachmentView } from '../attachments/attachment-view';
+import { Attachment } from '../attachments/entities/attachment.entity';
 import { BuildingConfig } from '../buildings/entities/building-config.entity';
 import { Location } from '../buildings/entities/location.entity';
 import { User } from '../users/entities/user.entity';
@@ -45,7 +48,7 @@ export interface RepairRecordView {
   approvalAssigneeUserIds: Record<string, string>;
   /** Snapshot of the building's task due days when the record was created. */
   dueDays: TaskDueDays;
-  /** Files arrive in T2; the field stays so the detail screen keeps its shape. */
+  /** Ordered ids of the site photos attached to the record. */
   attachmentIds: string[];
   createdBy: string;
   version: number;
@@ -55,6 +58,8 @@ export interface RepairRecordView {
 
 export interface RecordDetailView {
   record: RepairRecordView;
+  /** Site photos (and later, other files) attached to the record, in the record's order. */
+  attachments: AttachmentView[];
   audit: AuditEventView[];
 }
 
@@ -77,7 +82,7 @@ export const toRecordView = (record: RepairRecord): RepairRecordView => ({
   workflowStageApprovalStepKeys: record.workflowStageApprovalStepKeys,
   approvalAssigneeUserIds: { ...record.approvalAssigneeUserIds },
   dueDays: { ...record.taskDueDays },
-  attachmentIds: [],
+  attachmentIds: [...record.attachmentIds],
   createdBy: record.createdBy,
   version: record.version,
   createdAt: record.createdAt,
@@ -262,8 +267,10 @@ export class RecordsService {
       await this.validateLocation(manager, errors, record.buildingId, locationId, record.locationId);
       this.validateManager(assignment, errors, record.managerUserId, record.buildingId, locationId);
       this.validateConfirmer(assignment, errors, confirmationUserId, record.buildingId, locationId);
+      const attachmentIds = await this.validateAttachments(manager, errors, record, dto.attachmentIds);
       errors.throwIfAny();
 
+      if (attachmentIds) record.attachmentIds = attachmentIds;
       record.locationId = locationId;
       record.confirmationUserId = confirmationUserId;
       if (dto.title !== undefined) record.title = dto.title;
@@ -290,8 +297,42 @@ export class RecordsService {
   async getDetail(actor: AuthenticatedUser, id: string): Promise<RecordDetailView> {
     const record = await this.dataSource.getRepository(RepairRecord).findOneBy({ id });
     if (!record || !actor.buildingIds.includes(record.buildingId)) throw notFound('Không tìm thấy hồ sơ.');
-    const audit = await this.audit.listForSubject(SUBJECT_TYPE.REPAIR_RECORD, id, { page: 1, limit: 100 });
-    return { record: toRecordView(record), audit: audit.data };
+    const [attachments, audit] = await Promise.all([
+      this.attachmentsOf(record),
+      this.audit.listForSubject(SUBJECT_TYPE.REPAIR_RECORD, id, { page: 1, limit: 100 }),
+    ]);
+    return { record: toRecordView(record), attachments, audit: audit.data };
+  }
+
+  private async attachmentsOf(record: RepairRecord): Promise<AttachmentView[]> {
+    if (record.attachmentIds.length === 0) return [];
+    const rows = await this.dataSource.getRepository(Attachment).findBy({ id: In(record.attachmentIds) });
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    return record.attachmentIds
+      .map((attachmentId) => byId.get(attachmentId))
+      .filter((row): row is Attachment => Boolean(row))
+      .map(toAttachmentView);
+  }
+
+  /** Each id must be a site photo of this very record; duplicates collapse (same as the demo). */
+  private async validateAttachments(
+    manager: EntityManager,
+    errors: FieldErrors,
+    record: RepairRecord,
+    ids: string[] | undefined,
+  ): Promise<string[] | undefined> {
+    if (ids === undefined) return undefined;
+    const unique = [...new Set(ids)];
+    const rows = unique.length > 0 ? await manager.getRepository(Attachment).findBy({ id: In(unique) }) : [];
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    const foreign = unique.some((attachmentId) => {
+      const row = byId.get(attachmentId);
+      return !row || row.subjectType !== SUBJECT_TYPE.REPAIR_RECORD || row.subjectId !== record.id;
+    });
+    errors.when(foreign, 'attachmentIds', ATTACHMENT_DRAFT_MESSAGES.FOREIGN_FILE);
+    const wrongPurpose = unique.some((attachmentId) => byId.get(attachmentId)?.purpose !== 'SITE_PHOTO');
+    errors.when(!foreign && wrongPurpose, 'attachmentIds', ATTACHMENT_DRAFT_MESSAGES.WRONG_FILE_PURPOSE);
+    return unique;
   }
 
   private async loadConfig(manager: EntityManager, buildingId: string): Promise<BuildingConfig> {

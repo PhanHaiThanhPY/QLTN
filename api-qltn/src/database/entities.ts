@@ -1,4 +1,5 @@
 import { AuditEvent } from '../modules/audit/entities/audit-event.entity';
+import { Attachment } from '../modules/attachments/entities/attachment.entity';
 import { RefreshToken } from '../modules/auth/entities/refresh-token.entity';
 import { BuildingConfig } from '../modules/buildings/entities/building-config.entity';
 import { Building } from '../modules/buildings/entities/building.entity';
@@ -18,5 +19,6 @@ export const ALL_ENTITIES = [
   User,
   RefreshToken,
   AuditEvent,
+  Attachment,
   RepairRecord,
 ];

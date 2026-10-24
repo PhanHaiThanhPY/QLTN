@@ -5,3 +5,6 @@ coverage/
 .env.*
 !.env.example
 *.tsbuildinfo
+
+# Uploaded file content (STORAGE_DIR)
+storage/
