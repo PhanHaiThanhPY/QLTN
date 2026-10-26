@@ -206,7 +206,7 @@ export const UserDialog = ({ user, departments, roles, onClose }: UserDialogProp
               />
             </>
           ) : null}
-          {canSeeHistory ? <AccountHistory userId={user.id} /> : null}
+          {canSeeHistory ? <AccountHistory subjectId={user.id} /> : null}
         </div>
       ) : null}
     </Dialog>

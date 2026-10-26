@@ -5,6 +5,10 @@ import { Field } from '@/components/ui/field';
 import { Input, Textarea } from '@/components/ui/input';
 import type { Building, Department } from '@/domain/types';
 import { useCommand } from '@/hooks/useCommand';
+import { IS_API_MODE } from '@/config/data-source';
+import { hasCapability } from '@/domain/permissions';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { AccountHistory } from './AccountHistory';
 
 interface DepartmentDialogProps {
   department?: Department;
@@ -14,6 +18,8 @@ interface DepartmentDialogProps {
 
 /** Creates or edits the organization unit used by workflow assignment rules. */
 export const DepartmentDialog = ({ department, buildings, onClose }: DepartmentDialogProps) => {
+  const viewer = useCurrentUser();
+  const canSeeHistory = IS_API_MODE && Boolean(department) && Boolean(viewer && hasCapability(viewer, 'ADMIN_VIEW'));
   const [code, setCode] = useState(department?.code ?? '');
   const [name, setName] = useState(department?.name ?? '');
   const [description, setDescription] = useState(department?.description ?? '');
@@ -63,6 +69,11 @@ export const DepartmentDialog = ({ department, buildings, onClose }: DepartmentD
             ))}
           </div>
         </Field>
+        {canSeeHistory && department ? (
+          <div className="sm:col-span-2">
+            <AccountHistory subjectId={department.id} subject="departments" />
+          </div>
+        ) : null}
       </div>
     </Dialog>
   );

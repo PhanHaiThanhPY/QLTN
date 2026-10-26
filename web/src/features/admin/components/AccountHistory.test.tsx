@@ -19,7 +19,7 @@ const row = (id: string, action: string, actorName = 'Quản trị demo', reason
 const renderHistory = () =>
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <AccountHistory userId="usr-kt" />
+      <AccountHistory subjectId="usr-kt" />
     </QueryClientProvider>,
   );
 
@@ -55,7 +55,7 @@ describe('AccountHistory', () => {
     expect(screen.getByText('mergeAccount')).toBeTruthy();
     expect(screen.getByText('Hệ thống')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Xem thêm' })).toBeNull();
-    expect(mocks.listAccountHistory).toHaveBeenCalledWith('usr-kt', 1);
+    expect(mocks.listAccountHistory).toHaveBeenCalledWith('usr-kt', 1, 'users');
   });
 
   it('AC-8: offers "Xem thêm" while more pages exist and appends the next page', async () => {
@@ -69,7 +69,7 @@ describe('AccountHistory', () => {
 
     expect(await screen.findByText('Tạo tài khoản')).toBeTruthy();
     expect(screen.getByText('Cập nhật thông tin')).toBeTruthy();
-    expect(mocks.listAccountHistory).toHaveBeenLastCalledWith('usr-kt', 2);
+    expect(mocks.listAccountHistory).toHaveBeenLastCalledWith('usr-kt', 2, 'users');
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Xem thêm' })).toBeNull());
   });
 

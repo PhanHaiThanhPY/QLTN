@@ -60,6 +60,7 @@ export const PERMISSION_ROWS: readonly PermissionRow[] = [
   { group: 'Chung', label: 'Giao lại người xử lý hồ sơ/lượt', capability: 'REASSIGN' },
   { group: 'Chung', label: 'Thay BQL quản lý đang ngừng hoạt động', capability: 'REPLACE_MANAGER' },
   { group: 'Chung', label: 'Xem báo cáo', capability: 'REPORT_VIEW' },
+  { group: 'Chung', label: 'Xem nhật ký thao tác trong phạm vi tòa (dòng toàn hệ thống: chỉ ADMIN)', capability: 'AUDIT_VIEW' },
   { group: 'Chung', label: 'Xem quản trị và khôi phục demo', capability: 'ADMIN_VIEW' },
   { group: 'Cấu hình', label: 'Sửa cấu hình tòa, áp mẫu, Workflow Designer, xem lịch sử cấu hình', capability: 'BUILDING_CONFIG' },
   { group: 'Cấu hình', label: 'Quản lý tầng, khu vực, vị trí', capability: 'LOCATION_MANAGE' },

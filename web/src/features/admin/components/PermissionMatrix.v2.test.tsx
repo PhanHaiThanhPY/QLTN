@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { render, screen, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router';
 import type { RoleDefinition, User } from '@/domain/types';
 import { PermissionMatrixCard } from './PermissionMatrixCard';
 import { RolesCard } from './RolesCard';
@@ -79,10 +80,12 @@ describe('RolesCard notice', () => {
 
   it('lists the new base capabilities a custom role has not enabled', () => {
     render(
-      <RolesCard
-        roles={[role({ newBaseCapabilities: ['RECORD_CONFIRM', 'ACCEPTANCE_DECIDE', 'PAYMENT_CONFIRM'] })]}
-        users={[] as User[]}
-      />,
+      <MemoryRouter>
+        <RolesCard
+          roles={[role({ newBaseCapabilities: ['RECORD_CONFIRM', 'ACCEPTANCE_DECIDE', 'PAYMENT_CONFIRM'] })]}
+          users={[] as User[]}
+        />
+      </MemoryRouter>,
     );
     expect(
       screen.getAllByText('Có quyền mới chưa bật: Xác nhận hiện trạng, Nghiệm thu, Xác nhận đã chuyển khoản').length,
@@ -90,7 +93,11 @@ describe('RolesCard notice', () => {
   });
 
   it('shows nothing when there is no new capability', () => {
-    render(<RolesCard roles={[role({ newBaseCapabilities: [] })]} users={[] as User[]} />);
+    render(
+      <MemoryRouter>
+        <RolesCard roles={[role({ newBaseCapabilities: [] })]} users={[] as User[]} />
+      </MemoryRouter>,
+    );
     expect(screen.queryByText(/Có quyền mới chưa bật/)).toBeNull();
   });
 });

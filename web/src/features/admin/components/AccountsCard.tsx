@@ -7,6 +7,7 @@ import { Table, Td, Th, Tr } from '@/components/ui/table';
 import { ROLE_LABEL } from '@/domain/constants';
 import type { Building, Department, RoleDefinition, User } from '@/domain/types';
 import { UserDialog } from './UserDialog';
+import { useOpenFromQuery } from '../hooks/useOpenFromQuery';
 
 interface AccountsCardProps {
   users: User[];
@@ -19,6 +20,7 @@ interface AccountsCardProps {
 /** Employee directory: role, department and operational scope used by workflow rules. */
 export const AccountsCard = ({ users, departments, roles, buildings, buildingCode }: AccountsCardProps) => {
   const [editing, setEditing] = useState<User | 'new' | null>(null);
+  useOpenFromQuery(users, setEditing);
   const [query, setQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('');
   const [roleFilter, setRoleFilter] = useState('');

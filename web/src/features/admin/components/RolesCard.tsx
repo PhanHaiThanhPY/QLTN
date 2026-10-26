@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { ROLE_LABEL } from '@/domain/constants';
 import type { RoleDefinition, User } from '@/domain/types';
 import { CAPABILITY_LABEL } from '../capability-labels';
 import { RoleDialog } from './RoleDialog';
+import { useOpenFromQuery } from '../hooks/useOpenFromQuery';
 
 /** "Có quyền mới chưa bật" (PD-07 Q5): new base-role capabilities are never enabled on custom roles automatically. */
 const pendingNoteOf = (role: RoleDefinition) => {
@@ -33,6 +34,12 @@ interface Editing {
 /** System roles (fixed) and custom roles copied from them, with how many accounts hold each. */
 export const RolesCard = ({ roles, users }: RolesCardProps) => {
   const [editing, setEditing] = useState<Editing | null>(null);
+  // A custom role opens for editing; a system role cannot be edited, so it opens as a copy.
+  const openRole = useCallback(
+    (role: RoleDefinition) => setEditing({ role, mode: role.isSystem ? 'copy' : 'edit' }),
+    [],
+  );
+  useOpenFromQuery(roles, openRole);
   const systemRoles = roles.filter((role) => role.isSystem);
   const holders = (role: RoleDefinition) =>
     users.filter((user) => (role.isSystem ? user.role === role.baseRole && !user.roleDefId : user.roleDefId === role.id)).length;

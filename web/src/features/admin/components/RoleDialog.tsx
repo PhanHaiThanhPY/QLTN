@@ -4,10 +4,13 @@ import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { ROLE_LABEL } from '@/domain/constants';
-import { roleCapabilities } from '@/domain/permissions';
+import { hasCapability, roleCapabilities } from '@/domain/permissions';
 import type { Capability } from '@/domain/permissions';
 import type { RoleDefinition } from '@/domain/types';
 import { useCommand } from '@/hooks/useCommand';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { IS_API_MODE } from '@/config/data-source';
+import { AccountHistory } from './AccountHistory';
 import { CAPABILITY_LABEL } from '../capability-labels';
 
 interface RoleDialogProps {
@@ -25,6 +28,8 @@ export const RoleDialog = ({ role, systemRoles, mode, onClose }: RoleDialogProps
   const selectedBaseRole = systemRoles.find((item) => item.id === baseRoleId) ?? initialRole;
   const [name, setName] = useState(mode === 'copy' && role ? `${role.name} (bản sao)` : role?.name ?? '');
   const [picked, setPicked] = useState<Capability[]>(role?.capabilities ?? (selectedBaseRole ? [...selectedBaseRole.capabilities] : []));
+  const viewer = useCurrentUser();
+  const canSeeHistory = IS_API_MODE && mode === 'edit' && Boolean(role) && Boolean(viewer && hasCapability(viewer, 'ADMIN_VIEW'));
   const command = useCommand({ successMessage: mode === 'edit' ? 'Đã lưu vai trò.' : 'Đã tạo vai trò.', onSuccess: onClose });
   const allowed = selectedBaseRole ? roleCapabilities(selectedBaseRole.baseRole) : [];
   const toggle = (capability: Capability) =>
@@ -89,6 +94,7 @@ export const RoleDialog = ({ role, systemRoles, mode, onClose }: RoleDialogProps
             ))}
           </div>
         </Field>
+        {canSeeHistory && role ? <AccountHistory subjectId={role.id} subject="roles" /> : null}
       </div>
     </Dialog>
   );

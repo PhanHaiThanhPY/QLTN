@@ -1,14 +1,8 @@
 import { ErrorState, LoadingState } from '@/components/common/States';
 import type { AccountHistoryRow } from '@/services/http/users-api';
+import { auditActionLabel } from '@/domain/audit-labels';
 import { formatDateTime } from '@/utils/date';
 
-/** Vietnamese labels of account audit actions (SPEC US-S1 BR-05); unknown actions show their code. */
-export const ACCOUNT_ACTION_LABEL: Readonly<Record<string, string>> = {
-  createUser: 'Tạo tài khoản',
-  updateUser: 'Cập nhật thông tin',
-  deactivateUser: 'Ngừng hoạt động',
-  resetPassword: 'Đặt lại mật khẩu',
-};
 
 interface AccountHistoryListProps {
   rows: readonly AccountHistoryRow[];
@@ -17,7 +11,7 @@ interface AccountHistoryListProps {
   onRetry: () => void;
 }
 
-/** Rows of the account history: time, actor ("Hệ thống" when none), action label and note. */
+/** Rows of an account, role or department history (labels of SPEC AD-S1 BR-05): time, actor ("Hệ thống" when none), action label and note. */
 export const AccountHistoryList = ({ rows, isLoading, error, onRetry }: AccountHistoryListProps) => {
   if (isLoading) return <LoadingState rows={3} />;
   if (error) return <ErrorState error={error} onRetry={onRetry} />;
@@ -27,7 +21,7 @@ export const AccountHistoryList = ({ rows, isLoading, error, onRetry }: AccountH
       {rows.map((row) => (
         <li key={row.id} className="rounded-lg bg-surface-2 px-3 py-2 text-sm">
           <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-            <span className="font-semibold text-ink">{ACCOUNT_ACTION_LABEL[row.action] ?? row.action}</span>
+            <span className="font-semibold text-ink">{auditActionLabel(row.action)}</span>
             <span className="text-xs text-ink-3">{formatDateTime(row.createdAt)}</span>
           </div>
           <p className="text-xs text-ink-2">{row.actorName || 'Hệ thống'}</p>

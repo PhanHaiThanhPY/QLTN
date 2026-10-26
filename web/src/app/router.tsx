@@ -24,6 +24,7 @@ const ItemsPage = lazy(() => import('@/features/maintenance/ItemsPage'));
 const ItemDetailPage = lazy(() => import('@/features/maintenance/ItemDetailPage'));
 const OccurrenceDetailPage = lazy(() => import('@/features/maintenance/OccurrenceDetailPage'));
 const ReportsPage = lazy(() => import('@/features/reports'));
+const AuditLogPage = lazy(() => import('@/features/audit'));
 const NotificationsPage = lazy(() => import('@/features/notifications'));
 const AdminEmployeesPage = lazy(() => import('@/features/admin/EmployeesPage'));
 const AdminDepartmentsPage = lazy(() => import('@/features/admin/DepartmentsPage'));
@@ -65,6 +66,7 @@ export const router = createBrowserRouter([
       { path: 'maintenance/items/:itemId', element: connected(page(<ItemDetailPage />)) },
       { path: 'maintenance/occurrences/:occurrenceId', element: connected(page(<OccurrenceDetailPage />)) },
       { path: 'reports', element: connected(page(<ReportsPage />)) },
+      { path: 'audit', element: apiConnected(page(<AuditLogPage />)) },
       { path: 'notifications', element: connected(page(<NotificationsPage />)) },
       { path: 'admin', element: <Navigate to="/admin/employees" replace /> },
       { path: 'admin/employees', element: page(<AdminEmployeesPage />) },

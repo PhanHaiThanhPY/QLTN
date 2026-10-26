@@ -27,9 +27,16 @@ const toHistoryRow = (row: ApiAuditEvent): AccountHistoryRow => ({
   createdAt: row.createdAt,
 });
 
-/** `GET /users/:id/audit`, newest first, `ACCOUNT_HISTORY_PAGE_SIZE` rows per page. */
-export const listAccountHistory = async (userId: string, page: number): Promise<AccountHistoryPage> => {
-  const result = await apiList<ApiAuditEvent>('GET', `/users/${encodeURIComponent(userId)}/audit`, {
+/** Subjects with a history block: accounts (US-S1), roles and departments (AD-S1). */
+export type HistorySubject = 'users' | 'roles' | 'departments';
+
+/** `GET /<subject>/:id/audit`, newest first, `ACCOUNT_HISTORY_PAGE_SIZE` rows per page. */
+export const listAccountHistory = async (
+  subjectId: string,
+  page: number,
+  subject: HistorySubject = 'users',
+): Promise<AccountHistoryPage> => {
+  const result = await apiList<ApiAuditEvent>('GET', `/${subject}/${encodeURIComponent(subjectId)}/audit`, {
     query: { page, limit: ACCOUNT_HISTORY_PAGE_SIZE },
   });
   return {

@@ -8,6 +8,7 @@ import {
   ClipboardList,
   LayoutDashboard,
   MapPin,
+  ScrollText,
   ListChecks,
   Map,
   Settings,
@@ -27,6 +28,8 @@ export interface NavItem {
   /** Hidden when the role lacks this capability; routes still check access in services. */
   capability?: Capability;
   group?: string;
+  /** Exists only against api-qltn (no mock data behind it): hidden in mock mode. */
+  apiOnly?: boolean;
 }
 
 export const ALL_NAV_ITEMS: NavItem[] = [
@@ -44,6 +47,7 @@ export const ALL_NAV_ITEMS: NavItem[] = [
 
   { to: '/space', label: 'Không gian chung cư', icon: Map, group: 'Theo dõi' },
   { to: '/reports', label: 'Báo cáo', icon: BarChart3, capability: 'REPORT_VIEW', group: 'Theo dõi' },
+  { to: '/audit', label: 'Nhật ký thao tác', icon: ScrollText, capability: 'AUDIT_VIEW', group: 'Theo dõi', apiOnly: true },
 
   { to: '/settings/buildings', label: 'Tòa nhà và cấu hình', icon: Building, capability: 'BUILDING_CONFIG', group: 'Hệ thống' },
   { to: '/settings/locations', label: 'Tầng, khu vực, vị trí', icon: MapPin, capability: 'LOCATION_MANAGE', group: 'Hệ thống' },
@@ -57,7 +61,7 @@ export const ALL_NAV_ITEMS: NavItem[] = [
 /** Modules that already talk to api-qltn (plan decision D2): entering them in api mode is allowed. */
 const API_READY_GROUPS = new Set(['Hệ thống', 'Quản trị']);
 /** Single entries ready before the rest of their group (record list in T4; the schedule is still mock-only). */
-const API_READY_PATHS = new Set(['/records']);
+const API_READY_PATHS = new Set(['/records', '/audit']);
 
 /**
  * In api mode only modules backed by the real backend stay in the menu; the rest stay in the code
@@ -69,7 +73,7 @@ const itemsFor = (apiMode: boolean): NavItem[] =>
         (item) =>
           API_READY_PATHS.has(item.to) || (item.group !== undefined && API_READY_GROUPS.has(item.group)),
       )
-    : ALL_NAV_ITEMS;
+    : ALL_NAV_ITEMS.filter((item) => !item.apiOnly);
 
 export const NAV_ITEMS: NavItem[] = itemsFor(IS_API_MODE);
 

@@ -6,6 +6,7 @@ import { Table, Td, Th, Tr } from '@/components/ui/table';
 import type { Department, User } from '@/domain/types';
 import type { Building } from '@/domain/types';
 import { DepartmentDialog } from './DepartmentDialog';
+import { useOpenFromQuery } from '../hooks/useOpenFromQuery';
 
 interface DepartmentsCardProps {
   departments: Department[];
@@ -17,6 +18,7 @@ interface DepartmentsCardProps {
 /** Organization units and building scope used before configuring workflow steps. */
 export const DepartmentsCard = ({ departments, users, buildings, buildingCode }: DepartmentsCardProps) => {
   const [editing, setEditing] = useState<Department | 'new' | null>(null);
+  useOpenFromQuery(departments, setEditing);
   const membersOf = (department: Department) => users.filter((user) => user.departmentId === department.id).length;
   const scopeOf = (department: Department) => department.buildingIds.length === buildings.length ? 'Tất cả tòa nhà' : `Tòa ${department.buildingIds.map((id) => buildingCode(id)).join(', ')}`;
   return (

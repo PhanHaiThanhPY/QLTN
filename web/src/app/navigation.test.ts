@@ -35,4 +35,23 @@ describe('visibleNavItems', () => {
     expect(labels).not.toContain(CONFIG);
     expect(labels).not.toContain(LOCATIONS);
   });
+
+  describe('Nhật ký thao tác (SPEC AD-S1 AC-8)', () => {
+    const AUDIT = 'Nhật ký thao tác';
+    const labelsOf = (role: User['role'], apiMode: boolean) => visibleNavItems(userOf(role), apiMode).map((item) => item.label);
+
+    it.each(['ADMIN', 'BQL', 'OWNERS_BOARD'] as const)('shows the entry to %s in api mode, next to Báo cáo', (role) => {
+      const items = visibleNavItems(userOf(role), true);
+      const audit = items.find((item) => item.label === AUDIT);
+      expect(audit).toMatchObject({ to: '/audit', group: 'Theo dõi' });
+    });
+
+    it.each(['TECH_CONFIRMER', 'TECH_CONSULTANT', 'ACCOUNTANT'] as const)('hides the entry from %s', (role) => {
+      expect(labelsOf(role, true)).not.toContain(AUDIT);
+    });
+
+    it('never shows the entry in mock mode', () => {
+      expect(labelsOf('ADMIN', false)).not.toContain(AUDIT);
+    });
+  });
 });

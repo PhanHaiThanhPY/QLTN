@@ -2,17 +2,24 @@ import { useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { listAccountHistory } from '@/services/http/users-api';
+import { listAccountHistory, type HistorySubject } from '@/services/http/users-api';
 import { AccountHistoryList } from './AccountHistoryList';
 
-export const accountHistoryKey = (userId: string) => ['account-history', userId] as const;
+export const accountHistoryKey = (subjectId: string, subject: HistorySubject = 'users') =>
+  ['account-history', subject, subjectId] as const;
 
-/** Collapsible account history in the employee dialog (api mode); loads when opened, 20 rows per page. */
-export const AccountHistory = ({ userId }: { userId: string }) => {
+interface AccountHistoryProps {
+  subjectId: string;
+  /** Accounts by default; roles and departments reuse the block (SPEC AD-S1 §3 step 7). */
+  subject?: HistorySubject;
+}
+
+/** Collapsible history in the employee, role or department dialog (api mode); loads when opened, 20 rows per page. */
+export const AccountHistory = ({ subjectId, subject = 'users' }: AccountHistoryProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const query = useInfiniteQuery({
-    queryKey: accountHistoryKey(userId),
-    queryFn: ({ pageParam }) => listAccountHistory(userId, pageParam),
+    queryKey: accountHistoryKey(subjectId, subject),
+    queryFn: ({ pageParam }) => listAccountHistory(subjectId, pageParam, subject),
     initialPageParam: 1,
     getNextPageParam: (last) => (last.page < last.totalPages ? last.page + 1 : undefined),
     enabled: isOpen,
