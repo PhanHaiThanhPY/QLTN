@@ -296,7 +296,74 @@ Candidate chấp nhận được để chuyển sang bước PM/BA close.
 
 #### Bằng chứng triển khai (dev-build)
 
-_Chưa có._
+**Ngày:** 26/10/2026 · **Nhánh:** `feature/b03-s4-payment`, tách từ `feature/b03-s3-acceptance` (`ced3bdd`), chưa push. Làm trực tiếp trên cây thư mục chung, vì không có review nào đang chạy.
+**Commit:** API `abecd80`, web `f18caf8`, bằng chứng: commit kế tiếp.
+
+**Đã làm**
+- **Migration `2026-10-26g-payments.sql`** (đã áp vào `qltn_dev`):
+  - bảng `repair_payments`: mỗi dòng là một đợt, tạm ứng hoặc quyết toán; tiền kiểu `bigint`; mỗi lần gửi tăng `revision_no` và chụp lại chuỗi PAYMENT;
+  - bảng `repair_payment_decisions` lưu quyết định từng bước;
+  - loại chữ ký mới `PAYMENT_REQUEST`;
+  - cột `payment_draft` trong bảng hồ sơ cho T17.
+- **Tạm ứng A1, A1b, A2, A3** (theo bổ sung của PM/BA lúc 13:54):
+  - A1 tạo đợt mới, chỉ khi hồ sơ đang từ `READY_FOR_CONSTRUCTION` đến `NEEDS_REPAIR`. Mỗi hồ sơ chỉ một đợt mở (409 `open_advance_exists`). Tổng tạm ứng không vượt số được duyệt (400 `amountVnd`).
+  - A1b gửi lại đúng đợt "Cần bổ sung", kể cả sau nghiệm thu.
+  - A2 do người giữ bước PAYMENT quyết định.
+  - A3 do bất kỳ ai có `PAYMENT_CONFIRM` trong tòa xác nhận.
+  - A1b, A2, A3 còn được phép ở `PENDING_PAYMENT_REQUEST` và `NEEDS_PAYMENT_UPDATE`.
+  - Tạm ứng không làm đổi trạng thái hồ sơ.
+- **Quyết toán T17–T22:**
+  - Số của đợt = số quyết toán − tổng tạm ứng đã chuyển khoản.
+  - Số quyết toán không vượt số được duyệt và phải lớn hơn tổng tạm ứng đã chuyển.
+  - Phải có hóa đơn `INVOICE`; còn tạm ứng mở thì bị chặn.
+  - Chờ duyệt dùng `PENDING_PAYMENT_APPROVAL` khi chuỗi là `[BOARD]`, ngược lại dùng trạng thái chờ tùy chỉnh (v1 BR-11).
+  - Mỗi đợt chỉ xác nhận chuyển khoản một lần (409 `payment_already_confirmed`), và số tiền phải đúng bằng số của đợt.
+  - Đóng hồ sơ khi tổng đã chuyển bằng số quyết toán, nếu không trả 400 `payment`.
+- **Nội dung chuyển khoản mặc định:** "BQT «mã tòa» THANH TOAN CHI PHI «mã hồ sơ»".
+- **Mục đích tệp:**
+  - `PAYMENT_REQUEST` và `INVOICE` do BQL tải;
+  - `PAYMENT_PROOF` do người có `PAYMENT_CONFIRM` tải (ADR R4).
+- **Chi tiết hồ sơ** trả thêm `payment` (số được duyệt, tổng đã chuyển, bản nháp, các đợt).
+- **Nhãn audit** cho 11 mã mới, ở API và web.
+- **Web, chế độ `api`, tab Thanh toán:**
+  - thẻ tổng: số được duyệt, đã chuyển, số quyết toán;
+  - nút đề nghị tạm ứng, gửi lại tạm ứng, đề nghị quyết toán (hiện cách tính), đóng hồ sơ;
+  - mỗi đợt có thẻ riêng: số tiền kèm số tiền bằng chữ, cách tính, người hưởng, tệp, quyết định từng lần gửi, chữ ký, thông tin chuyển khoản; trên thẻ có nút Duyệt, Trả đề nghị, Xác nhận đã chuyển khoản.
+
+**AC → bằng chứng.**
+- e2e `api-qltn/test/record-payments.e2e-spec.ts`: 5/5.
+- e2e API đầy đủ: 16 suite, 136/136.
+  - Lần chạy đầy đủ đầu tiên có lỗi ở suite S1 và S3, cùng một suite báo không chạy được; mình chưa tìm ra nguyên nhân.
+  - Hai suite đó chạy riêng thì đạt; lần chạy đầy đủ thứ hai sạch.
+- Unit 54/54. Lint, typecheck, `format:check` sạch.
+- Web 55 file, 390/390, gồm test đọc số tiền bằng chữ và test các route thanh toán.
+
+| AC | Bằng chứng |
+|---|---|
+| AC-4.1 | Ở `IN_CONSTRUCTION` (số được duyệt 10 triệu), tạm ứng 4 triệu: đợt chờ bước BOARD, nội dung chuyển khoản mặc định, có chữ ký. BQT duyệt → chờ chuyển khoản. `ktoan-a` xác nhận kèm chứng từ → "Đã chuyển khoản", `confirmedBy` = KTOAN-A. Hồ sơ vẫn `IN_CONSTRUCTION` |
+| AC-4.2 | Đợt thứ hai khi đợt đầu còn mở → 409 `open_advance_exists`. Đã chuyển 4 triệu, đề nghị thêm 7 triệu → 400 `amountVnd` |
+| AC-4.3 | Sau nghiệm thu, quyết toán 10 triệu thiếu hóa đơn → 400 `invoiceAttachmentIds`. Đủ hồ sơ: đợt 6 triệu (= 10 − 4), hồ sơ `PENDING_PAYMENT_APPROVAL`. Đóng hồ sơ sớm → 409. BQT duyệt → `PENDING_PAYMENT`; BQT xác nhận chuyển khoản; BQL đóng → `COMPLETED`, tổng đã chuyển 10 triệu |
+| AC-4.4 | Quyết toán 11 triệu → 400 "Số quyết toán không được vượt số được duyệt.". Quyết toán 9 triệu: trả đề nghị thiếu lý do → 400; có lý do → `NEEDS_PAYMENT_UPDATE`; gửi lại → lượt 2. Duyệt, chuyển khoản 9 triệu, đóng → `COMPLETED` |
+| AC-4.5 | KT-A (không có `PAYMENT_CONFIRM`) xác nhận chuyển khoản → 403. Số tiền khác số của đợt → 400. Xác nhận lần hai → 409 `payment_already_confirmed` |
+| AC-4.6 + yêu cầu PM/BA | Tạm ứng 3 triệu còn mở khi nghiệm thu đạt. Gửi quyết toán → 409 `open_advance_exists`. Tạo tạm ứng mới sau nghiệm thu → 409. BQT trả đề nghị (A2) → BQL gửi lại (A1b, lượt 2) → BQT duyệt → Kế toán xác nhận (A3); hồ sơ vẫn `PENDING_PAYMENT_REQUEST`. Sau đó quyết toán 10 triệu gửi được, đợt quyết toán 7 triệu |
+| BR-S4-05 | Đóng hồ sơ khi quyết toán đã duyệt nhưng chưa chuyển khoản → 400 `payment` |
+| AC-0.1 | 6 hành động quyết toán gọi khi hồ sơ đang `IN_CONSTRUCTION` → đều 409 `invalid_status_transition`, không ghi audit |
+| AC-0.2 | Đợt thanh toán chụp chuỗi PAYMENT tại lúc gửi; snapshot thiếu PAYMENT thì dùng `[BOARD]` (v1 BR-11). Người giữ bước đọc từ bản đồ thống nhất, rồi cột cũ (cùng hàm đã kiểm ở AC-0.2 của S2 và S3) |
+| AC-0.3 | `supporting/s4-ui-check.mjs` và 4 ảnh `evidence/S4-1…S4-4`, web chế độ api, tài khoản demo. BQL đề nghị tạm ứng 4 triệu (S4-1, có "Bốn triệu đồng"). BQT duyệt. `ktoan-a` xác nhận chuyển khoản (S4-2, hồ sơ vẫn "Đang thi công"). Nghiệm thu qua API. BQL đề nghị quyết toán 10 triệu, đợt 6 triệu (S4-3). BQT duyệt và xác nhận chuyển khoản. BQL đóng hồ sơ → "Hoàn tất" (S4-4) |
+
+**Khác SPEC hoặc tự chọn (đề nghị PM/BA xác nhận)**
+1. **A1b là hành động riêng** `resubmitAdvanceRequest` (route `resubmit-advance-request`). A1 chỉ tạo đợt mới.
+2. **Số quyết toán phải lớn hơn tổng tạm ứng đã chuyển:** một đợt quyết toán bằng 0 không có gì để chuyển khoản, và §4.4 yêu cầu số tiền > 0.
+3. **Gửi lại đợt cần bổ sung** dùng cùng một dòng đợt và tăng lượt. Quyết định của các lượt trước vẫn giữ.
+4. **Trả 409 `payment_already_confirmed`** khi xác nhận chuyển khoản lần hai (BR-S4-06; mã lỗi do mình đặt).
+5. **Web chưa có nút "Lưu nháp" cho quyết toán.** T17 có ở API và đã có test; dialog đề nghị điền sẵn người hưởng từ đợt trước.
+6. **Nút duyệt và xác nhận ở web** tự kiểm quyền và người giữ bước, như S3. Bản mock giữ giao diện cũ.
+
+**Còn lại**
+- **`not_step_assignee` cho bước thanh toán** có trong code nhưng chưa e2e. Trong seed, chỉ BQT có `PAYMENT_DECIDE`, và BQT lại chính là người giữ bước; e2e chỉ kiểm được TVKT → 403 `missing_capability`.
+- **Dữ liệu thử trong `qltn_dev`:** SC-013 đến SC-015 `[TEST S4 UI]`; SC-015 đã `COMPLETED`. Tòa A đã về STANDARD.
+- **Môi trường:** dev API :5300 và web :5190 chạy nhánh này (migration 26g đã áp).
+- **Script dùng chung:** `docs/tools/repair-flow.mjs` là helper mới cho các script bằng chứng (đưa hồ sơ tới thi công hoặc nghiệm thu đạt qua API). Script S3 chưa được chuyển sang dùng helper này.
 
 #### Kết quả review (dev-review)
 

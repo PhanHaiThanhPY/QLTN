@@ -159,13 +159,14 @@ Trạng thái hồ sơ dùng lại tập trạng thái của v1. Không thêm tr
 
 Tạm ứng không đổi trạng thái hồ sơ. Đợt tạm ứng có vòng đời riêng:
 
-`Nháp` → `Chờ duyệt` (theo chuỗi PAYMENT) → `Chờ chuyển khoản` → `Đã chuyển khoản`, hoặc → `Cần bổ sung` → (gửi lại) `Chờ duyệt`.
+`Chờ duyệt` (theo chuỗi PAYMENT) → `Chờ chuyển khoản` → `Đã chuyển khoản`, hoặc → `Cần bổ sung` → (gửi lại cùng đợt, bản sửa kế tiếp) `Chờ duyệt`. **Không có bản nháp tạm ứng**: A1 gửi thẳng.
 
 | # | Hành động | Khi hồ sơ ở trạng thái | Quyền · Người làm | Điều kiện |
 |---|---|---|---|---|
 | A1 | `submitAdvanceRequest` | `READY_FOR_CONSTRUCTION`, `IN_CONSTRUCTION`, `PENDING_ACCEPTANCE`, `NEEDS_REPAIR` | `PAYMENT_RECORD` · manager | BR-S4-04; chữ ký BQL |
-| A2 | `approveAdvance` / `requestAdvanceUpdate` | như A1 | `PAYMENT_DECIDE` · người giữ bước PAYMENT | yêu cầu bổ sung thì cần lý do 5–1000 ký tự |
-| A3 | `confirmAdvanceTransfer` | như A1 | `PAYMENT_CONFIRM` · bất kỳ ai trong phạm vi tòa | như T21 |
+| A1b | gửi lại đợt tạm ứng đang `Cần bổ sung` (cùng đợt, bản sửa kế tiếp) | như A1, **cộng** `PENDING_PAYMENT_REQUEST`, `NEEDS_PAYMENT_UPDATE` | `PAYMENT_RECORD` · manager | như A1 |
+| A2 | `approveAdvance` / `requestAdvanceUpdate` | như A1, **cộng** `PENDING_PAYMENT_REQUEST`, `NEEDS_PAYMENT_UPDATE` | `PAYMENT_DECIDE` · người giữ bước PAYMENT | yêu cầu bổ sung thì cần lý do 5–1000 ký tự |
+| A3 | `confirmAdvanceTransfer` | như A1, **cộng** `PENDING_PAYMENT_REQUEST`, `NEEDS_PAYMENT_UPDATE` | `PAYMENT_CONFIRM` · bất kỳ ai trong phạm vi tòa | như T21 |
 
 ## 6. Quy tắc nghiệp vụ
 
@@ -212,7 +213,8 @@ Tạm ứng không đổi trạng thái hồ sơ. Đợt tạm ứng có vòng �
   - Còn đợt tạm ứng chưa ở trạng thái "Đã chuyển khoản" thì không gửi quyết toán được (409 `open_advance_exists`).
 - **BR-S4-03:** Quyết toán bắt buộc có đủ tệp `PAYMENT_REQUEST` và `INVOICE` (§4.4). Tờ trình, báo giá được duyệt và biên bản nghiệm thu đạt được hệ thống liên kết, không cần tải lại.
 - **BR-S4-04:** Tạm ứng:
-  - Σ các đợt tạm ứng (mọi trạng thái trừ "Nháp") ≤ số được duyệt.
+  - Σ các đợt tạm ứng (mọi trạng thái) ≤ số được duyệt.
+  - Đợt tạm ứng **mới** (A1) chỉ tạo được ở các trạng thái hồ sơ của A1. Đợt **đã có** được xử lý tiếp (A1b, A2, A3) cả sau khi nghiệm thu đạt, để không chặn quyết toán mãi (`open_advance_exists`).
   - Mỗi hồ sơ chỉ có **một** đợt tạm ứng đang mở tại một thời điểm.
   - Không áp tỷ lệ tối đa (DF-08 không đặt trần).
 - **BR-S4-05:** `completeRecord` khi quyết toán đã chuyển khoản **và** Σ mọi đợt đã chuyển khoản = số quyết toán. Thiếu thì trả 400 lỗi trường `payment`.
@@ -287,3 +289,4 @@ Chỉ chạy các test liên quan, không chạy toàn bộ suite.
 | 26/10/2026 | v2 viết lại S2–S4 theo PRODUCT-DEFAULTS (PD-09) và ADR-0001 R3/R4. |
 | 26/10/2026 | Chủ dự án duyệt v2 (PD-12). |
 | 26/10/2026 | BR-S3-01a: phần thông báo tối thiểu cho S3, theo đề xuất của dev-build; nằm trong BR-S3-01 đã duyệt, không mở rộng phạm vi. |
+| 26/10/2026 | Làm rõ §5.4 và BR-S4-04 khi build S4, theo phát hiện của dev-build. Thêm A1b; A2, A3 được làm cả ở `PENDING_PAYMENT_REQUEST` và `NEEDS_PAYMENT_UPDATE`, để gỡ chỗ kẹt khi nghiệm thu đạt lúc còn tạm ứng mở. Bỏ trạng thái "Nháp" của tạm ứng. Không đổi ý định nghiệp vụ đã duyệt (PD-12). |
