@@ -89,9 +89,29 @@ Candidate RM-S1 cần trả về dev-build để sửa finding F-RM-S1-01 và ch
 
 **Checks rerun:** `api-qltn` format/lint/typecheck OK, unit 43/43, e2e `role-matrix-v2` + `catalog-admin` + `auth` 45/45 (isolated DB), build OK · `web` `vitest run src/services src/features/buildings src/features/admin src/app src/domain` 26 files, 238/238, `tsc -b` OK.
 
+### Vòng review 2 (dev-review)
+
+**PASS WITH RESIDUE — 26/10/2026.** Fix `7c337e4` addresses F-RM-S1-01; evidence `7ca21d7`.
+
+- API format/lint/typecheck đạt; unit `43/43`.
+- API focused e2e `auth`, `catalog-admin`, `role-matrix-v2` đạt `3 suites / 45 tests` trên DB cô lập `qltn_review_rm_s1_fix_e2e`. BQL audit trong phạm vi trả 200 giống ADMIN, ngoài phạm vi trả 404, KT trả 403; BQL vẫn không sửa được config.
+- Web targeted tests đạt `9 files / 47 tests`, gồm AC-1.3a history/card/config-gate; `tsc -b` đạt.
+- `git diff --check` riêng fix commit `7c337e4` đạt. Các whitespace cảnh báo khi diff ancestry rộng thuộc tài liệu cũ ngoài fix commit.
+- Không có finding còn lại trong scope RM-S1/PD-13. Các hằng approval-chain cũ vẫn thuộc RM-S2 như đã ghi ở vòng review đầu.
+
+Candidate chấp nhận được để chuyển sang bước PM/BA close.
+
 ### Đóng (PM/BA)
 
-_Chưa có._
+**Ngày:** 26/10/2026 · **Kết quả:** RM-S1 **đạt**, đóng. Code `ebe816d`, `072df32`, cùng bản sửa `7c337e4`, trên nhánh `feature/rm-s1-role-matrix`; bằng chứng `7ca21d7`. Chưa merge, chưa push.
+
+- **Bằng chứng:** AC-1.1 đến AC-1.9 và AC-1.3a đều có bằng chứng. Vòng 1 review không đạt với một phát hiện, F-RM-S1-01: thay đổi PD-13 đến khi đang review. Vòng sửa đã xử lý; reviewer chạy lại: e2e 45/45 trên DB riêng, web 47/47.
+- **SPEC sửa theo code:** AC-1.3 ghi `apply-template` trả 200, nhưng code trả **201** như trước giờ (POST tạo mới). PM/BA sửa SPEC theo code; không có thay đổi hành vi.
+- **Phần còn lại:** các hằng số cũ của chuỗi duyệt (`DEFAULT_APPROVAL_STEP_KEYS`, `DEMO_APPROVAL_STEP_KEYS`) thuộc RM-S2, đúng kế hoạch.
+- **Cập nhật tài liệu:**
+  - [modules/roles.md](../../modules/roles.md): RG-01, RG-02, RG-03 đã xử lý.
+  - [modules/buildings.md](../../modules/buildings.md): BG-03, BG-08 đã xử lý.
+- **Việc tiếp theo:** RM-S2 (đã duyệt, PD-10) được bắt đầu. Merge do chủ dự án quyết định.
 
 ## RM-S2
 

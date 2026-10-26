@@ -67,7 +67,7 @@ Hệ thống phân quyền và giao người theo đúng quy trình thật của
 |---|---|---|
 | AC-1.1 | unit | Ma trận ở API và web giống hệt ADR §3. Có một test so hai bản. |
 | AC-1.2 | e2e | `GET /roles` có dòng hệ thống `KTOAN` (Kế toán) với đúng 4 quyền. Seed có tài khoản `KTOAN-A`, đăng nhập được. Số tài khoản seed trong `auth.e2e` là 10. |
-| AC-1.3 | e2e | `bql-a` nhận 403 ở `PUT /buildings/:id/config`, `POST …/config/apply-template`, `PUT /building-configs/workflow`, `GET /building-configs`. `admin-demo` gọi các route này trả 200. **`GET /buildings/:id/audit`: `bql-a` và `admin-demo` đều nhận 200 cho tòa trong phạm vi, 404 cho tòa ngoài phạm vi; `kt-a` nhận 403** (PD-13). |
+| AC-1.3 | e2e | `bql-a` nhận 403 ở `PUT /buildings/:id/config`, `POST …/config/apply-template`, `PUT /building-configs/workflow`, `GET /building-configs`. `admin-demo` gọi được các route này (200, riêng `apply-template` trả 201). **`GET /buildings/:id/audit`: `bql-a` và `admin-demo` đều nhận 200 cho tòa trong phạm vi, 404 cho tòa ngoài phạm vi; `kt-a` nhận 403** (PD-13). |
 | AC-1.3a | test web | BQL thấy khối lịch sử tòa và vị trí ở cùng chỗ và cùng nội dung như ADMIN, chỉ đọc. BQL không có nút sửa cấu hình (PD-13). |
 | AC-1.4 | e2e | `bql-a` tạo, sửa, ngừng dùng được vị trí của tòa A (200). `kt-a` gọi thì nhận 403. |
 | AC-1.5 | e2e | Tạo tài khoản vai trò Kế toán thành công. Tài khoản này xem được danh sách hồ sơ trong phạm vi, và nhận 403 khi tạo hồ sơ hoặc khi xác nhận. |
@@ -106,3 +106,4 @@ Chỉ chạy các test liên quan, không chạy toàn bộ suite.
 |---|---|
 | 26/10/2026 | Bản đầu (PD-05). Tạm dừng (PD-08), chủ dự án duyệt (PD-10). |
 | 26/10/2026 | PD-13: BQL được **xem** lịch sử tòa như ADMIN, dùng màn lịch sử hiện có (BR-03a, AC-1.3 sửa, thêm AC-1.3a). Thay đổi này đến khi RM-S1 đang review, nên đưa vào vòng sửa của RM-S1. |
+| 26/10/2026 | Lúc đóng RM-S1: AC-1.3 sửa mã trả về của `apply-template` thành 201, theo hành vi hiện có. |
