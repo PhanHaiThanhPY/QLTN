@@ -90,7 +90,7 @@ export class BuildingsController {
   }
 
   @Post(':id/locations')
-  @RequireCapabilities('BUILDING_CONFIG')
+  @RequireCapabilities('LOCATION_MANAGE')
   createLocation(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
@@ -100,7 +100,7 @@ export class BuildingsController {
   }
 
   @Patch(':id/locations/:locationId')
-  @RequireCapabilities('BUILDING_CONFIG')
+  @RequireCapabilities('LOCATION_MANAGE')
   updateLocation(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
@@ -111,7 +111,7 @@ export class BuildingsController {
   }
 
   @Patch(':id/locations/:locationId/status')
-  @RequireCapabilities('BUILDING_CONFIG')
+  @RequireCapabilities('LOCATION_MANAGE')
   @ApiOperation({ summary: 'Ngừng / mở lại sử dụng vị trí' })
   setLocationActive(
     @CurrentUser() user: AuthenticatedUser,

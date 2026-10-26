@@ -7,6 +7,7 @@ export const MATRIX_ROLES: readonly Role[] = [
   'TECH_CONFIRMER',
   'TECH_CONSULTANT',
   'OWNERS_BOARD',
+  'ACCOUNTANT',
 ] as const;
 
 export interface PermissionRow {
@@ -29,10 +30,20 @@ export const PERMISSION_ROWS: readonly PermissionRow[] = [
     label: 'Duyệt, yêu cầu bổ sung, từ chối tờ trình theo workflow được cấu hình',
     capability: 'PROPOSAL_DECIDE',
   },
-  { group: 'Sửa chữa', label: 'Cập nhật thi công, lập đề nghị thanh toán', capability: 'CONSTRUCTION' },
+  { group: 'Sửa chữa', label: 'Bắt đầu, cập nhật thi công, gửi nghiệm thu', capability: 'CONSTRUCTION' },
   { group: 'Sửa chữa', label: 'Ghi nhận nghiệm thu đạt/không đạt (cần cả KT và TVKT đạt)', capability: 'ACCEPTANCE_DECIDE' },
   { group: 'Sửa chữa', label: 'Duyệt/trả đề nghị thanh toán', capability: 'PAYMENT_DECIDE' },
-  { group: 'Sửa chữa', label: 'Ghi nhận thanh toán và đóng hoàn tất', capability: 'PAYMENT_RECORD' },
+  { group: 'Sửa chữa', label: 'Lập đề nghị thanh toán, ghi nhận thanh toán và đóng hoàn tất', capability: 'PAYMENT_RECORD' },
+  {
+    group: 'Sửa chữa',
+    label: 'Xác nhận đã chuyển khoản một đợt thanh toán (dùng từ luồng thanh toán nhiều đợt)',
+    capability: 'PAYMENT_CONFIRM',
+  },
+  {
+    group: 'Quỹ',
+    label: 'Nghiệp vụ tiền của quỹ khai thác và tiền gửi quỹ bảo trì (chưa có màn hình)',
+    capability: 'FUND_OPERATE',
+  },
   { group: 'Bảo trì', label: 'Tạo/sửa/vô hiệu hóa hạng mục bảo trì', capability: 'MAINTENANCE_MANAGE' },
   { group: 'Bảo trì', label: 'Tạo/sửa/kích hoạt/tạm dừng/đổi lịch kế hoạch', capability: 'MAINTENANCE_MANAGE' },
   { group: 'Bảo trì', label: 'Kích hoạt sinh lịch tự động khi mở màn hình (chạy dưới danh nghĩa SYSTEM)', capability: 'ALL' },
@@ -50,4 +61,6 @@ export const PERMISSION_ROWS: readonly PermissionRow[] = [
   { group: 'Chung', label: 'Thay BQL quản lý đang ngừng hoạt động', capability: 'REPLACE_MANAGER' },
   { group: 'Chung', label: 'Xem báo cáo', capability: 'REPORT_VIEW' },
   { group: 'Chung', label: 'Xem quản trị và khôi phục demo', capability: 'ADMIN_VIEW' },
+  { group: 'Cấu hình', label: 'Sửa cấu hình tòa, áp mẫu, Workflow Designer, xem lịch sử cấu hình', capability: 'BUILDING_CONFIG' },
+  { group: 'Cấu hình', label: 'Quản lý tầng, khu vực, vị trí', capability: 'LOCATION_MANAGE' },
 ] as const;

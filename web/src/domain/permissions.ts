@@ -9,7 +9,12 @@ export const CAPABILITY = {
   CONSTRUCTION: 'CONSTRUCTION',
   ACCEPTANCE_DECIDE: 'ACCEPTANCE_DECIDE',
   PAYMENT_DECIDE: 'PAYMENT_DECIDE',
+  /** Prepare payment requests and close the record (BQL). */
   PAYMENT_RECORD: 'PAYMENT_RECORD',
+  /** Confirm that a payment instalment was transferred, with its proof (BQT or Kế toán, DF-08). */
+  PAYMENT_CONFIRM: 'PAYMENT_CONFIRM',
+  /** Money operations of the operating fund (F06–F09) and maintenance-fund deposits (T03–T06); reserved. */
+  FUND_OPERATE: 'FUND_OPERATE',
   MAINTENANCE_MANAGE: 'MAINTENANCE_MANAGE',
   MAINTENANCE_REVIEW: 'MAINTENANCE_REVIEW',
   ITEM_CONDITION: 'ITEM_CONDITION',
@@ -17,8 +22,10 @@ export const CAPABILITY = {
   REPLACE_MANAGER: 'REPLACE_MANAGER',
   REPORT_VIEW: 'REPORT_VIEW',
   ADMIN_VIEW: 'ADMIN_VIEW',
-  /** Edit locations and configuration of the buildings in scope. */
+  /** Edit the building configuration (workflow, limits, assignment rules) and read its history; ADMIN only (DF-11). */
   BUILDING_CONFIG: 'BUILDING_CONFIG',
+  /** Manage floors, areas and locations of the buildings in scope. */
+  LOCATION_MANAGE: 'LOCATION_MANAGE',
   /** Manage accounts, custom roles, buildings and configuration templates. */
   ACCOUNT_MANAGE: 'ACCOUNT_MANAGE',
   /** Let work start before approval within the building's emergency limit. */
@@ -26,26 +33,49 @@ export const CAPABILITY = {
 } as const;
 export type Capability = (typeof CAPABILITY)[keyof typeof CAPABILITY];
 
-/** Role matrix from spec section 3. ADMIN never holds business decision capabilities. */
+/**
+ * Matrix v2 (ADR-0001 §3). ADMIN never holds business decision capabilities; only ADMIN edits the building
+ * configuration (DF-11) while BQL keeps the locations.
+ */
 const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
-  ADMIN: ['VIEW', 'REPLACE_MANAGER', 'REPORT_VIEW', 'ADMIN_VIEW', 'BUILDING_CONFIG', 'ACCOUNT_MANAGE'],
+  ADMIN: [
+    'VIEW',
+    'REPLACE_MANAGER',
+    'REPORT_VIEW',
+    'ADMIN_VIEW',
+    'BUILDING_CONFIG',
+    'LOCATION_MANAGE',
+    'ACCOUNT_MANAGE',
+  ],
   BQL: [
     'VIEW',
     'RECORD_EDIT',
     'CONSTRUCTION',
+    'ACCEPTANCE_DECIDE',
     'PAYMENT_RECORD',
     'MAINTENANCE_MANAGE',
     'ITEM_CONDITION',
     'REASSIGN',
     'REPORT_VIEW',
-    'BUILDING_CONFIG',
+    'LOCATION_MANAGE',
     'EMERGENCY_START',
   ],
-  // KT changes item condition only while confirming an occurrence (spec section 3).
+  // KT changes item condition only while confirming an occurrence.
   TECH_CONFIRMER: ['VIEW', 'RECORD_CONFIRM', 'PROPOSAL_DECIDE', 'ACCEPTANCE_DECIDE', 'MAINTENANCE_REVIEW'],
-  // TVKT reviews the proposal first and accepts the construction together with KT.
-  TECH_CONSULTANT: ['VIEW', 'PROPOSAL_DECIDE', 'ACCEPTANCE_DECIDE', 'REPORT_VIEW'],
-  OWNERS_BOARD: ['VIEW', 'PROPOSAL_DECIDE', 'PAYMENT_DECIDE', 'REPORT_VIEW'],
+  // TVKT confirms the site condition (DF-01), reviews the proposal and takes part in the acceptance (DF-06).
+  TECH_CONSULTANT: ['VIEW', 'RECORD_CONFIRM', 'PROPOSAL_DECIDE', 'ACCEPTANCE_DECIDE', 'REPORT_VIEW'],
+  // BQT is the confirmer fallback (DF-01), approves, accepts (DF-06) and may confirm transfers (DF-08).
+  OWNERS_BOARD: [
+    'VIEW',
+    'RECORD_CONFIRM',
+    'PROPOSAL_DECIDE',
+    'ACCEPTANCE_DECIDE',
+    'PAYMENT_DECIDE',
+    'PAYMENT_CONFIRM',
+    'REPORT_VIEW',
+  ],
+  // Kế toán on the BQT side: confirms transfers and runs fund money operations (DF-10).
+  ACCOUNTANT: ['VIEW', 'PAYMENT_CONFIRM', 'FUND_OPERATE', 'REPORT_VIEW'],
 };
 
 /** Capabilities a system role grants; custom roles can only keep a subset of them. */

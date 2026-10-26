@@ -1,4 +1,4 @@
-import { ArrowRight, Building2, ClipboardCheck, HardHat, Settings2, UserX, Users } from 'lucide-react';
+import { ArrowRight, Building2, Calculator, ClipboardCheck, HardHat, Settings2, UserX, Users } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { ROLE_LABEL } from '@/domain/constants';
 import type { Role } from '@/domain/constants';
@@ -12,6 +12,7 @@ const ROLE_ICON: Record<Role, LucideIcon> = {
   TECH_CONFIRMER: HardHat,
   TECH_CONSULTANT: ClipboardCheck,
   OWNERS_BOARD: Users,
+  ACCOUNTANT: Calculator,
 };
 
 const buildingLabel = (user: User): string =>

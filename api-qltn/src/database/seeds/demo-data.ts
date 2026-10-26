@@ -47,6 +47,7 @@ export const DEMO_ASSIGNMENT_RULES: ReadonlyArray<{ departmentCode: string; role
   { departmentCode: 'KT', role: 'TECH_CONFIRMER', priority: 20 },
   { departmentCode: 'TVKT', role: 'TECH_CONSULTANT', priority: 30 },
   { departmentCode: 'BQT', role: 'OWNERS_BOARD', priority: 40 },
+  { departmentCode: 'KTOAN', role: 'ACCOUNTANT', priority: 50 },
 ];
 
 /** Custom role seeded as VT-01 (BQL without emergency start or building configuration). */
@@ -89,6 +90,7 @@ export const DEMO_DEPARTMENTS: readonly SeedDepartment[] = [
   { code: 'KT', name: 'Kỹ thuật', description: 'Xác nhận hiện trạng, xử lý kỹ thuật và nghiệm thu.' },
   { code: 'TVKT', name: 'Tư vấn kỹ thuật', description: 'Thẩm định phương án và hỗ trợ kiểm soát chất lượng.' },
   { code: 'BQT', name: 'Ban quản trị', description: 'Phê duyệt hồ sơ theo phạm vi được phân quyền.' },
+  { code: 'KTOAN', name: 'Kế toán', description: 'Xác nhận chuyển khoản và nghiệp vụ tiền của các quỹ (phía BQT).' },
 ];
 
 /** Username = lower-case code. KT-A-CU is inactive, as at the end of the frontend seed ("Cần phân công lại"). */
@@ -172,6 +174,15 @@ export const DEMO_USERS: readonly SeedUser[] = [
     departmentCode: 'BQT',
     jobTitle: 'Đại diện ban quản trị',
     buildingCodes: ALL_BUILDINGS,
+    active: true,
+  },
+  {
+    code: 'KTOAN-A',
+    fullName: 'Đỗ Minh Châu',
+    role: 'ACCOUNTANT',
+    departmentCode: 'KTOAN',
+    jobTitle: 'Kế toán',
+    buildingCodes: ['A'],
     active: true,
   },
 ];

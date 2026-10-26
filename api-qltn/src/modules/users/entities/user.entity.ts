@@ -9,7 +9,7 @@ import { Department } from '../../organization/entities/department.entity';
 @Entity('users')
 @Index('UQ_users_code', ['code'], { unique: true })
 @Index('UQ_users_username', ['username'], { unique: true })
-@Check('CHK_users_role', `role IN ('ADMIN', 'BQL', 'TECH_CONFIRMER', 'TECH_CONSULTANT', 'OWNERS_BOARD')`)
+@Check('CHK_users_role', `role IN ('ADMIN', 'BQL', 'TECH_CONFIRMER', 'TECH_CONSULTANT', 'OWNERS_BOARD', 'ACCOUNTANT')`)
 @Check('CHK_users_username_lower', `username = lower(username)`)
 export class User extends BaseEntity {
   @Column({ type: 'varchar', length: 30 })

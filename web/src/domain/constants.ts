@@ -4,6 +4,7 @@ export const ROLE = {
   TECH_CONFIRMER: 'TECH_CONFIRMER',
   TECH_CONSULTANT: 'TECH_CONSULTANT',
   OWNERS_BOARD: 'OWNERS_BOARD',
+  ACCOUNTANT: 'ACCOUNTANT',
 } as const;
 export type Role = (typeof ROLE)[keyof typeof ROLE];
 
@@ -13,6 +14,7 @@ export const ROLE_LABEL: Record<Role, string> = {
   TECH_CONFIRMER: 'Kỹ thuật',
   TECH_CONSULTANT: 'Tư vấn kỹ thuật (TVKT)',
   OWNERS_BOARD: 'Ban quản trị (BQT)',
+  ACCOUNTANT: 'Kế toán',
 };
 
 /** Short codes shown for system roles. */
@@ -22,6 +24,7 @@ export const ROLE_CODE: Record<Role, string> = {
   TECH_CONFIRMER: 'KT',
   TECH_CONSULTANT: 'TVKT',
   OWNERS_BOARD: 'BQT',
+  ACCOUNTANT: 'KTOAN',
 };
 
 export const REPAIR_STATUS = {

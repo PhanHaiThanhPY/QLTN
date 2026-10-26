@@ -211,7 +211,13 @@ export const DEFAULT_WORKFLOW_STAGES: readonly Omit<WorkflowStageConfig, 'stepBi
 ];
 
 /** Workflow roles that a department assignment rule can resolve. */
-export const ASSIGNMENT_ROLES: readonly Role[] = ['BQL', 'TECH_CONFIRMER', 'TECH_CONSULTANT', 'OWNERS_BOARD'];
+export const ASSIGNMENT_ROLES: readonly Role[] = [
+  'BQL',
+  'TECH_CONFIRMER',
+  'TECH_CONSULTANT',
+  'OWNERS_BOARD',
+  'ACCOUNTANT',
+];
 
 export const CONFIG_LIMITS = {
   DUE_DAYS_MAX: 30,

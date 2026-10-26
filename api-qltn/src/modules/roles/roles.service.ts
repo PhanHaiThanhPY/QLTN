@@ -19,6 +19,7 @@ export const SYSTEM_ROLE_CODE = {
   TECH_CONFIRMER: 'KT',
   TECH_CONSULTANT: 'TVKT',
   OWNERS_BOARD: 'BQT',
+  ACCOUNTANT: 'KTOAN',
 } as const satisfies Record<Role, string>;
 
 export const CUSTOM_ROLE_PREFIX = 'VT';
@@ -31,11 +32,25 @@ export interface RoleView {
   capabilities: string[];
   isSystem: boolean;
   sourceRoleId: string | null;
+  /**
+   * Capabilities the base role gained after this custom role was last saved and that it does not hold:
+   * "Có quyền mới chưa bật". Saving the role clears the list. Always empty for system roles.
+   */
+  newBaseCapabilities: string[];
   holderCount: number;
   version: number;
   createdAt: Date;
   updatedAt: Date;
 }
+
+/** Base capabilities added after the custom role was last saved and not held by it (PD-07 Q5). */
+const newBaseCapabilitiesOf = (role: RoleDefinition): string[] => {
+  if (role.isSystem || !role.baseCapabilities) return [];
+  const known = role.baseCapabilities;
+  return roleCapabilities(role.baseRole).filter(
+    (capability) => !known.includes(capability) && !role.capabilities.includes(capability),
+  );
+};
 
 @Injectable()
 export class RolesService {
@@ -63,13 +78,17 @@ export class RolesService {
       if (!baseRole) throw fieldError('baseRole', 'Cần chọn vai trò gốc để xác định quyền ban đầu.');
       await this.assertNameFree(manager, dto.name);
 
-      const initial = dto.capabilities ?? source?.capabilities ?? [...roleCapabilities(baseRole)];
+      // A copied list may still name capabilities the base role has since lost (matrix v2); keep the valid part.
+      const base = roleCapabilities(baseRole) as readonly string[];
+      const copied = source?.capabilities.filter((capability) => base.includes(capability));
+      const initial = dto.capabilities ?? copied ?? [...base];
       const role = await repo.save(
         repo.create({
           code: await this.codes.next(manager, CUSTOM_ROLE_PREFIX, 2),
           name: dto.name,
           baseRole,
           capabilities: narrowCapabilities(baseRole, initial),
+          baseCapabilities: [...base],
           isSystem: false,
           sourceRoleId: source?.id ?? null,
         }),
@@ -101,6 +120,7 @@ export class RolesService {
 
       role.name = dto.name;
       role.capabilities = narrowCapabilities(role.baseRole, dto.capabilities);
+      role.baseCapabilities = [...roleCapabilities(role.baseRole)];
       role.version += 1;
       const saved = await repo.save(role);
       const holders = await manager.getRepository(User).countBy({ roleDefId: role.id });
@@ -158,6 +178,7 @@ export class RolesService {
       capabilities: role.capabilities,
       isSystem: role.isSystem,
       sourceRoleId: role.sourceRoleId,
+      newBaseCapabilities: newBaseCapabilitiesOf(role),
       holderCount,
       version: role.version,
       createdAt: role.createdAt,
