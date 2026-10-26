@@ -37,6 +37,7 @@ Hệ thống phân quyền và giao người theo đúng quy trình thật của
 - **BR-07 (RM-S2):** Khi tạo hồ sơ, người xác nhận là người đầu tiên đủ điều kiện cho bước INTAKE trong snapshot, theo luật giao việc. Đủ điều kiện nghĩa là đúng vai trò hoặc `roleDefId`, còn hoạt động, đúng phạm vi tòa và khu vực.
   - Không có ai: lấy người giữ bước `BOARD`, và ghi audit "Không có người xác nhận theo cấu hình, dùng BQT" (PD-07 Q2).
   - Không có cả người giữ `BOARD`: giữ hành vi hiện tại, tức báo thiếu người xác nhận khi gửi.
+- **BR-07a (RM-S2, làm rõ Q-RM2-1):** Gửi xác nhận (`submitRecord`) chỉ yêu cầu người giữ bước **INTAKE** còn hợp lệ, gồm cả trường hợp dự phòng BQT theo BR-07. Người giữ các bước của chuỗi duyệt tờ trình **không** được kiểm ở bước này; chúng được kiểm khi trình tờ trình (SPEC B03–B09 v1 BR-05, v2 BR-S2-04). Lý do: AC-2.3 yêu cầu BQT xác nhận được hồ sơ ở tòa AQUA không có TVKT, nên hồ sơ phải gửi được.
 - **BR-08 (RM-S2):** Thông báo lỗi khi sai người xác nhận đổi thành "Chỉ người xác nhận hiện trạng được giao mới thực hiện được bước này." `details.reason` giữ nguyên `not_step_assignee`.
 - **BR-09 (RM-S2):** Mẫu `AQUA` ("Aqua – theo quy trình Ban quản trị"):
 
@@ -107,3 +108,4 @@ Chỉ chạy các test liên quan, không chạy toàn bộ suite.
 | 26/10/2026 | Bản đầu (PD-05). Tạm dừng (PD-08), chủ dự án duyệt (PD-10). |
 | 26/10/2026 | PD-13: BQL được **xem** lịch sử tòa như ADMIN, dùng màn lịch sử hiện có (BR-03a, AC-1.3 sửa, thêm AC-1.3a). Thay đổi này đến khi RM-S1 đang review, nên đưa vào vòng sửa của RM-S1. |
 | 26/10/2026 | Lúc đóng RM-S1: AC-1.3 sửa mã trả về của `apply-template` thành 201, theo hành vi hiện có. |
+| 26/10/2026 | BR-07a: làm rõ Q-RM2-1 của dev-build, suy ra từ AC-2.3 đã duyệt; không đổi phạm vi. |

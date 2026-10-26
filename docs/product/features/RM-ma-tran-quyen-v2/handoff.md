@@ -175,7 +175,27 @@ Candidate chấp nhận được để chuyển sang bước PM/BA close.
 
 ### Kết quả review (dev-review)
 
-_Chưa có._
+**FAILED — 26/10/2026.** Review candidate `32c732c`, evidence `4eabad5`, theo packet `qitem-20261026101308-fae2ac80`. Q-RM2-1 đã được PM/BA chốt bằng BR-07a trong SPEC: `submitRecord` chỉ kiểm tra holder của bước INTAKE; holder của chuỗi Tờ trình chỉ kiểm tra khi trình tờ trình.
+
+- API format/lint/typecheck đạt; unit đạt `7 suites / 48 tests`.
+- API focused e2e (`rm-s2-intake-config`, `catalog-admin`, `records`, `record-confirmations`, `record-transitions`, `role-matrix-v2`, `auth`) đạt `7 suites / 77 tests` trên DB cô lập `qltn_review_rm_s2_e2e`.
+- Web full Vitest đạt `47 files / 343 tests`; `tsc -b` đạt. Grep không còn `DEFAULT_APPROVAL_STEP_KEYS` hoặc `DEMO_APPROVAL_STEP_KEYS`; `git diff --check` đạt.
+- Browser script `rm-s2-ui-check.mjs` không rerun được trong môi trường review vì Chrome không expose page target trước khi flow bắt đầu. Đã kiểm tra các screenshot AC-2.9 do dev-build cung cấp; evidence thể hiện flow apply AQUA → BQL submit → TVKT confirm và restore building A.
+- **Finding F-RM-S2-01 (BR-07a / AC-2.3):** `records.service.ts` vẫn duyệt toàn bộ holder của `approvalStepKeys` trong `assertSubmittable()` khi `submitRecord`. Vì vậy AQUA nguyên bản `[TECH, BOARD]` với TVKT đã bị vô hiệu sẽ bị từ chối do thiếu holder TECH, dù BQT đã được chọn làm confirmer fallback của INTAKE. Test AC-2.3 hiện phải sửa cấu hình PROPOSAL thành `[BOARD]` trước khi submit, nên không kiểm chứng hành vi SPEC yêu cầu và che khuất lỗi.
+  - Cần sửa `submitRecord` để chỉ kiểm tra confirmer/holder INTAKE theo BR-07a; giữ kiểm tra chuỗi Tờ trình ở endpoint trình tờ trình. Bổ sung e2e với AQUA nguyên bản, không có TVKT, BQT fallback, submit và BQT confirm thành công mà không sửa PROPOSAL chain.
+- AC-2.6 hiện mới có bằng chứng snapshot chuỗi `[TECH, BOARD]`; handoff ghi rõ endpoint trình/duyệt tờ trình chưa tồn tại, nên phần chuyển trạng thái thực tế của AC này chưa được kiểm chứng trong candidate.
+
+Candidate cần trả về `dev-build` để sửa F-RM-S2-01 và cập nhật bằng chứng AC-2.3 theo BR-07a.
+
+### Vòng sửa 1 (dev-build)
+
+**Candidate:** code fix `2fa2954` on `feature/rm-s2-intake-config` (not pushed). Only finding F-RM-S2-01 (BR-07a) is addressed.
+
+- API `records.service.ts`: `assertSubmittable` no longer checks the proposal-chain holders. Submitting for confirmation needs only a valid INTAKE holder, including the BQT fallback. The now-unused `APPROVAL_STEP_SLOT` and `approvalStepsOf` were removed. Proposal-chain holders get checked again when proposal submission is built (S2, v2 BR-S2-04); until then nothing checks them.
+- Mock `repair-record-handlers.ts`: `submitRecord` calls `assertSubmittable(…, { checkApprovers: false })`. The emergency start keeps the approver check, because it goes straight into the proposal chain. The mock's `submitProposal` already checks the approvers.
+- e2e `rm-s2-intake-config` "AC-2.3" now runs on the **unchanged** AQUA chain `[TECH, BOARD]`, with TVKT deactivated: confirmer `bqt` with the audit reason, submit OK, `bqt` confirms.
+
+**Checks rerun:** `api-qltn` format/lint/typecheck OK, unit 48/48, e2e `rm-s2-intake-config` + `records` + `record-transitions` + `record-confirmations` 32/32 (isolated DB) · `web` `vitest run src/services` 194/194, `tsc -b` OK.
 
 ### Đóng (PM/BA)
 
