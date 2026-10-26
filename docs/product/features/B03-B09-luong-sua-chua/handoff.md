@@ -208,7 +208,66 @@ Candidate chấp nhận được để chuyển sang bước PM/BA close.
 
 #### Bằng chứng triển khai (dev-build)
 
-_Chưa có._
+**Ngày:** 26/10/2026 · **Nhánh:** `feature/b03-s3-acceptance`, xếp trên `feature/ad-s1-audit-log` (`7a69e32`), chưa push. Code làm trong worktree `../QLTN-s3` để cây thư mục chung còn trống cho review AD-S1.
+**Commit:** API `9ea47e3`; web `494d795` (bước MANAGER), `a3bb137` (màn hình), `9254e2b` (sửa sau khi chạy thật); bằng chứng: commit kế tiếp.
+
+**Đã làm**
+- **Bước có sẵn `MANAGER`** (ADR-0001 R3), ở cả API và web:
+  - vai trò BQL; người giữ bước luôn là `managerUserId`, không chụp vào bản đồ người giữ;
+  - chỉ hợp lệ trong giai đoạn `ACCEPTANCE`; dùng ở giai đoạn khác thì trả 400 theo giai đoạn;
+  - khi chưa giai đoạn nào dùng, bước này chỉ cần `ACCEPTANCE_DECIDE`;
+  - không thuộc chuỗi duyệt tờ trình; trình thiết kế workflow chỉ gợi ý bước này ở giai đoạn Nghiệm thu;
+  - mẫu AQUA đổi ACCEPTANCE thành `[MANAGER, BOARD, TECH]`.
+- **Migration `2026-10-26f-construction-acceptance.sql`** (đã áp vào `qltn_dev`) thêm các bảng:
+  - thi công và nhật ký tiến độ;
+  - lượt nghiệm thu (biên bản D5-NT) và quyết định từng thành phần, mỗi bước chỉ một quyết định;
+  - `notifications`;
+  - loại chữ ký mới `ACCEPTANCE_DECISION`.
+- **API T10–T16:** `POST /records/:id/{start-construction, update-construction, submit-acceptance, pass-acceptance, fail-acceptance, save-repair-evidence, resubmit-acceptance}`.
+  - Thứ tự kiểm cho thành phần nghiệm thu: capability → trạng thái (409) → giữ một bước ACCEPTANCE (403 `not_step_assignee`) → bước đó còn mở trong lượt (409 `step_already_decided`).
+  - Tệp `CONSTRUCTION` và `ACCEPTANCE` theo BR-12 của v1.
+  - `GET /records/:id` trả thêm `execution`.
+- **Thông báo (BR-S3-01a):**
+  - `GET /notifications`, `GET /notifications/unread-count`, `POST /notifications/:id/read`;
+  - `startConstruction` ghi một dòng cho mỗi người giữ bước vai trò BQT và TVKT, trong cùng transaction.
+- **Nhãn audit** cho 7 mã mới, ở API và web (AD-S1 BR-05).
+- **Web, chế độ `api`:**
+  - tab Thi công: kế hoạch kèm ghi chú, cập nhật tiến độ, form biên bản nghiệm thu;
+  - tab Nghiệm thu:
+    - lượt đang mở cho biết người xem quyết định với vai trò nào;
+    - dialog Đạt / Không đạt có chữ ký;
+    - thẻ khắc phục kèm nút "Gửi nghiệm thu lại";
+    - mỗi lượt có một biên bản chỉ đọc: đủ trường §4.3, kết luận và chữ ký từng thành phần, kết luận chung;
+  - trang Thông báo và chuông trên header đọc API.
+
+**AC → bằng chứng.** e2e `api-qltn/test/record-construction.e2e-spec.ts` 8/8; e2e API đầy đủ 15 suite 131/131; unit 54/54; lint, typecheck, `format:check` sạch. Web 54 file, 376/376.
+
+| AC | Bằng chứng |
+|---|---|
+| AC-3.1 | Thiếu ghi chú kế hoạch → 400 `planNote`; ngày dự kiến xong trước ngày bắt đầu → 400. Bắt đầu hợp lệ → `IN_CONSTRUCTION`. BQT và TVKT nhận "Kế hoạch thi công SC-…", nội dung có "Nhà thầu thực hiện: Công ty Thủy Tín". Số chưa đọc tăng 1, đánh dấu đã đọc thì giảm lại. TVKT đọc thông báo của BQT → 404. BQL không nhận thông báo |
+| AC-3.2 | Tiến độ chưa 100% → 400; ngày hoàn thành ở tương lai → 400; không ảnh → 400. Hợp lệ → `PENDING_ACCEPTANCE`, lượt 1 có thành phần `[MANAGER, BOARD, TECH]`, chưa ai quyết định |
+| AC-3.3 | Thiếu chữ ký → 400; KT-A2 (không phải thành phần) → 403. BQL, BQT, TVKT lần lượt ĐẠT: sau người thứ hai vẫn `PENDING_ACCEPTANCE`, sau người thứ ba → `PENDING_PAYMENT_REQUEST`. Lượt `PASSED`, có `closedAt`, ba quyết định đều có chữ ký |
+| AC-3.4 | BQL ĐẠT; BQT KHÔNG ĐẠT mà không ghi điểm cần khắc phục → 400; có ghi → `NEEDS_REPAIR`, lượt 1 `FAILED`. TVKT quyết định sau đó → 409. Lưu nội dung khắc phục, gửi lại → có lượt 2; lượt 1 giữ nguyên (so sánh bằng nhau). BQL quyết định hai lần trong lượt 2 → 409 `step_already_decided` |
+| AC-3.5 | Áp mẫu STANDARD: thành phần là `[TECH_CONFIRM, TECH]`. TVKT ĐẠT trước, hồ sơ vẫn chờ; KT ĐẠT sau → `PENDING_PAYMENT_REQUEST` |
+| AC-0.1 | Gọi 6 hành động S3 khi hồ sơ đang `READY_FOR_CONSTRUCTION` → đều 409 `invalid_status_transition`, không ghi audit |
+| AC-0.2 | Hồ sơ snapshot cũ (ACCEPTANCE `[BOARD, TECH]`, bản đồ người giữ rỗng, người giữ ở cột cũ): BQL nhận 403; BQT và TVKT ĐẠT → `PENDING_PAYMENT_REQUEST` |
+| AC-0.3 | `supporting/s3-ui-check.mjs` và 5 ảnh `evidence/S3-1…S3-5`, web chế độ api, tài khoản demo. BQL bắt đầu thi công kèm kế hoạch, báo 100%, lập biên bản (thành phần khác, ảnh), rồi ĐẠT với vai trò BQL. BQT thấy thông báo kế hoạch (S3-4) rồi ĐẠT. TVKT ĐẠT. Biên bản khóa, kết luận "Đạt", đủ 3 chữ ký, hồ sơ "Chờ đề nghị thanh toán" (S3-5) |
+
+**Khác SPEC hoặc tự chọn (đề nghị PM/BA xác nhận)**
+1. **Người giữ nhiều bước nghiệm thu:** mỗi lần quyết định ghi cho bước đầu tiên người đó còn mở. Khi không còn bước nào mở thì trả 409 `step_already_decided`.
+2. **Người nhận thông báo kế hoạch:** người giữ mọi bước có vai trò BQT hoặc TVKT trong snapshot, ở mọi giai đoạn, không trùng lặp.
+3. **T16 không bắt buộc ghi chú khắc phục** (theo §5.2 "như T12"). Nội dung đã lưu ở T15 được điền sẵn vào phần "Nội dung nghiệm thu" khi gửi lại.
+4. **Mẫu AQUA mới chỉ áp cho tòa áp lại mẫu hoặc tòa mới tạo.** Tòa và hồ sơ đang có giữ nguyên cấu hình và snapshot cũ (AC-0.2).
+5. **Nút quyết định ở web (chế độ api)** tự kiểm quyền, trạng thái và bước còn mở, vì luật slot của bản demo không biết bước MANAGER. Bản mock giữ giao diện cũ.
+6. **Test cũ cập nhật kỳ vọng** do bước hệ thống thứ 4 làm lệch chỉ số, và do mẫu AQUA mới: `building-config.spec`, `catalog-admin` (2 chỗ), `rm-s2-intake-config` AC-2.2, `mappers.test`.
+
+**Còn lại**
+- **Nhãn loại thông báo:** trên trang Thông báo, thông báo kế hoạch hiện nhãn loại mặc định "Công việc mới", vì bản tối thiểu chưa có loại riêng. Phần này để B14.
+- **Dữ liệu thử trong `qltn_dev`:** SC-010 đến SC-012 `[TEST S3 UI]`. Tòa A đã về STANDARD.
+- **Môi trường chạy bằng chứng:**
+  - dev API :5300 hiện chạy code worktree S3 (migration 26f đã áp);
+  - web worktree chạy trên :5191;
+  - web :5190 vẫn chạy từ cây thư mục chung.
 
 #### Kết quả review (dev-review)
 
