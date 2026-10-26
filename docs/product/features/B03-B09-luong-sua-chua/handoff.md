@@ -89,6 +89,21 @@ Slices S2-S4 and everything in SPEC section 2.2. Do not commit to main or push u
 - Please add reproducible browser evidence for the API-mode flow: create/submit a record as `bql-a`, run `confirm-repair` as `kt-a`, and verify the detail view shows the confirmation history. Then return the candidate to review through the workflow.
 - Non-blocking notes: full API e2e emitted the existing `pg@9.0` concurrent-query deprecation warning; `vite build` emitted existing Zod/Rollup annotation and chunk-size warnings.
 
+**Review round 2 — PASS WITH RESIDUE (26/10/2026).** Candidate code remains `ab67a6c`; evidence head is `53db4c6`.
+
+- The builder's supplied AC-0.3 evidence is now complete: `s1-ui-check.mjs` drives the real API-mode UI through record creation/submission as `bql-a`, confirmation as `kt-a`, and verifies the `Chờ lập tờ trình` state plus the `Lịch sử xác nhận hiện trạng` note. Four screenshots are present under `supporting/evidence/`; the final screenshot visibly shows the confirmation toast, target status, assigned confirmer, and history card. The stale `S1-failed.png` artifact is absent.
+- Independent reruns of the narrow code paths remain green: S1 e2e 6/6 and web adapter/mapper tests 99/99. The evidence script passes `node --check`, and the evidence diff passes `git diff --check`.
+- Residue: rerunning the headless-Chrome evidence script in this review seat failed before page startup (`Chrome did not expose a page target`); Chrome is unavailable to this seat's browser surface. This is an environment limitation, not a candidate failure, and the builder's reproducible run plus screenshots are retained as the AC-0.3 proof.
+
+**Review outcome:** S1 is acceptable for the PM/BA documentation close step. No application code changes were made in the fix round.
+
 ### Đóng (PM/BA)
 
-_Chưa có._
+**Ngày:** 26/10/2026 · **Kết quả:** S1 **đạt**, đóng. Code `ab67a6c`, bằng chứng tới `53db4c6`, nhánh `feature/b03-s1-confirmation`, chưa merge, chưa push.
+
+- **AC đã có bằng chứng:**
+  - AC-1.1 đến AC-1.4, cùng AC-0.1 và AC-0.2 cho ba hành động S1: e2e 6/6. Reviewer chạy lại độc lập, vẫn đạt.
+  - AC-0.3: script `supporting/s1-ui-check.mjs` cùng 4 ảnh chụp. PM/BA đã tự xem ảnh `S1-4`: trạng thái "Chờ lập tờ trình", thẻ "Lịch sử xác nhận hiện trạng" có kết luận của KT-A, kèm toast "Đã xác nhận cần sửa".
+- **Phần còn lại được chấp nhận:** reviewer không chạy lại được script trình duyệt vì seat review không có Chrome. Đây là giới hạn môi trường; lần chạy của dev-build và ảnh chụp được giữ làm bằng chứng.
+- **Thay đổi ngoài gói S1 nhưng khớp SPEC §4:** mọi thao tác ghi hồ sơ, gồm cả lưu nháp, gửi và rút đã có, nay trả 404 khi vị trí hồ sơ nằm ngoài `locationIds` (nếu có) của người thực hiện. GET chi tiết và danh sách vẫn chỉ xét phạm vi tòa. PM/BA chấp nhận vì SPEC §4 yêu cầu "phạm vi tòa và khu vực". Phạm vi khu vực cho các thao tác đọc là điểm mở, sẽ xử lý khi rà phân quyền (OD-03, OD-10).
+- **Việc tiếp theo:** chưa tạo. S2 chỉ giao khi chủ dự án yêu cầu. Việc merge `feature/b03-s1-confirmation` cũng do chủ dự án quyết định.
