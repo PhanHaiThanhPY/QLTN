@@ -243,3 +243,4 @@ Nguồn hành vi: `web/src/domain/actions.ts`, `web/src/services/handlers/repair
 |---|---|
 | 26/10/2026 | Bản nháp đầu tiên (PD-03). |
 | 26/10/2026 | Sửa theo review kỹ thuật của dev-build: AC-4.4 dùng bước tùy chỉnh có `PAYMENT_DECIDE`; tách thứ tự kiểm tra theo loại người làm (mục 4); quy định cách gửi và lưu chữ ký (BR-04); thêm khóa tệp theo bản ghi (BR-14); quy định ai được tải tệp theo mục đích (BR-12); T13 xác định theo `role`; TR-06 chuyển sang OD-15; giữ tên các route có sẵn; thêm AC-0.4–AC-0.6. |
+| 26/10/2026 | **PD-06:** quy tắc tạm TR-01 đến TR-05 sẽ được thay bằng mặc định DF-01 đến DF-08 và DF-10 trong [PRODUCT-DEFAULTS.md](../../PRODUCT-DEFAULTS.md). TR-06 giữ nguyên (DF-04). S1 đã xong, không đổi. **S2–S4 không giao theo bản này**; PM/BA sẽ ra phiên bản 2 trước. |

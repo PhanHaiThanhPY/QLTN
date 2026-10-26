@@ -33,14 +33,25 @@ docs/product/
 
 Mã tính năng dùng hệ mã của D1: `B01–B18` vận hành, `F01–F10` quỹ khai thác, `T01–T06` tiền gửi quỹ bảo trì, `S01` không gian, `A01` trợ lý AI.
 
-## 3. Hiện trạng đã ghi nhận (26/10/2026)
+## 3. Hiện trạng theo module (26/10/2026)
 
-Mục này chỉ là ảnh chụp từ git log và cấu trúc thư mục. Chưa phải kết quả review code.
+Nguồn: [báo cáo kiểm kê 26/10](../reviews/2026-10-26/tong-quan-module-tinh-nang.md), đo trên code `641c8b5`. Giai đoạn theo [PROCESS.md](../PROCESS.md) §2a: 1 Khảo sát · 2 Phân tích · 3 Thiết kế · 4 Phát triển · 5 Kiểm thử và nghiệm thu. Module có sẵn demo nhưng chưa có SPEC được ghi ở giai đoạn 1, vì demo chưa phải yêu cầu đã chốt.
 
-- **Web (`web/`):** bản demo đủ nhiều nhóm màn hình (records, workflow, maintenance, dashboard, reports, space, assistant…), chạy được ở chế độ mock. UAT nội bộ ngày 20/10 ghi nhận 34/34 kịch bản sửa chữa đạt trên demo.
-- **API (`api-qltn/`, NestJS):** các module auth, users, roles, organization, buildings, reference, attachments, audit, records. Riêng hồ sơ sửa chữa (B03) đã có tạo hồ sơ, lưu nháp, xem chi tiết, ảnh hiện trường, gửi/rút hồ sơ, danh sách phân trang có lọc và bộ đếm.
-- **Web chế độ `api`:** đang nối dần từng phần của B03 với API thật.
-- Mã task `D2-T*` trong commit không có kế hoạch gốc (OD-09 đã trả lời).
+| Module | Code hiện có | Thao tác API / demo | Giai đoạn | Chặn bởi |
+|---|---|---|---|---|
+| B03 Hồ sơ sửa chữa | Một phần API (S1 chưa merge) | 7 / 8 | 4 (SPEC B03–B09) | — |
+| B05, B08, B09 | Demo | 0 / 21 | 3 xong; chờ giao S2–S4 | Quy tắc tạm: OD-05, OD-10–OD-13, OD-15 |
+| B07 Ký và biểu mẫu | Demo (ký ở lần trình) | 0 / 0 | 1 | OD-13 |
+| B06 Khẩn cấp | Demo | 0 / 1 | 1 | Chưa có SPEC |
+| B15 Tòa nhà và vị trí, B16 Workflow | API | 8 / 8 | 4 (làm trước khi có quy trình này, chưa có SPEC hồi tố) | OD-14 |
+| B17 Nhân sự và phân quyền | Một phần API | 6 / 7 | 1 cho phần còn thiếu | OD-03, OD-10 |
+| B10–B14 Thiết bị, bảo trì, lịch, thông báo | Demo | 0 / 25 | 1 | Chưa có SPEC |
+| B01, B02, B04, B11, B18 | Demo (chỉ xem) | — | 1 | B18: OD-07 (Excel) |
+| S01 Không gian, A01 Trợ lý AI | Demo (AI mô phỏng) | — | 1 | OD-07, OD-08 |
+| F01–F10 Quỹ khai thác | Chưa có | — | 1 | OD-04 |
+| T01–T06 Tiền gửi quỹ bảo trì | Chưa có | — | 1 | OD-06 |
+
+Chưa module nào qua giai đoạn 5. Tiêu chí nghiệm thu hợp đồng cho nhóm B còn chờ OD-14.
 
 ### Chuẩn so sánh cho luồng B03–B09
 

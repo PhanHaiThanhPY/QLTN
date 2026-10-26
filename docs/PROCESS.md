@@ -10,6 +10,20 @@
 4. **Không xóa, chỉ lưu trữ.** Tài liệu hết hiệu lực chuyển vào `archive/YYYY-MM/` và ghi lý do trong [archive/README.md](archive/README.md). Chỉ xóa bản nháp trùng hoặc ghi chú thô đã được tổng hợp, khi chủ dự án đồng ý.
 5. **Tài liệu đi cùng code.** Thay đổi API/hành vi phải cập nhật SPEC hoặc README kỹ thuật trong cùng đợt bàn giao.
 
+## 2a. Năm giai đoạn triển khai cho mỗi module
+
+Mỗi module (mã D1) đi lần lượt qua 5 giai đoạn. Chỉ sang giai đoạn sau khi đạt **cổng** của giai đoạn trước. Trạng thái của từng module được ghi trong [product/README.md](product/README.md) §3. Giai đoạn 2–5 chạy theo vòng đời ở mục 2 bên dưới.
+
+| Giai đoạn | Ai | Đầu ra (vị trí) | Cổng chuyển giai đoạn |
+|---|---|---|---|
+| 1. Khảo sát nghiệp vụ | PM/BA cùng khách | Câu hỏi OD-xx và câu trả lời trong `product/DECISIONS.md`; tài liệu và mẫu khách ở `sources/`; ghi chú khảo sát ở `reviews/YYYY-MM-DD/` | Mọi OD chặn module đã được chốt, hoặc được chủ dự án cho phép dùng quy tắc tạm |
+| 2. Phân tích | PM/BA | `product/features/<mã>/SPEC.md`: phạm vi, quy trình, business rule, AC đánh số | SPEC `Đã duyệt` (bước 1b ở mục 2) |
+| 3. Thiết kế | Dev-build (kiến trúc, DB, API), PM/BA (UI/UX, mockup trong `features/<mã>/supporting/`) | ADR ở `engineering/adr/` cho mọi quyết định kỹ thuật mới (bảng, mô hình tiền, tích hợp); hợp đồng API trong SPEC | Review kỹ thuật SPEC xong, các phát hiện đã đưa vào SPEC (như review của dev-build với SPEC B03–B09); ADR được duyệt nếu có |
+| 4. Phát triển | Dev-build | Code, test và `handoff.md` theo từng slice | Review đạt (bước 3 ở mục 2) |
+| 5. Kiểm thử và nghiệm thu | Dev-review (kiểm thử kỹ thuật), PM/BA (kiểm thử nghiệp vụ), khách (UAT) | Ca kiểm thử nghiệp vụ và biên bản UAT ở `qa/uat/`; lỗi quay về giai đoạn 4 | Khách ký biên bản UAT theo tiêu chí nghiệm thu đã chốt (OD-14) |
+
+Một module chỉ được ghi "xong" khi qua giai đoạn 5. Qua giai đoạn 4 là "đã triển khai, chờ nghiệm thu".
+
 ## 2. Vòng đời một yêu cầu
 
 Khớp với workflow OpenRig `qltn-pm-ba-review-loop`.
@@ -17,7 +31,7 @@ Khớp với workflow OpenRig `qltn-pm-ba-review-loop`.
 | Bước | Ai | Đầu ra bắt buộc |
 |---|---|---|
 | 1. Yêu cầu | PM/BA (`dev-pm-ba`) | `product/features/<mã>/SPEC.md` trạng thái `Chờ duyệt`: phạm vi, AC đánh số, trạng thái, quy tắc, hợp đồng API nghiệp vụ, phụ thuộc OD-xx, mục "Ngoài phạm vi". |
-| 1b. Duyệt | Chủ dự án (người dùng) | Chốt phạm vi; PM/BA ghi ngày và người duyệt vào đầu SPEC, chuyển `Đã duyệt`, rồi giao gói việc cho dev-build. Dev-build chỉ làm SPEC `Đã duyệt`. |
+| 1b. Duyệt | Chủ dự án (người dùng), hoặc PM/BA theo PD-05 | Chủ dự án duyệt SPEC có quyết định phạm vi hoặc thương mại còn mở, hoặc dựa vào OD chưa chốt. Các SPEC khác PM/BA tự duyệt (PD-05). Người duyệt và ngày ghi ở đầu SPEC; SPEC chuyển `Đã duyệt` rồi mới giao cho dev-build. Dev-build chỉ làm SPEC `Đã duyệt`. Giao xong thì PM/BA chuyển ngay sang module kế tiếp. |
 | 2. Triển khai | Dev (`dev-build`) | Code + test; cập nhật README kỹ thuật/ADR nếu có quyết định kỹ thuật; ghi `handoff.md`: AC nào đã làm, bằng chứng (lệnh test, kết quả), điểm chưa làm. |
 | 3. Review | Reviewer (`dev-review`) | Kết quả review trong `handoff.md`: đạt hoặc danh sách phát hiện có mức độ và vị trí. |
 | 4. Sửa | Dev | Chỉ sửa phát hiện đã ghi, cập nhật `handoff.md`, trả lại review. |

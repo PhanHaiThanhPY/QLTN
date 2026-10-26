@@ -13,6 +13,8 @@ Không xóa mục cũ. Khi thay đổi, thêm mục mới và cập nhật trạ
 |---|---|---|---|---|
 | PD-01 | 26/10/2026 | Tài liệu sản phẩm đặt tại `docs/product/`; mỗi tính năng có đúng một `SPEC.md` làm hợp đồng yêu cầu. | PM/BA seat theo phân công vai trò | Phân công vai trò ngày 26/10/2026 |
 | PD-02 | 26/10/2026 | Seat PM/BA không sửa code ứng dụng, schema, migration hay cấu hình deploy. Thay đổi kỹ thuật đi qua bàn giao cho dev-build. | Operator (phân công vai trò) | Phân công vai trò ngày 26/10/2026 |
+| PD-06 | 26/10/2026 | Chưa có khách để hỏi: sản phẩm làm trước, chủ dự án đi chào khách sau. Mỗi OD-xx chưa có câu trả lời được thay bằng một **phương án mặc định có căn cứ** trong [PRODUCT-DEFAULTS.md](PRODUCT-DEFAULTS.md) (DF-01 đến DF-28). Căn cứ ưu tiên: biểu mẫu và quy trình D5, rồi TT 05/2024, rồi D1/D2. Khi viết SPEC, mặc định có giá trị như quyết định đã chốt. Khi có ghi chú của khách, PM/BA cập nhật DF và các SPEC liên quan. Các OD vẫn giữ trong danh sách "Chờ chốt" để đối chiếu khi đi chào khách. | Chủ dự án (người dùng) | Chỉ thị trong phiên PM/BA ngày 26/10/2026 |
+| PD-05 | 26/10/2026 | Quy trình làm theo module: PM/BA phân tích từng module (flow, business rule, AC, checklist test). Khi module đủ rõ thì bàn giao cho dev-build qua workflow `qltn-pm-ba-review-loop`, rồi chuyển ngay sang phân tích module tiếp theo, không chờ module trước xong. Review lỗi thì trả dev-build sửa và review lại; đạt thì PM/BA cập nhật tài liệu. PM/BA **tự duyệt** SPEC khi SPEC không chứa quyết định phạm vi hoặc thương mại còn mở và không dựa vào OD chưa chốt. Trường hợp ngược lại vẫn cần chủ dự án duyệt (PROCESS.md bước 1b). PM/BA không sửa code, database hay deploy. Mọi seat làm theo phase nhỏ, không chạy toàn bộ test suite. | Chủ dự án (người dùng) | Chỉ thị dán vào phiên PM/BA ngày 26/10/2026 |
 | PD-04 | 26/10/2026 | Duyệt [SPEC B03–B09](features/B03-B09-luong-sua-chua/SPEC.md) (bản đã sửa theo review kỹ thuật), gồm ba điểm phạm vi. (1) Xử lý khẩn cấp, thông báo chưa xử lý, giao lại người xử lý và việc còn tồn Đợt 1, hạn xử lý và công việc để sang SPEC riêng. (2) Dùng mã lỗi `details.reason` riêng. (3) Nghiệm thu song song hay tuần tự giữ như demo, chờ OD-12 chốt. Giao lần lượt từng slice cho dev-build qua hàng đợi, bắt đầu từ S1. | Chủ dự án (người dùng), dev-build chuyển lời lúc 07:13Z | Tin nhắn dev-build → dev-pm-ba 26/10/2026 07:13Z |
 | PD-03 | 26/10/2026 | Viết SPEC B03–B09 ngay. Hành vi của web demo được dùng làm quy tắc tạm; mỗi quy tắc ghi rõ OD-xx sẽ thay nó (theo [PROCESS.md](../PROCESS.md) §2). Không chờ khách trả lời OD-05, OD-10–OD-13. | Chủ dự án (người dùng), dev-build chuyển lời lúc 07:00Z | Tin nhắn dev-build → dev-pm-ba 26/10/2026 07:00Z |
 
@@ -53,6 +55,8 @@ Hình D1 được ghi là "Giao diện và dữ liệu minh họa". Các điểm
 
 ## Chờ chốt
 
+Câu hỏi gửi khách cho các OD dưới đây nằm trong [phiếu khảo sát L0](../reviews/2026-10-26/khao-sat-L0-cau-hoi-khach-hang.md): A1–A2 (OD-01), A3 (OD-02), A4 (OD-14), B1–B3 (OD-03, OD-10), B4–B6 (OD-17), C1 (OD-11), C2 (OD-15), C3 (OD-12), C4 (OD-13), C5 (OD-05), D1–D5 (OD-04), E1–E4 (OD-06), E5–E9 (OD-16), F1–F3 (OD-07), F4 (OD-08). Phiếu soạn ngày 26/10/2026, chưa gửi. Khi có câu trả lời, ghi vào mục "Đã chốt" kèm số câu.
+
 OD-01 đến OD-08 lấy từ [review 23/10 §10](../reviews/2026-10-23/review-tai-lieu-nghiep-vu.md). Người quyết định là khách hàng/chủ dự án trừ khi ghi khác.
 
 | ID | Câu hỏi | Ảnh hưởng | Liên quan |
@@ -70,6 +74,8 @@ OD-01 đến OD-08 lấy từ [review 23/10 §10](../reviews/2026-10-23/review-t
 | OD-12 | Nghiệm thu có dùng danh sách hạng mục kiểm tra như D1 tr. 22 không? Nếu có: danh sách lấy từ đâu (mẫu theo loại việc, theo thiết bị hay nhập tay), và mọi hạng mục phải đạt mới qua? | B08; điều kiện chuyển sang thanh toán | DG-02 |
 | OD-13 | Tài liệu nào được ký trong hệ thống và ai ký: tờ trình (demo), biên bản nghiệm thu do hệ thống tạo (D1 tr. 21), đề nghị thanh toán? Sau khi ký mà sửa nội dung thì xử lý phiên bản thế nào? | B07, B05, B08 | M04, DG-03 |
 | OD-15 | Mỗi hồ sơ được trình tờ trình tối đa bao nhiêu lần? Hết số lần thì xử lý thế nào? Demo cho 3 lần; từ chối lần thứ 3 thì hồ sơ thành "Chưa xử lý" và kèm thông báo. D1 và D2 không nêu giới hạn này. | B05; trạng thái `UNRESOLVED` | SPEC B03–B09 TR-06 |
+| OD-16 | Câu hỏi nhóm T (tiền gửi) TQ-01–TQ-06, chi tiết ở [modules/T-tien-gui-quy-bao-tri.md](modules/T-tien-gui-quy-bao-tri.md) §4: quỹ bảo trì theo tòa hay chung; bản chào trễ hạn; đổi kết quả chọn; phụ lục hợp đồng; ngân hàng trả thiếu lãi; sao kê dùng chung với F08. | T01–T06 | Phiếu L0 câu E5–E9 |
+| OD-17 | Câu hỏi module users và roles: UQ-01 (xử lý việc đang giao khi nhân viên nghỉ hoặc bị khóa), UQ-02 (ai được thay người phụ trách), UQ-03 (đổi vị trí thì tạo tài khoản mới hay đổi vai trò), RQ-01 (**ai được sửa cấu hình tòa**: hiện BQL sửa được chuỗi duyệt, rủi ro tách bạch trách nhiệm), RQ-02 (ngừng dùng vai trò tùy chỉnh). Chi tiết ở [modules/users.md](modules/users.md) §4 và [modules/roles.md](modules/roles.md) §5. | B17, B16; US-S2, RO-S2 | Phiếu L0 câu B4–B6 |
 | OD-14 | Tiêu chí nghiệm thu hợp đồng cho nhóm B01–B18 là gì? D1 tr. 44 chỉ nêu F và T; D2 mục 03 hẹn "phụ lục nghiệm thu" nhưng phụ lục này chưa có. | Điều kiện hoàn thành của mọi SPEC nhóm B | RC-05, H04 |
 
 ## Đã trả lời (không cần chốt thêm)
