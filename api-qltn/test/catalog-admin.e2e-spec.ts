@@ -117,7 +117,14 @@ describe('Catalog & administration (e2e)', () => {
     });
 
     it('seeds the system roles and the VT-01 custom role', () => {
-      expect(roles.filter((r) => r.isSystem).map((r) => r.code)).toEqual(['ADMIN', 'BQL', 'BQT', 'KT', 'TVKT']);
+      expect(roles.filter((r) => r.isSystem).map((r) => r.code)).toEqual([
+        'ADMIN',
+        'BQL',
+        'BQT',
+        'KT',
+        'KTOAN',
+        'TVKT',
+      ]);
       expect(role('VT-01').capabilities).not.toContain('EMERGENCY_START');
     });
   });
@@ -353,38 +360,39 @@ describe('Catalog & administration (e2e)', () => {
     const configOf = async (session: Session, buildingId: string) =>
       dataOf<Config>(await session.get(`/api/buildings/${buildingId}/config`).expect(200));
 
-    it('is hidden from roles without BUILDING_CONFIG', async () => {
+    it('is hidden from roles without BUILDING_CONFIG, BQL included since matrix v2 (DF-11)', async () => {
       await ktA.get(`/api/buildings/${buildingA.id}/config`).expect(403);
+      await bqlA.get(`/api/buildings/${buildingA.id}/config`).expect(403);
     });
 
     it('saves a change, reports it and writes the audit reason', async () => {
-      const config = await configOf(bqlA, buildingA.id);
+      const config = await configOf(admin, buildingA.id);
       expect(config.approvalStepKeys).toEqual(['TECH', 'BOARD']);
-      const res = await bqlA
+      const res = await admin
         .put(`/api/buildings/${buildingA.id}/config`, configBody(config, { emergencyLimitVnd: '25000000' }))
         .expect(200);
       const result = dataOf<{ config: Config; changes: Array<{ label: string }> }>(res);
       expect(result.config.version).toBe(config.version + 1);
       expect(result.changes.map((c) => c.label)).toEqual(['Hạn mức sửa chữa khẩn cấp']);
       const audit = dataOf<{ data: Array<{ action: string; reason: string }> }>(
-        await bqlA.get(`/api/buildings/${buildingA.id}/audit`),
+        await admin.get(`/api/buildings/${buildingA.id}/audit`),
       ).data;
       expect(audit[0].action).toBe('updateBuildingConfig');
       expect(audit[0].reason).toContain('25.000.000');
-      await bqlA.put(`/api/buildings/${buildingA.id}/config`, configBody(config)).expect(409);
+      await admin.put(`/api/buildings/${buildingA.id}/config`, configBody(config)).expect(409);
     });
 
     it('rejects a money value that is not a positive integer string', async () => {
-      const config = await configOf(bqlA, buildingA.id);
-      const res = await bqlA
+      const config = await configOf(admin, buildingA.id);
+      const res = await admin
         .put(`/api/buildings/${buildingA.id}/config`, configBody(config, { emergencyLimitVnd: 1.5 }))
         .expect(400);
       expect(errorFields(res)).toEqual(['emergencyLimitVnd']);
     });
 
     it('checks custom approval steps against role capabilities', async () => {
-      const config = await configOf(bqlA, buildingA.id);
-      const res = await bqlA
+      const config = await configOf(admin, buildingA.id);
+      const res = await admin
         .put(
           `/api/buildings/${buildingA.id}/config`,
           configBody(config, {
@@ -395,7 +403,7 @@ describe('Catalog & administration (e2e)', () => {
         .expect(400);
       expect(errorFields(res)).toEqual(['workflowApprovalSteps.3.role']);
 
-      const ok = await bqlA
+      const ok = await admin
         .put(
           `/api/buildings/${buildingA.id}/config`,
           configBody(config, {
@@ -422,8 +430,8 @@ describe('Catalog & administration (e2e)', () => {
     });
 
     it('applies a template but keeps the assignment rules', async () => {
-      const config = await configOf(bqlA, buildingA.id);
-      const res = await bqlA
+      const config = await configOf(admin, buildingA.id);
+      const res = await admin
         .post(`/api/buildings/${buildingA.id}/config/apply-template`, {
           templateKey: 'RESIDENTIAL',
           version: config.version,
@@ -450,13 +458,13 @@ describe('Catalog & administration (e2e)', () => {
         })
         .expect(200);
 
-      const locations = dataOf<Location[]>(await bqlA.get(`/api/buildings/${buildingA.id}/locations`));
-      const source = await configOf(bqlA, buildingA.id);
+      const locations = dataOf<Location[]>(await admin.get(`/api/buildings/${buildingA.id}/locations`));
+      const source = await configOf(admin, buildingA.id);
       const rules = source.assignmentRules.map((rule) =>
         rule.role === 'BQL' ? { ...rule, locationIds: [locations[0].id] } : rule,
       );
       const sourceAfter = dataOf<{ config: Config }>(
-        await bqlA
+        await admin
           .put(`/api/buildings/${buildingA.id}/config`, configBody(source, { assignmentRules: rules }))
           .expect(200),
       ).config;
@@ -489,15 +497,18 @@ describe('Catalog & administration (e2e)', () => {
         ]),
       );
       expect(saved.skipped).toHaveLength(sourceAfter.assignmentRules.length);
-      expect((await configOf(bqlA, buildingA.id)).version).toBe(sourceAfter.version);
+      expect((await configOf(admin, buildingA.id)).version).toBe(sourceAfter.version);
     });
 
     it('bulk workflow update is all-or-nothing', async () => {
+      // Since matrix v2 only ADMIN edits configurations (DF-11); BQL-B is refused before any change.
       const bqlB = await signIn(server, 'bql-b');
-      const configs = dataOf<Config[]>(await bqlB.get('/api/building-configs'));
-      expect(configs).toHaveLength(3);
+      await bqlB.get('/api/building-configs').expect(403);
+      const configs = dataOf<Config[]>(await admin.get('/api/building-configs'));
+      // The admin scope holds the 4 demo buildings plus building E created earlier in this suite.
+      expect(configs.length).toBeGreaterThanOrEqual(2);
       const [first, second] = configs;
-      const res = await bqlB
+      const res = await admin
         .put('/api/building-configs/workflow', {
           targets: [
             {
@@ -510,7 +521,7 @@ describe('Catalog & administration (e2e)', () => {
         })
         .expect(409);
       expect(errorOf(res).code).toBe('CONFLICT');
-      const after = dataOf<Config>(await bqlB.get(`/api/buildings/${first.buildingId}/config`));
+      const after = dataOf<Config>(await admin.get(`/api/buildings/${first.buildingId}/config`));
       expect(after.version).toBe(first.version);
       expect(after.emergencyDocHours).toBe(first.emergencyDocHours);
     });

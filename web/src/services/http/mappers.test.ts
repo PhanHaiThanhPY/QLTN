@@ -206,6 +206,7 @@ describe('mapRoleDefinition', () => {
       capabilities: [CAPABILITY.VIEW, CAPABILITY.RECORD_EDIT],
       isSystem: true,
       sourceRoleId: undefined,
+      newBaseCapabilities: [],
       version: 2,
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-02T00:00:00.000Z',

@@ -61,6 +61,8 @@ export interface RoleDefinition {
   isSystem: boolean;
   /** Role it was copied from. */
   sourceRoleId?: string;
+  /** Capabilities the base role gained since this custom role was last saved and it does not hold (api mode). */
+  newBaseCapabilities?: Capability[];
   version: number;
   createdAt: IsoDateTime;
   updatedAt: IsoDateTime;

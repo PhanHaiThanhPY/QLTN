@@ -22,6 +22,17 @@ export interface BuildingSettings {
   canManage: boolean;
 }
 
+/** "Tầng, khu vực, vị trí": needs `LOCATION_MANAGE` only, so BQL keeps it after matrix v2 (DF-11). */
+export interface LocationSettings {
+  buildings: Building[];
+  building: Building;
+  locations: Location[];
+  /** Location history; the building audit needs `BUILDING_CONFIG`, so it stays empty for BQL. */
+  audit: AuditEvent[];
+  canEdit: boolean;
+  canSeeHistory: boolean;
+}
+
 export interface WorkflowIndexItem {
   building: Building;
   config: BuildingConfig;
@@ -88,11 +99,16 @@ const apiSettingsFor = async (
   };
 };
 
+const pickBuilding = (buildings: Building[], buildingId?: string): Building => {
+  const building = buildings.find((row) => row.id === buildingId) ?? buildings[0];
+  if (!building) throw forbidden('Bạn chưa được gán tòa nhà nào.');
+  return building;
+};
+
 /** Api mode: the backend already limits `/buildings` to the caller's scope; pick like the mock branch. */
 const getApiBuildingSettings = async (viewer: User, buildingId?: string): Promise<BuildingSettings> => {
   const buildings = await listApiBuildings();
-  const building = buildings.find((row) => row.id === buildingId) ?? buildings[0];
-  if (!building) throw forbidden('Bạn chưa được gán tòa nhà nào.');
+  const building = pickBuilding(buildings, buildingId);
   return apiSettingsFor(viewer, buildings, building);
 };
 
@@ -129,8 +145,7 @@ export const getBuildingSettings = async (buildingId?: string): Promise<Building
   const buildings = (await db.buildings.bulkGet(viewer.buildingIds))
     .filter((row): row is Building => Boolean(row))
     .sort((a, b) => a.code.localeCompare(b.code));
-  const building = buildings.find((row) => row.id === buildingId) ?? buildings[0];
-  if (!building) throw forbidden('Bạn chưa được gán tòa nhà nào.');
+  const building = pickBuilding(buildings, buildingId);
   const [stored, locations, audit] = await Promise.all([
     db.buildingConfigs.get(building.id),
     db.locations.where('buildingId').equals(building.id).toArray(),
@@ -155,6 +170,40 @@ export const getBuildingSettings = async (buildingId?: string): Promise<Building
     canConfigure: true,
     canManage: hasCapability(viewer, 'ACCOUNT_MANAGE'),
   };
+};
+
+const listLocationsOf = async (building: Building): Promise<Location[]> => {
+  if (IS_API_MODE) {
+    const result = await apiList<ApiLocation>('GET', `/buildings/${encodeURIComponent(building.id)}/locations`, {
+      query: { includeInactive: true },
+    });
+    return sortLocations(result.data.map(mapLocation));
+  }
+  return sortLocations(await getDb().locations.where('buildingId').equals(building.id).toArray());
+};
+
+const listLocationAuditOf = async (building: Building): Promise<AuditEvent[]> => {
+  if (IS_API_MODE) return listApiAudit(building.id);
+  const rows = await getDb().auditEvents.where('[subjectType+subjectId]').equals(['BUILDING', building.id]).sortBy('createdAt');
+  return rows.reverse();
+};
+
+/** Locations of one building in scope (first one by code when none is given); history only with `BUILDING_CONFIG`. */
+export const getLocationSettings = async (buildingId?: string): Promise<LocationSettings> => {
+  const viewer = await requireViewer();
+  if (!hasCapability(viewer, 'LOCATION_MANAGE')) throw forbidden('Vai trò của bạn không quản lý được vị trí.');
+  const buildings = IS_API_MODE
+    ? await listApiBuildings()
+    : (await getDb().buildings.bulkGet(viewer.buildingIds))
+        .filter((row): row is Building => Boolean(row))
+        .sort((a, b) => a.code.localeCompare(b.code));
+  const building = pickBuilding(buildings, buildingId);
+  const canSeeHistory = canConfigureOf(viewer);
+  const [locations, audit] = await Promise.all([
+    listLocationsOf(building),
+    canSeeHistory ? listLocationAuditOf(building) : Promise.resolve([]),
+  ]);
+  return { buildings, building, locations, audit, canEdit: true, canSeeHistory };
 };
 
 /** Configurations of the viewer's buildings (to copy one building's settings to another). */

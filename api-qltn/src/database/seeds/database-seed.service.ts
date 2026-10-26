@@ -155,6 +155,7 @@ export class DatabaseSeedService {
         name: DEMO_CUSTOM_ROLE.name,
         baseRole: DEMO_CUSTOM_ROLE.baseRole,
         capabilities: roleCapabilities(DEMO_CUSTOM_ROLE.baseRole).filter((c) => !DEMO_CUSTOM_ROLE.removed.includes(c)),
+        baseCapabilities: [...roleCapabilities(DEMO_CUSTOM_ROLE.baseRole)],
         isSystem: false,
         sourceRoleId: source?.id ?? null,
       }),

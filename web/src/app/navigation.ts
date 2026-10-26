@@ -16,7 +16,9 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { IS_API_MODE } from '@/config/data-source';
+import { hasCapability } from '@/domain/permissions';
 import type { Capability } from '@/domain/permissions';
+import type { User } from '@/domain/types';
 
 export interface NavItem {
   to: string;
@@ -44,7 +46,7 @@ export const ALL_NAV_ITEMS: NavItem[] = [
   { to: '/reports', label: 'Báo cáo', icon: BarChart3, capability: 'REPORT_VIEW', group: 'Theo dõi' },
 
   { to: '/settings/buildings', label: 'Tòa nhà và cấu hình', icon: Building, capability: 'BUILDING_CONFIG', group: 'Hệ thống' },
-  { to: '/settings/locations', label: 'Tầng, khu vực, vị trí', icon: MapPin, capability: 'BUILDING_CONFIG', group: 'Hệ thống' },
+  { to: '/settings/locations', label: 'Tầng, khu vực, vị trí', icon: MapPin, capability: 'LOCATION_MANAGE', group: 'Hệ thống' },
   { to: '/settings/workflow', label: 'Workflow Engine', icon: Workflow, capability: 'BUILDING_CONFIG', group: 'Hệ thống' },
 
   { to: '/admin/employees', label: 'Nhân viên', icon: Settings, capability: 'ADMIN_VIEW', group: 'Quản trị' },
@@ -61,9 +63,16 @@ const API_READY_PATHS = new Set(['/records']);
  * In api mode only modules backed by the real backend stay in the menu; the rest stay in the code
  * base for mock mode and their routes render "chưa nối API" instead.
  */
-export const NAV_ITEMS: NavItem[] = IS_API_MODE
-  ? ALL_NAV_ITEMS.filter(
-      (item) =>
-        API_READY_PATHS.has(item.to) || (item.group !== undefined && API_READY_GROUPS.has(item.group)),
-    )
-  : ALL_NAV_ITEMS;
+const itemsFor = (apiMode: boolean): NavItem[] =>
+  apiMode
+    ? ALL_NAV_ITEMS.filter(
+        (item) =>
+          API_READY_PATHS.has(item.to) || (item.group !== undefined && API_READY_GROUPS.has(item.group)),
+      )
+    : ALL_NAV_ITEMS;
+
+export const NAV_ITEMS: NavItem[] = itemsFor(IS_API_MODE);
+
+/** Menu entries a user sees: the data source's modules, narrowed by capability. */
+export const visibleNavItems = (user: User | undefined, apiMode: boolean = IS_API_MODE): NavItem[] =>
+  itemsFor(apiMode).filter((item) => !item.capability || (user !== undefined && hasCapability(user, item.capability)));

@@ -24,7 +24,11 @@ export const loadBuildingConfig = async (ctx: CommandContext, buildingId: string
     }
     : { buildingId, ...defaultConfigValues(), assignmentRules: [], version: 0, updatedAt: ctx.now, updatedBy: ctx.actor.id };
 };
-const requireBuilding = async (ctx: CommandContext, buildingId: string, capability: 'BUILDING_CONFIG' | 'ACCOUNT_MANAGE'): Promise<Building> => {
+const requireBuilding = async (
+  ctx: CommandContext,
+  buildingId: string,
+  capability: 'BUILDING_CONFIG' | 'LOCATION_MANAGE' | 'ACCOUNT_MANAGE',
+): Promise<Building> => {
   const building = await ctx.db.buildings.get(buildingId);
   if (!building || !ctx.actor.buildingIds.includes(buildingId)) throw notFound('Không tìm thấy tòa nhà trong phạm vi của bạn.');
   if (!hasCapability(ctx.actor, capability)) throw forbidden('Vai trò của bạn không cấu hình được tòa nhà.');
@@ -364,7 +368,7 @@ const validateLocation = async (ctx: CommandContext, buildingId: string, payload
 };
 
 const createLocation: CommandHandler = async (ctx, command) => {
-  const building = await requireBuilding(ctx, command.subjectId ?? '', 'BUILDING_CONFIG');
+  const building = await requireBuilding(ctx, command.subjectId ?? '', 'LOCATION_MANAGE');
   const fields = await validateLocation(ctx, building.id, asRecord(command.payload));
   const location: Location = { id: newId('loc'), buildingId: building.id, ...fields, active: true };
   await ctx.db.locations.add(location);
@@ -379,7 +383,7 @@ const loadLocation = async (ctx: CommandContext, command: Command): Promise<Loca
 };
 
 const updateLocation: CommandHandler = async (ctx, command) => {
-  const building = await requireBuilding(ctx, command.subjectId ?? '', 'BUILDING_CONFIG');
+  const building = await requireBuilding(ctx, command.subjectId ?? '', 'LOCATION_MANAGE');
   const location = await loadLocation(ctx, command);
   const fields = await validateLocation(ctx, building.id, asRecord(command.payload), location.id);
   await ctx.db.locations.put({ ...location, ...fields });
@@ -389,7 +393,7 @@ const updateLocation: CommandHandler = async (ctx, command) => {
 
 /** Inactive locations stay on existing records and items but are hidden from new selections. */
 const setLocationActive: CommandHandler = async (ctx, command) => {
-  const building = await requireBuilding(ctx, command.subjectId ?? '', 'BUILDING_CONFIG');
+  const building = await requireBuilding(ctx, command.subjectId ?? '', 'LOCATION_MANAGE');
   const location = await loadLocation(ctx, command);
   const active = asRecord(command.payload).active === true;
   await ctx.db.locations.put({ ...location, active });

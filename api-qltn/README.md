@@ -55,7 +55,7 @@ is audited in the same transaction. Out-of-scope buildings answer 404.
 | Method | Path | Capability | Notes |
 | --- | --- | --- | --- |
 | GET | `/api/reference` | any | Buildings, departments, locations, users in the caller's scope |
-| GET | `/api/roles` | any | System roles + custom roles (`holderCount`) |
+| GET | `/api/roles` | any | System roles + custom roles (`holderCount`, `newBaseCapabilities` = capabilities the base role gained since the custom role was last saved and that it does not hold; never enabled automatically) |
 | POST / PATCH | `/api/roles`, `/api/roles/:id` | ACCOUNT_MANAGE | Custom roles only narrow their base role; codes `VT-NN` |
 | GET / POST / PATCH | `/api/departments[/:id]` | read: any · write: ACCOUNT_MANAGE | Scope cannot shrink below members' buildings |
 | GET | `/api/users`, `/api/users/:id`, `/api/users/:id/audit` | ADMIN_VIEW | `?q=&role=&buildingId=&departmentId=&active=&page=&limit=` |
@@ -65,7 +65,7 @@ is audited in the same transaction. Out-of-scope buildings answer 404.
 | POST / PATCH | `/api/buildings`, `/api/buildings/:id` | ACCOUNT_MANAGE | New building starts from a template and joins the creator's scope |
 | GET | `/api/buildings/:id/audit` | BUILDING_CONFIG | Config and location history |
 | GET | `/api/buildings/:id/locations` | any | `?includeInactive=false` hides inactive |
-| POST / PATCH | `/api/buildings/:id/locations[/:locationId]`, `…/:locationId/status` | BUILDING_CONFIG | Name unique per floor |
+| POST / PATCH | `/api/buildings/:id/locations[/:locationId]`, `…/:locationId/status` | LOCATION_MANAGE | Name unique per floor (ADMIN and BQL) |
 | GET / PUT | `/api/buildings/:id/config` | BUILDING_CONFIG | Omitted workflow parts are kept; returns `{ config, changes }` |
 | POST | `/api/buildings/:id/config/apply-template` | BUILDING_CONFIG | `templateKey` or `sourceBuildingId`; returns `{ config, changes, skipped }` |
 | GET | `/api/building-configs` | BUILDING_CONFIG | Configs of buildings in scope |
@@ -120,3 +120,11 @@ npm test              # unit tests
 npm run test:e2e      # boots the real app on database qltn_e2e (wiped each run; name must end in _e2e)
 npm run lint && npm run typecheck && npm run format:check
 ```
+
+## Role matrix v2 (ADR-0001, SPEC RM-S1)
+
+The capability matrix lives in `src/domain/permissions.ts` and is mirrored by `web/src/domain/permissions.ts`; a web test
+(`permissions.parity.test.ts`) fails when they differ. System roles: `ADMIN`, `BQL`, `TECH_CONFIRMER` (KT),
+`TECH_CONSULTANT` (TVKT), `OWNERS_BOARD` (BQT), `ACCOUNTANT` (Kế toán, row code `KTOAN`). `BUILDING_CONFIG` (building
+configuration, templates, workflow, history) is ADMIN only; locations need `LOCATION_MANAGE` (ADMIN, BQL).
+`PAYMENT_CONFIRM` and `FUND_OPERATE` are declared but not used by any endpoint yet.

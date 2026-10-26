@@ -38,8 +38,8 @@ describe('building configuration, roles and emergency repairs', () => {
     await seedAt();
   });
 
-  it('should let BQL change its building config, keep open records on their snapshot and copy templates', async () => {
-    asUser(USER_ID.BQL_A);
+  it('should let ADMIN change a building config, keep open records on their snapshot and copy templates', async () => {
+    asUser(USER_ID.ADMIN);
     const settings = await getBuildingSettings('bld-a');
     const values = { ...settings.config, taskDueDays: { ...settings.config.taskDueDays, CONFIRM_RECORD: 7 } };
     await run('updateBuildingConfig', 'BUILDING', 'bld-a', values);
@@ -52,20 +52,24 @@ describe('building configuration, roles and emergency repairs', () => {
     expect(invalid.fieldErrors?.priceRatio).toBeDefined();
     await run('applyConfigTemplate', 'BUILDING', 'bld-a', { templateKey: 'OFFICE' });
     expect((await getBuildingSettings('bld-a')).config.emergencyLimitVnd).toBe(50_000_000);
-    await expectCode(run('applyConfigTemplate', 'BUILDING', 'bld-a', { sourceBuildingId: 'bld-b' }), 'VALIDATION_ERROR');
-    await expectCode(run('updateBuildingConfig', 'BUILDING', 'bld-b', values), 'NOT_FOUND');
+    // Matrix v2 (DF-11): BQL no longer edits the configuration of its own building.
+    asUser(USER_ID.BQL_A);
+    await expectCode(run('updateBuildingConfig', 'BUILDING', 'bld-a', values), 'FORBIDDEN');
+    await expectCode(run('applyConfigTemplate', 'BUILDING', 'bld-a', { templateKey: 'OFFICE' }), 'FORBIDDEN');
   });
 
   it('should snapshot the configured approval order on new repair records', async () => {
-    asUser(USER_ID.BQL_A);
+    asUser(USER_ID.ADMIN);
     const settings = await getBuildingSettings('bld-a');
     const approvalStepKeys = ['BOARD', 'TECH'] as const;
     await run('updateBuildingConfig', 'BUILDING', 'bld-a', { ...settings.config, approvalStepKeys });
 
+    asUser(USER_ID.BQL_A);
     const newId = await newRecord('bld-a', 'loc-a-5');
     expect((await getDb().records.get(newId))?.approvalStepKeys).toEqual(approvalStepKeys);
     expect((await recordByCode('SC-002')).approvalStepKeys).toEqual(['TECH', 'BOARD']);
 
+    asUser(USER_ID.ADMIN);
     const invalid = await expectCode(
       run('updateBuildingConfig', 'BUILDING', 'bld-a', { ...settings.config, approvalStepKeys: ['TECH', 'TECH'] }),
       'VALIDATION_ERROR',

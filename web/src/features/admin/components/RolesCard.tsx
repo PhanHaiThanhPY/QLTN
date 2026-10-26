@@ -6,7 +6,19 @@ import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { Table, Td, Th, Tr } from '@/components/ui/table';
 import { ROLE_LABEL } from '@/domain/constants';
 import type { RoleDefinition, User } from '@/domain/types';
+import { CAPABILITY_LABEL } from '../capability-labels';
 import { RoleDialog } from './RoleDialog';
+
+/** "Có quyền mới chưa bật" (PD-07 Q5): new base-role capabilities are never enabled on custom roles automatically. */
+const pendingNoteOf = (role: RoleDefinition) => {
+  const pending = role.newBaseCapabilities ?? [];
+  if (role.isSystem || pending.length === 0) return null;
+  return (
+    <span className="mt-0.5 block text-xs text-warn">
+      Có quyền mới chưa bật: {pending.map((capability) => CAPABILITY_LABEL[capability]).join(', ')}
+    </span>
+  );
+};
 
 interface RolesCardProps {
   roles: RoleDefinition[];
@@ -45,6 +57,7 @@ export const RolesCard = ({ roles, users }: RolesCardProps) => {
                 <Td className="font-medium">{role.code}</Td>
                 <Td>
                   {role.name} {role.isSystem ? <Badge tone="neutral">Hệ thống</Badge> : null}
+                  {pendingNoteOf(role)}
                 </Td>
                 <Td>{ROLE_LABEL[role.baseRole]}</Td>
                 <Td className="tnum">{role.capabilities.length}</Td>
@@ -73,6 +86,7 @@ export const RolesCard = ({ roles, users }: RolesCardProps) => {
                 <span className="block text-xs text-ink-2">
                   {ROLE_LABEL[role.baseRole]} · {role.capabilities.length} quyền · {holders(role)} tài khoản
                 </span>
+                {pendingNoteOf(role)}
               </span>
               <Button size="xs" variant="ghost" onClick={() => setEditing({ role, mode: 'copy' })}>
                 Sao chép

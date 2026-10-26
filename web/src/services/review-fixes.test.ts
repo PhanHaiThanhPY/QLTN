@@ -114,7 +114,7 @@ describe('review fixes (14/10)', () => {
   });
 
   it('should require expectedVersion when saving a building configuration', async () => {
-    asUser(USER_ID.BQL_A);
+    asUser(USER_ID.ADMIN);
     const command = { commandId: 'cmd-no-version', subjectType: 'BUILDING' as const, subjectId: 'bld-a', action: 'applyConfigTemplate', payload: { templateKey: 'OFFICE' } };
     await expectCode(executeCommand(command), 'CONFLICT');
     await expectCode(executeCommand({ ...command, commandId: 'cmd-stale', expectedVersion: 99 }), 'CONFLICT');

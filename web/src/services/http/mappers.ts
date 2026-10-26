@@ -56,6 +56,7 @@ const ROLE_BY_API: Readonly<Record<string, Role>> = {
   TECH_CONFIRMER: ROLE.TECH_CONFIRMER,
   TECH_CONSULTANT: ROLE.TECH_CONSULTANT,
   OWNERS_BOARD: ROLE.OWNERS_BOARD,
+  ACCOUNTANT: ROLE.ACCOUNTANT,
 };
 
 const CAPABILITIES = new Set<string>(Object.values(CAPABILITY));
@@ -144,6 +145,7 @@ export interface ApiRole {
   capabilities: readonly string[];
   isSystem: boolean;
   sourceRoleId: string | null;
+  newBaseCapabilities?: readonly string[];
   holderCount?: number;
   version: number;
   createdAt: string;
@@ -159,6 +161,7 @@ export const mapRoleDefinition = (row: ApiRole): RoleDefinition => ({
   capabilities: mapCapabilities(row.capabilities) ?? [],
   isSystem: row.isSystem,
   sourceRoleId: optionalText(row.sourceRoleId),
+  newBaseCapabilities: mapCapabilities(row.newBaseCapabilities ?? []) ?? [],
   version: row.version,
   createdAt: row.createdAt,
   updatedAt: row.updatedAt,

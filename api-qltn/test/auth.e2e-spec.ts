@@ -44,7 +44,7 @@ describe('Auth (e2e)', () => {
     expect(await app.get(DatabaseMigrationService).run()).toEqual([]);
     await app.get(DatabaseSeedService).run();
     const [{ count }] = await dataSource.query<Array<{ count: number }>>('SELECT count(*)::int AS count FROM users');
-    expect(count).toBe(9);
+    expect(count).toBe(10);
   });
 
   it('serves the health check without a token, in the standard envelope', async () => {

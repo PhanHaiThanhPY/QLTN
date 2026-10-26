@@ -1,6 +1,5 @@
-import { hasCapability } from '@/domain/permissions';
 import type { User } from '@/domain/types';
-import { NAV_ITEMS } from '@/app/navigation';
+import { visibleNavItems } from '@/app/navigation';
 import type { NavItem } from '@/app/navigation';
 import { SidebarBrand } from './SidebarBrand';
 import { SidebarAssistant } from './SidebarAssistant';
@@ -23,7 +22,7 @@ const groupItems = (items: NavItem[]): { name?: string; items: NavItem[] }[] =>
   }, []);
 
 export const Sidebar = ({ user, isCollapsed = false, onToggleCollapsed, onNavigate }: SidebarProps) => {
-  const items = NAV_ITEMS.filter((item) => !item.capability || (user && hasCapability(user, item.capability)));
+  const items = visibleNavItems(user);
   return (
     <div className="flex h-full flex-col border-r border-[#183653] bg-[#071a30] text-white">
       <SidebarBrand isCollapsed={isCollapsed} onToggleCollapsed={onToggleCollapsed} />
