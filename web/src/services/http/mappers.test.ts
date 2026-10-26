@@ -905,6 +905,49 @@ describe('repair record mappers', () => {
     expect(record.dueDays).toEqual({ CONFIRM_RECORD: 3, APPROVE_PROPOSAL: 4 });
   });
 
+  it('should map the confirmer conclusions of slice S1 in the order the API sends them', () => {
+    const detail = mapRecordDetail({
+      record: row,
+      confirmations: [
+        {
+          id: 'cfm-1',
+          recordId: 'rec-1',
+          actorId: 'usr-kt',
+          outcome: 'NEEDS_UPDATE',
+          note: 'Thiếu ảnh cận cảnh.',
+          createdAt: '2026-10-26T03:00:00.000Z',
+        },
+        {
+          id: 'cfm-2',
+          recordId: 'rec-1',
+          actorId: 'usr-kt',
+          outcome: 'CONFIRMED',
+          note: 'Cần sửa ống cấp.',
+          createdAt: '2026-10-26T04:00:00.000Z',
+        },
+      ],
+    });
+
+    expect(detail.confirmations).toEqual([
+      {
+        id: 'cfm-1',
+        recordId: 'rec-1',
+        actorId: 'usr-kt',
+        outcome: 'NEEDS_UPDATE',
+        note: 'Thiếu ảnh cận cảnh.',
+        createdAt: '2026-10-26T03:00:00.000Z',
+      },
+      {
+        id: 'cfm-2',
+        recordId: 'rec-1',
+        actorId: 'usr-kt',
+        outcome: 'CONFIRMED',
+        note: 'Cần sửa ống cấp.',
+        createdAt: '2026-10-26T04:00:00.000Z',
+      },
+    ]);
+  });
+
   it('should fill the detail parts that T1 does not have yet with empty values', () => {
     const detail = mapRecordDetail({
       record: { ...row, noMaintenanceItem: false },

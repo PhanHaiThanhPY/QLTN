@@ -162,6 +162,9 @@ describe('api command adapter', () => {
     expect(isApiAction('saveRecordDraft')).toBe(true);
     expect(isApiAction('submitRecord')).toBe(true);
     expect(isApiAction('withdrawRecord')).toBe(true);
+    expect(isApiAction('requestRecordUpdate')).toBe(true);
+    expect(isApiAction('confirmRepair')).toBe(true);
+    expect(isApiAction('closeNoRepair')).toBe(true);
     expect(isApiAction('replaceManager')).toBe(false);
     // A prototype key must not count as a registered action.
     expect(isApiAction('toString')).toBe(false);
@@ -997,6 +1000,41 @@ describe('api command adapter — configuration and workflow', () => {
     expect(String(url)).toBe('/api/records/rec-1/withdraw');
     expect(init?.method).toBe('POST');
     expect(bodyOf(init)).toEqual({ version: 3, reason: 'Cư dân đã tự xử lý.' });
+  });
+
+  it.each([
+    ['requestRecordUpdate', 'request-record-update', 'NEEDS_RECORD_UPDATE'],
+    ['confirmRepair', 'confirm-repair', 'PENDING_PROPOSAL'],
+    ['closeNoRepair', 'close-no-repair', 'CLOSED_NO_REPAIR'],
+  ])('should POST %s to /records/:id/%s with the note and version', async (action, route, status) => {
+    const mock = mockFetch(() => jsonResponse(200, successBody({ ...RECORD_VIEW, status, version: 4 })));
+
+    await expect(
+      executeApiCommand(
+        createCommand(
+          { note: ' Đã kiểm tra tại chỗ. ' },
+          { subjectType: 'REPAIR_RECORD', action, subjectId: 'rec-1', expectedVersion: 3 },
+        ),
+      ),
+    ).resolves.toEqual({ ok: true, subjectId: 'rec-1' });
+
+    const [url, init] = mock.mock.calls[0];
+    expect(String(url)).toBe(`/api/records/rec-1/${route}`);
+    expect(init?.method).toBe('POST');
+    expect(bodyOf(init)).toEqual({ version: 3, note: 'Đã kiểm tra tại chỗ.' });
+  });
+
+  it('should refuse a confirmation without the loaded version instead of sending it', async () => {
+    const mock = mockFetch(() => jsonResponse(200, successBody(RECORD_VIEW)));
+
+    const error = await captureAppError(
+      executeApiCommand(
+        createCommand({ note: 'Đã kiểm tra.' }, { subjectType: 'REPAIR_RECORD', action: 'confirmRepair', subjectId: 'rec-1' }),
+      ),
+    );
+
+    expect(error.code).toBe(ERROR_CODE.CONFLICT);
+    expect(mock).not.toHaveBeenCalled();
   });
 
   it('should map a refused status transition (409) onto INVALID_TRANSITION', async () => {

@@ -12,6 +12,8 @@ import type {
   BuildingConfig,
   Department,
   Location,
+  RepairConfirmation,
+  RepairConfirmationOutcome,
   RepairRecord,
   RoleDefinition,
   User,
@@ -1041,19 +1043,38 @@ export const mapAttachment = (row: ApiAttachment): Attachment => ({
   createdAt: row.createdAt,
 });
 
+export interface ApiRepairConfirmation {
+  id: string;
+  recordId: string;
+  actorId: string;
+  outcome: RepairConfirmationOutcome;
+  note: string;
+  createdAt: string;
+}
+
+export const mapRepairConfirmation = (row: ApiRepairConfirmation): RepairConfirmation => ({
+  id: row.id,
+  recordId: row.recordId,
+  actorId: row.actorId,
+  outcome: row.outcome,
+  note: row.note,
+  createdAt: row.createdAt,
+});
+
 export interface ApiRecordDetail {
   record: ApiRepairRecord;
+  confirmations?: readonly ApiRepairConfirmation[];
   attachments?: readonly ApiAttachment[];
   audit?: readonly ApiAuditEvent[];
 }
 
 /**
- * Backend detail → web `RecordDetail`. Đợt 2 T2 has the record, its site photos and the history; parts that
- * arrive in later slices (proposal, construction, acceptance, payment, other files) come back as empty values.
+ * Backend detail → web `RecordDetail`. The record, its site photos, the confirmer conclusions (S1) and the history;
+ * parts that arrive in later slices (proposal, construction, acceptance, payment, other files) come back as empty values.
  */
 export const mapRecordDetail = (row: ApiRecordDetail): RecordDetail => ({
   record: mapRepairRecord(row.record),
-  confirmations: [],
+  confirmations: (row.confirmations ?? []).map(mapRepairConfirmation),
   submissions: [],
   signatures: [],
   acceptances: [],
@@ -1147,4 +1168,15 @@ export const toWithdrawRecordBody = (
 ): ApiWithdrawRecordBody => {
   if (expectedVersion === undefined) throw new AppError(ERROR_CODE.CONFLICT, MISSING_VERSION_MESSAGE);
   return { version: expectedVersion, reason: asString(asRecord(payload).reason) };
+};
+
+export interface ApiConfirmRecordBody {
+  version: number;
+  note: string;
+}
+
+/** Web `requestRecordUpdate` / `confirmRepair` / `closeNoRepair` payload → `ConfirmRecordDto`. */
+export const toConfirmRecordBody = (payload: unknown, expectedVersion: number | undefined): ApiConfirmRecordBody => {
+  if (expectedVersion === undefined) throw new AppError(ERROR_CODE.CONFLICT, MISSING_VERSION_MESSAGE);
+  return { version: expectedVersion, note: asString(asRecord(payload).note) };
 };

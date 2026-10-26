@@ -78,10 +78,13 @@ Records run in the caller's building scope (another building answers 404). Write
 transaction. The record keeps a snapshot of the building configuration taken when it was created: approval
 steps, workflow definitions, per-step assignees and `dueDays`. Site photos (T2) are attached after creation;
 transitions out of the draft (T3) are `submit` and `withdraw`; the list (T4) paginates, searches and filters in SQL.
+After submission the assigned technical confirmer decides (B03–B09 SPEC, slice S1, `docs/product/features/B03-B09-luong-sua-chua/SPEC.md`).
 `maintenanceItemId` is therefore rejected (400) and `POST /records` does not take `attachmentIds`;
 `noMaintenanceItem` marks "Không thuộc thiết bị cụ thể". A refused source status answers 409 with
 `details.reason = invalid_status_transition`; every write is limited to the record's managing BQL
-(403 `not_record_manager`) and to the statuses listed in `record-actions.ts`.
+(403 `not_record_manager`) and to the statuses listed in `record-actions.ts`. A record outside the caller's location
+scope answers 404 to every write, like another building's record. Confirmer actions are limited to the record's
+`confirmationUserId` (403 `not_step_assignee`); a role without the capability answers 403 `missing_capability`.
 
 | Method | Path | Capability | Notes |
 | --- | --- | --- | --- |
@@ -91,7 +94,10 @@ transitions out of the draft (T3) are `submit` and `withdraw`; the list (T4) pag
 | PATCH | `/api/records/:id` | RECORD_EDIT | Draft save (`DRAFT`/`NEEDS_RECORD_UPDATE`); `version` is the optimistic lock (stale → 409). `attachmentIds` replaces the record's file list (removing an id detaches the file, it is not deleted) |
 | POST | `/api/records/:id/submit` | RECORD_EDIT | Optional draft fields + `version`; requires title/description/location/assignees, `noMaintenanceItem = true` and at least one image `SITE_PHOTO`; moves `DRAFT` → `PENDING_CONFIRMATION` |
 | POST | `/api/records/:id/withdraw` | RECORD_EDIT | `reason` (5–1000 chars) + `version`; moves an editable record to `CLOSED_WITHDRAWN` and audits the reason |
-| GET | `/api/records/:id` | any | `{ record, attachments, audit }`; parts not built yet are left empty |
+| POST | `/api/records/:id/request-record-update` | RECORD_CONFIRM | `note` (5–1000 chars) + `version`; `PENDING_CONFIRMATION` → `NEEDS_RECORD_UPDATE`, the manager supplements and submits again |
+| POST | `/api/records/:id/confirm-repair` | RECORD_CONFIRM | `note` (site conclusion, 5–1000) + `version`; `PENDING_CONFIRMATION` → `PENDING_PROPOSAL` |
+| POST | `/api/records/:id/close-no-repair` | RECORD_CONFIRM | `note` (5–1000) + `version`; `PENDING_CONFIRMATION` → `CLOSED_NO_REPAIR` (final) |
+| GET | `/api/records/:id` | any | `{ record, confirmations, attachments, audit }`; `confirmations` lists every confirmer conclusion (`CONFIRMED`, `NEEDS_UPDATE`, `NO_REPAIR`) oldest first; parts not built yet are left empty |
 
 ## Attachment endpoints (Đợt 2 · T2)
 

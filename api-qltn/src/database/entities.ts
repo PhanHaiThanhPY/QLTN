@@ -6,6 +6,7 @@ import { Building } from '../modules/buildings/entities/building.entity';
 import { Location } from '../modules/buildings/entities/location.entity';
 import { Department } from '../modules/organization/entities/department.entity';
 import { RoleDefinition } from '../modules/roles/entities/role-definition.entity';
+import { RepairConfirmation } from '../modules/records/entities/repair-confirmation.entity';
 import { RepairRecord } from '../modules/records/entities/repair-record.entity';
 import { User } from '../modules/users/entities/user.entity';
 
@@ -21,4 +22,5 @@ export const ALL_ENTITIES = [
   AuditEvent,
   Attachment,
   RepairRecord,
+  RepairConfirmation,
 ];

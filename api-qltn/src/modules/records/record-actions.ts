@@ -39,8 +39,11 @@ export interface RecordActionDef {
   /** Source statuses the action may start from. */
   from: readonly string[];
   capability: Capability;
-  /** `manager` = only the record's managing BQL (the same slot as the demo). */
-  slot: 'manager';
+  /**
+   * Who may act, as the demo's `slot`: `manager` = the record's managing BQL, `confirmer` = the assigned
+   * technical confirmer. Both keep the order capability → assignee → source status (SPEC B03–B09 §4).
+   */
+  slot: 'manager' | 'confirmer';
 }
 
 /**
@@ -66,20 +69,41 @@ export const RECORD_ACTIONS = {
     capability: 'RECORD_EDIT',
     slot: 'manager',
   },
+  requestRecordUpdate: {
+    label: 'Trả bổ sung',
+    from: ['PENDING_CONFIRMATION'],
+    capability: 'RECORD_CONFIRM',
+    slot: 'confirmer',
+  },
+  confirmRepair: {
+    label: 'Xác nhận cần sửa',
+    from: ['PENDING_CONFIRMATION'],
+    capability: 'RECORD_CONFIRM',
+    slot: 'confirmer',
+  },
+  closeNoRepair: {
+    label: 'Đóng không cần sửa',
+    from: ['PENDING_CONFIRMATION'],
+    capability: 'RECORD_CONFIRM',
+    slot: 'confirmer',
+  },
 } as const satisfies Record<string, RecordActionDef>;
 
 export type RecordAction = keyof typeof RECORD_ACTIONS;
 
-/** Capability → managing BQL → source status; a refusal carries a stable `details.reason`. */
+/** Capability → assignee of the slot → source status; a refusal carries a stable `details.reason`. */
 export function assertRecordAction(actor: AuthenticatedUser, record: RepairRecord, action: RecordAction): void {
-  const def = RECORD_ACTIONS[action];
+  const def: RecordActionDef = RECORD_ACTIONS[action];
   if (!hasCapability(actor, def.capability)) {
     throw forbiddenWithReason('missing_capability', 'Bạn không có quyền thực hiện thao tác này.');
   }
   if (def.slot === 'manager' && actor.id !== record.managerUserId) {
     throw forbiddenWithReason('not_record_manager', 'Chỉ BQL quản lý được giao mới thực hiện được bước này.');
   }
-  if (!(def.from as readonly string[]).includes(record.status)) {
+  if (def.slot === 'confirmer' && actor.id !== record.confirmationUserId) {
+    throw forbiddenWithReason('not_step_assignee', 'Chỉ kỹ thuật xác nhận được giao mới thực hiện được bước này.');
+  }
+  if (!def.from.includes(record.status)) {
     throw conflictWithReason(
       'invalid_status_transition',
       `Hồ sơ đang ở trạng thái «${recordStatusLabel(record.status)}», không thực hiện được «${def.label}». Vui lòng tải lại.`,

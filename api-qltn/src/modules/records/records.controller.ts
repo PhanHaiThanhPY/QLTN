@@ -6,7 +6,13 @@ import { RequireCapabilities } from '../../common/decorators/require-capabilitie
 import type { PaginatedResult } from '../../common/interfaces/paginated.interface';
 import { ListRecordsQueryDto } from './dto/list-records-query.dto';
 import { RecordSummaryQueryDto } from './dto/record-summary-query.dto';
-import { CreateRecordDto, SubmitRecordDto, UpdateRecordDraftDto, WithdrawRecordDto } from './dto/record.dto';
+import {
+  ConfirmRecordDto,
+  CreateRecordDto,
+  SubmitRecordDto,
+  UpdateRecordDraftDto,
+  WithdrawRecordDto,
+} from './dto/record.dto';
 import {
   RecordsService,
   type RecordDetailView,
@@ -83,5 +89,40 @@ export class RecordsController {
     @Body() dto: WithdrawRecordDto,
   ): Promise<RepairRecordView> {
     return this.records.withdraw(user, id, dto);
+  }
+
+  // The confirmer actions carry no @RequireCapabilities: the service checks scope (404) before the
+  // capability, and a missing RECORD_CONFIRM answers 403 with `details.reason = missing_capability`.
+  @Post(':id/request-record-update')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Kỹ thuật trả hồ sơ để BQL bổ sung (ghi chú lý do, kèm version)' })
+  requestRecordUpdate(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ConfirmRecordDto,
+  ): Promise<RepairRecordView> {
+    return this.records.confirm(user, id, 'requestRecordUpdate', dto);
+  }
+
+  @Post(':id/confirm-repair')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Kỹ thuật xác nhận cần sửa (kết luận hiện trạng, kèm version)' })
+  confirmRepair(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ConfirmRecordDto,
+  ): Promise<RepairRecordView> {
+    return this.records.confirm(user, id, 'confirmRepair', dto);
+  }
+
+  @Post(':id/close-no-repair')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Kỹ thuật đóng hồ sơ vì không cần sửa (ghi chú lý do, kèm version)' })
+  closeNoRepair(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ConfirmRecordDto,
+  ): Promise<RepairRecordView> {
+    return this.records.confirm(user, id, 'closeNoRepair', dto);
   }
 }

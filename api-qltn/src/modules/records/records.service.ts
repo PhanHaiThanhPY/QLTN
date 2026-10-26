@@ -26,7 +26,14 @@ import { Location } from '../buildings/entities/location.entity';
 import { User } from '../users/entities/user.entity';
 import type { ListRecordsQueryDto } from './dto/list-records-query.dto';
 import type { RecordSummaryQueryDto } from './dto/record-summary-query.dto';
-import type { CreateRecordDto, SubmitRecordDto, UpdateRecordDraftDto, WithdrawRecordDto } from './dto/record.dto';
+import type {
+  ConfirmRecordDto,
+  CreateRecordDto,
+  SubmitRecordDto,
+  UpdateRecordDraftDto,
+  WithdrawRecordDto,
+} from './dto/record.dto';
+import { RepairConfirmation, type ConfirmationOutcome } from './entities/repair-confirmation.entity';
 import { RepairRecord } from './entities/repair-record.entity';
 import { assertRecordAction, type RecordAction } from './record-actions';
 import { RECORD_FINAL_STATUSES, RECORD_NEEDS_UPDATE_STATUSES, statusesOfGroup } from './record-status-groups';
@@ -36,6 +43,17 @@ const CODE_WIDTH = 3;
 const DRAFT_STATUS = 'DRAFT';
 const PENDING_CONFIRMATION = 'PENDING_CONFIRMATION';
 const CLOSED_WITHDRAWN = 'CLOSED_WITHDRAWN';
+
+/** The three confirmer actions of S1 (SPEC B03–B09 T01–T03): outcome stored, target status, label of `note`. */
+type ConfirmationAction = 'requestRecordUpdate' | 'confirmRepair' | 'closeNoRepair';
+const CONFIRMATION_RULES: Record<
+  ConfirmationAction,
+  { outcome: ConfirmationOutcome; toStatus: string; noteLabel: string }
+> = {
+  requestRecordUpdate: { outcome: 'NEEDS_UPDATE', toStatus: 'NEEDS_RECORD_UPDATE', noteLabel: 'Lý do' },
+  confirmRepair: { outcome: 'CONFIRMED', toStatus: 'PENDING_PROPOSAL', noteLabel: 'Kết luận hiện trạng' },
+  closeNoRepair: { outcome: 'NO_REPAIR', toStatus: 'CLOSED_NO_REPAIR', noteLabel: 'Lý do' },
+};
 
 /** Same bounds as web `LIMITS` (title/description/reason) and the demo submit rules. */
 const TITLE_MIN = 3;
@@ -103,8 +121,19 @@ export interface RepairRecordView {
   updatedAt: Date;
 }
 
+export interface RepairConfirmationView {
+  id: string;
+  recordId: string;
+  actorId: string;
+  outcome: ConfirmationOutcome;
+  note: string;
+  createdAt: Date;
+}
+
 export interface RecordDetailView {
   record: RepairRecordView;
+  /** Confirmer conclusions, oldest first (S1). */
+  confirmations: RepairConfirmationView[];
   /** Site photos (and later, other files) attached to the record, in the record's order. */
   attachments: AttachmentView[];
   audit: AuditEventView[];
@@ -146,6 +175,15 @@ export const toRecordView = (record: RepairRecord): RepairRecordView => ({
   version: record.version,
   createdAt: record.createdAt,
   updatedAt: record.updatedAt,
+});
+
+const toConfirmationView = (row: RepairConfirmation): RepairConfirmationView => ({
+  id: row.id,
+  recordId: row.recordId,
+  actorId: row.actorId,
+  outcome: row.outcome,
+  note: row.note,
+  createdAt: row.createdAt,
 });
 
 interface AssignmentContext {
@@ -398,6 +436,45 @@ export class RecordsService {
   }
 
   /**
+   * Confirmer decision on a record waiting for confirmation (S1: T01 trả bổ sung, T02 xác nhận cần sửa,
+   * T03 đóng không cần sửa). The conclusion row, the status change and the audit share one transaction.
+   */
+  async confirm(
+    actor: AuthenticatedUser,
+    id: string,
+    action: ConfirmationAction,
+    dto: ConfirmRecordDto,
+  ): Promise<RepairRecordView> {
+    const rule = CONFIRMATION_RULES[action];
+    return this.dataSource.transaction(async (manager) => {
+      const record = await this.loadRecordForAction(manager, actor, id, dto.version, action);
+      const note = (dto.note ?? '').trim();
+      const errors = new FieldErrors();
+      this.validateText(errors, 'note', rule.noteLabel, note, REASON_MIN, REASON_MAX);
+      errors.throwIfAny();
+      await manager
+        .getRepository(RepairConfirmation)
+        .save({ recordId: record.id, actorId: actor.id, outcome: rule.outcome, note });
+      const fromStatus = record.status;
+      record.status = rule.toStatus;
+      record.version += 1;
+      const saved = await manager.getRepository(RepairRecord).save(record);
+      await this.audit.record(manager, {
+        subjectType: SUBJECT_TYPE.REPAIR_RECORD,
+        subjectId: saved.id,
+        buildingId: saved.buildingId,
+        action,
+        actorId: actor.id,
+        entityVersion: saved.version,
+        fromStatus,
+        toStatus: saved.status,
+        reason: note,
+      });
+      return toRecordView(saved);
+    });
+  }
+
+  /**
    * Paginated record list inside the caller's buildings, newest update first.
    * A `buildingId` outside the scope answers an empty page instead of 404, so the list never reveals
    * whether that building exists. Every filter runs in SQL; `meta.total` is the count after filtering.
@@ -501,14 +578,25 @@ export class RecordsService {
   async getDetail(actor: AuthenticatedUser, id: string): Promise<RecordDetailView> {
     const record = await this.dataSource.getRepository(RepairRecord).findOneBy({ id });
     if (!record || !actor.buildingIds.includes(record.buildingId)) throw notFound('Không tìm thấy hồ sơ.');
-    const [attachments, audit] = await Promise.all([
+    const [confirmations, attachments, audit] = await Promise.all([
+      this.dataSource
+        .getRepository(RepairConfirmation)
+        .find({ where: { recordId: id }, order: { createdAt: 'ASC', id: 'ASC' } }),
       this.attachmentsOf(record),
       this.audit.listForSubject(SUBJECT_TYPE.REPAIR_RECORD, id, { page: 1, limit: 100 }),
     ]);
-    return { record: toRecordView(record), attachments, audit: audit.data };
+    return {
+      record: toRecordView(record),
+      confirmations: confirmations.map(toConfirmationView),
+      attachments,
+      audit: audit.data,
+    };
   }
 
-  /** Locks the record, hides other buildings (404), enforces the version then the shared action rules. */
+  /**
+   * Locks the record, hides records outside the caller's buildings or location scope (404), enforces the
+   * version then the shared action rules.
+   */
   private async loadRecordForAction(
     manager: EntityManager,
     actor: AuthenticatedUser,
@@ -520,6 +608,11 @@ export class RecordsService {
       .getRepository(RepairRecord)
       .findOne({ where: { id }, lock: { mode: 'pessimistic_write' } });
     if (!record || !actor.buildingIds.includes(record.buildingId)) throw notFound('Không tìm thấy hồ sơ.');
+    const outsideLocations =
+      Boolean(record.locationId) &&
+      actor.locationIds.length > 0 &&
+      !actor.locationIds.includes(record.locationId ?? '');
+    if (outsideLocations) throw notFound('Không tìm thấy hồ sơ.');
     assertVersion(record.version, version);
     assertRecordAction(actor, record, action);
     return record;

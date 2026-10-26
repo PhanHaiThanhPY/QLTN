@@ -16,6 +16,7 @@ import {
   toCreateRoleBody,
   toApplyConfigTemplateBody,
   toBulkWorkflowUpdateBody,
+  toConfirmRecordBody,
   toCreateRecordBody,
   toCreateUserBody,
   toSetLocationActiveBody,
@@ -266,7 +267,28 @@ const withdrawRecord: ApiCommandHandler = async (command) => {
   return { ok: true, subjectId: updated.id };
 };
 
-/** Actions wired to api-qltn. T2a accounts; T2b departments and roles; T2c buildings and locations; T2d configuration. */
+/** S1 confirmer actions: `POST /records/:id/<route>` with the note + `version`. */
+const CONFIRMATION_ROUTES = {
+  requestRecordUpdate: 'request-record-update',
+  confirmRepair: 'confirm-repair',
+  closeNoRepair: 'close-no-repair',
+} as const;
+
+const confirmationCommand =
+  (route: (typeof CONFIRMATION_ROUTES)[keyof typeof CONFIRMATION_ROUTES]): ApiCommandHandler =>
+  async (command) => {
+    const id = command.subjectId?.trim() ?? '';
+    if (!id) throw new AppError(ERROR_CODE.NOT_FOUND, 'Không tìm thấy hồ sơ.');
+    const body = toConfirmRecordBody(command.payload, command.expectedVersion);
+    const updated = await apiRequest<ApiRepairRecord>('POST', `/records/${encodeURIComponent(id)}/${route}`, { body });
+    broadcastChange();
+    return { ok: true, subjectId: updated.id };
+  };
+
+/**
+ * Actions wired to api-qltn. T2a accounts; T2b departments and roles; T2c buildings and locations; T2d configuration;
+ * Đợt 2 repair records (draft, submit, withdraw); B03–B09 slice S1 confirmation.
+ */
 const API_COMMANDS: Readonly<Record<string, ApiCommandHandler>> = {
   createUser,
   updateUser,
@@ -286,6 +308,9 @@ const API_COMMANDS: Readonly<Record<string, ApiCommandHandler>> = {
   saveRecordDraft,
   submitRecord,
   withdrawRecord,
+  requestRecordUpdate: confirmationCommand(CONFIRMATION_ROUTES.requestRecordUpdate),
+  confirmRepair: confirmationCommand(CONFIRMATION_ROUTES.confirmRepair),
+  closeNoRepair: confirmationCommand(CONFIRMATION_ROUTES.closeNoRepair),
 };
 
 export const API_UNSUPPORTED_MESSAGE = 'Thao tác này chưa nối API.';

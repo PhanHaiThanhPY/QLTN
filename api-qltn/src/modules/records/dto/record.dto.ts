@@ -74,6 +74,20 @@ export class UpdateRecordDraftDto extends RecordDraftFieldsDto {
 /** Same optional draft fields as `PATCH` plus the version the screen loaded. */
 export class SubmitRecordDto extends UpdateRecordDraftDto {}
 
+/** Body of the three confirmation actions (S1): the confirmer's note plus the version the screen loaded. */
+export class ConfirmRecordDto {
+  @ApiProperty({ description: 'Lý do hoặc kết luận hiện trạng (5–1000 ký tự).' })
+  @Trim()
+  @IsString()
+  note: string;
+
+  @ApiProperty()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  version: number;
+}
+
 export class WithdrawRecordDto {
   @ApiProperty({ description: 'Lý do rút hồ sơ (5–1000 ký tự).' })
   @Trim()
