@@ -58,7 +58,7 @@ Slices S2-S4 and everything in SPEC section 2.2. Do not commit to main or push u
 | AC-1.4 | `AC-1.4: a 4-character note answers 400 on note and a stale version answers 409 CONFLICT` | Pass |
 | AC-0.1 (S1 actions) | `AC-0.1: every S1 action from a status outside PENDING_CONFIRMATION answers 409 …` (from `DRAFT` and `PENDING_PROPOSAL`; audit, confirmations and version unchanged) | Pass |
 | AC-0.2 (S1 statuses) | `AC-0.2: the summary and the needs-update list count the S1 statuses` | Pass |
-| AC-0.3 | Not clicked through in a browser. Verified the web route instead: script through the web dev proxy `localhost:5190/api` → create, photo, submit (`bql-a`) → `confirm-repair` (`kt-a`) → detail `confirmations = [CONFIRMED]` (record `SC-001` "[TEST S1] …" left in `qltn_dev`). Adapter and mapper covered by web unit tests. | Partial: UI click-through not done |
+| AC-0.3 | Fix round 1 (review finding): browser click-through in web api mode with headless Chrome, script [`supporting/s1-ui-check.mjs`](supporting/s1-ui-check.mjs) (CDP, no extra packages; password read from `api-qltn/.env`, never printed). `bql-a` fills the form (location, "không thuộc thiết bị", title, description, one PNG) and clicks "Gửi xác nhận" → detail shows "Chờ xác nhận"; `kt-a` opens the record, clicks "Xác nhận cần sửa", enters the note → status "Chờ lập tờ trình" and card "Lịch sử xác nhận hiện trạng" shows the conclusion. Run 26/10/2026 ~07:55Z: `AC-0.3 S1 UI flow: PASS`, record `SC-002` in `qltn_dev`. Screenshots: [`S1-1`](supporting/evidence/S1-1-bql-a-form-filled.png), [`S1-2`](supporting/evidence/S1-2-bql-a-submitted.png), [`S1-3`](supporting/evidence/S1-3-kt-a-before-confirm.png), [`S1-4`](supporting/evidence/S1-4-kt-a-confirmed-history.png). | Pass |
 
 **Checks** (26/10/2026, run in phases)
 - `api-qltn`: `npm run format:check` OK · `npm run lint` OK · `npm run typecheck` OK · `npm test` 39/39 · `npm run test:e2e` 8 suites, 85/85 (new suite 6/6).
@@ -66,12 +66,28 @@ Slices S2-S4 and everything in SPEC section 2.2. Do not commit to main or push u
 - Local dev DB `qltn_dev`: migration `2026-10-26a` applied on dev API restart.
 
 **Not done / notes for review**
-- AC-0.3 UI click-through in web api mode (see above).
+- AC-0.3 was missing in round 1; added in fix round 1 (row above). No code changed in the fix round.
 - No unit test for `assertRecordAction`'s confirmer branch; covered by e2e AC-1.2.
 
 ### Kết quả review (dev-review)
 
-_Chưa có._
+**Ngày:** 26/10/2026 · **Candidate reviewed:** `feature/b03-s1-confirmation` at `ab67a6c` (evidence `2d52094`).
+
+**Independent checks:**
+
+- API format check, lint and typecheck: pass.
+- API unit tests: 7 suites, 39/39 pass.
+- S1 e2e: 1 suite, 6/6 pass.
+- Full API e2e: 8 suites, 85/85 pass.
+- Web API adapter and mapper tests: 2 files, 99/99 pass.
+- Full web tests: 37 files, 289/289 pass; `tsc -b` and `vite build` pass.
+- Transport smoke: `http://localhost:5190/` returned HTTP 200 with the app shell; `/api/public/health-check` returned `database: up`.
+
+**Review verdict: FAILED — return to dev-build for AC-0.3 evidence.**
+
+- AC-0.3 remains unproven: the S1 API-mode UI click-through was not executed. The review seat had no available browser surface (`agent-browser` is not installed; the CUA browser inventory was unavailable), so the passing adapter/mapper tests and HTTP smoke check do not substitute for the required user journey.
+- Please add reproducible browser evidence for the API-mode flow: create/submit a record as `bql-a`, run `confirm-repair` as `kt-a`, and verify the detail view shows the confirmation history. Then return the candidate to review through the workflow.
+- Non-blocking notes: full API e2e emitted the existing `pg@9.0` concurrent-query deprecation warning; `vite build` emitted existing Zod/Rollup annotation and chunk-size warnings.
 
 ### Đóng (PM/BA)
 
