@@ -271,6 +271,35 @@ Candidate chấp nhận được để chuyển sang bước PM/BA close.
 
 #### Kết quả review (dev-review)
 
+**PASS WITH RESIDUE — 26/10/2026.** Candidate API `9ea47e3`, web `494d795`, `a3bb137`, `9254e2b`, evidence/docs `c71005d`, trên nhánh `feature/b03-s3-acceptance`.
+
+- API unit đạt `8 suites / 54 tests`; full API e2e đạt `15 suites / 131 tests` trên DB cô lập `qltn_review_b03_s3_full_e2e`. Nhóm bounded S3 và regression trực tiếp cũng đạt `6 suites / 51 tests` trên DB cô lập `qltn_review_b03_s3_e2e`.
+- API `format:check`, lint và typecheck đạt. Web full Vitest đạt `54 files / 376 tests`; `tsc -b` đạt. `s3-ui-check.mjs` qua `node --check`.
+- Đã kiểm tra 5 screenshot AC-0.3: BQL cập nhật thi công 100%; form nghiệm thu có ngày, địa điểm, nội dung và ảnh; lượt nghiệm thu chờ quyết định song song; BQT thấy 3 thông báo kế hoạch có nhà thầu/ngày; biên bản khóa với kết luận Đạt, 3 chữ ký và hồ sơ sang **Chờ đề nghị thanh toán**.
+- Rerun `s3-ui-check.mjs` trong seat review dừng trước khi mở page với `Chrome did not expose a page target`; không có mutation/cleanup nào xảy ra. Đây là giới hạn môi trường, không phải finding của candidate; ảnh và script evidence của dev-build đã được kiểm tra.
+- Không phát hiện finding chức năng trong scope S3. Các AC-3.1–AC-3.5, AC-0.1 và AC-0.2 được bao phủ bởi e2e; quyền, trạng thái, holder snapshot, quyết định song song, chữ ký, repair/retry, notification ownership và minutes bất biến đều đạt.
+- **Residue:** nhãn loại thông báo kế hoạch vẫn hiển thị mặc định “Công việc mới”, đúng ghi chú handoff và để B14; browser rerun độc lập chưa thực hiện được do Chrome target của môi trường.
+
+Candidate chấp nhận được để chuyển sang bước PM/BA close.
+
+#### Đóng (PM/BA)
+
+**Ngày:** 26/10/2026 · **Kết quả:** S3 **đạt**, đóng. Nhánh `feature/b03-s3-acceptance` (xếp trên AD-S1), đầu nhánh `c71005d`, **đã push** theo yêu cầu của chủ dự án; chưa merge, chưa có PR. Bằng chứng và kết quả review đầy đủ nằm trong bản `handoff.md` trên nhánh đó.
+
+- **Bằng chứng:** AC-3.1 đến AC-3.5 và AC-0.1 đến AC-0.3 đều có. Reviewer chạy lại: unit 54/54, e2e 131, web 376; đã xem 5 ảnh.
+- **Phần còn lại được chấp nhận:**
+  - Trang Thông báo hiện **nhãn loại** mặc định "Công việc mới" cho thông báo kế hoạch. Tiêu đề và nội dung đúng BR-S3-01 ("Kế hoạch thi công SC-…", có nhà thầu thực hiện). Nhãn loại riêng để cho module B14.
+  - Seat review không có Chrome nên không chạy lại được bước kiểm trên trình duyệt.
+- **Việc tiếp theo:** S4 (đã duyệt, PD-12) giao ngay. Merge do chủ dự án quyết định.
+
+### S4: Thanh toán nhiều đợt và đóng hồ sơ
+
+#### Bằng chứng triển khai (dev-build)
+
+_Chưa có._
+
+#### Kết quả review (dev-review)
+
 _Chưa có._
 
 #### Đóng (PM/BA)

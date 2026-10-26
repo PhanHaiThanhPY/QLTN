@@ -33,7 +33,7 @@ Mỗi module code có một file `<module>.md`. Mẫu tham chiếu: [auth.md](au
 | 7 | records | `records` | `records` | B03–B09 | [SPEC](../features/B03-B09-luong-sua-chua/SPEC.md) | SPEC v2 đã duyệt; còn B04, B06, B07: kế tiếp |
 | 8 | attachments | `attachments` | `components/common/FileUploader` | B03, B07 | — | Chưa |
 | 9 | maintenance | — | `maintenance` | B10–B13 | — | Chưa |
-| 10 | notifications | (S3 làm phần tối thiểu, BR-S3-01a) | `notifications` | B14 | — | Chưa phân tích; S3 làm phần tối thiểu |
+| 10 | notifications | (S3 làm phần tối thiểu, BR-S3-01a) | `notifications` | B14 | — | Chưa phân tích; S3 làm phần tối thiểu. Còn thiếu: nhãn loại thông báo riêng (hiện mặc định "Công việc mới") |
 | 11 | tasks | — | `tasks` | B02 | — | Chưa |
 | 12 | dashboard | — | `dashboard` | B01 | — | Chưa |
 | 13 | reports | — | `reports` | B18 | — | Chưa |
