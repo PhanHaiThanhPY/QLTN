@@ -28,8 +28,8 @@ Mỗi module code có một file `<module>.md`. Mẫu tham chiếu: [auth.md](au
 | 2 | users | `users` | `admin` (nhân viên) | B17 | [users.md](users.md) | Xong lần 1 (26/10); US-S1 đạt review và đóng (`7577afe`, chưa merge); US-S2 chờ ADR-0001 |
 | 3 | roles và phân quyền | `roles`, `domain/permissions.ts` | `admin` (vai trò) | B17 | [roles.md](roles.md) | Xong lần 1 (26/10); chưa giao (chờ RQ-01, OD-10) |
 | 4 | organization (bộ phận) | `organization` | `admin` (bộ phận) | B17 | [organization.md](organization.md) | Xong lần 1 (26/10); không giao riêng, gom vào `buildings` và DF-14 |
-| 5 | buildings, locations, config | `buildings` | `buildings`, `workflow` | B15, B16 | — | Kế tiếp |
-| 6 | reference, audit, health | `reference`, `audit`, `health` | dùng chung | nền tảng | — | Chưa |
+| 5 | buildings, locations, config | `buildings` | `buildings`, `workflow` | B15, B16 | [buildings.md](buildings.md) | Xong lần 1 (26/10); **BG-01 lỗi cao** chuyển vào ADR-0001; RM-S1 chờ ADR |
+| 6 | reference, audit, health | `reference`, `audit`, `health` | dùng chung | nền tảng | — | Kế tiếp |
 | 7 | records | `records` | `records` | B03–B09 | [SPEC](../features/B03-B09-luong-sua-chua/SPEC.md) | Đã có SPEC; còn B04, B06, B07 |
 | 8 | attachments | `attachments` | `components/common/FileUploader` | B03, B07 | — | Chưa |
 | 9 | maintenance | — | `maintenance` | B10–B13 | — | Chưa |

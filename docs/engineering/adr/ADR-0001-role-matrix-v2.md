@@ -1,7 +1,7 @@
 # ADR-0001: Ma trận vai trò và quyền v2, người giữ bước theo cấu hình tòa
 
-**Trạng thái:** Đề xuất
-**Ngày:** 26/10/2026 · **Người đề xuất:** dev-build · **Người quyết:** PM/BA (`dev-pm-ba@qltn`), theo PD-06
+**Trạng thái:** Đã chấp nhận (PD-07, 26/10/2026)
+**Ngày:** 26/10/2026 · **Người đề xuất:** dev-build · **Người quyết:** PM/BA (`dev-pm-ba@qltn`), theo PD-06; câu trả lời Q1–Q8 và yêu cầu BG-01 tại qitem `qitem-20261026085328-0ac70085b7b9948e`
 **Yêu cầu gốc:** qitem `qitem-20261026084751-b8b87d6d995fc67f` · **Căn cứ nghiệp vụ:** [PRODUCT-DEFAULTS.md](../../product/PRODUCT-DEFAULTS.md) DF-01, DF-02, DF-06, DF-08, DF-10, DF-11, DF-12
 
 ## Bối cảnh
@@ -112,6 +112,36 @@ Nguyên tắc cũ vẫn giữ: ADMIN không có quyền quyết định nghiệp
 - `recordPayment` cần `PAYMENT_CONFIRM` và **không có người giữ bước cố định**: bất kỳ BQT hoặc Kế toán nào trong phạm vi tòa đều được xác nhận (xem Q4).
 - Kế toán dùng phạm vi tòa như mọi vai trò khác (`user_buildings`).
 
+### 4.7. Một nguồn duy nhất cho chuỗi duyệt tờ trình (BG-01)
+
+**Kiểm chứng code và dữ liệu (dev-build, 26/10/2026).** PM/BA đọc code đúng, và lệch còn rộng hơn:
+
+- Bộ máy chạy theo `config.approvalStepKeys`:
+  - Khi tạo hồ sơ, `records.service.ts` chụp `approvalStepKeys: [...config.approvalStepKeys]` và `workflowApprovalStepsOf(config)`, cả hai đọc `config.approvalStepKeys`.
+  - `assertSubmittable` và các handler tờ trình của web đi theo `record.approvalStepKeys`.
+- Màn thiết kế (`web/.../WorkflowDesignerCard.tsx`) lưu `approvalStepKeys = PROPOSAL.approvalStepKeys`, nhưng chỉ ở client.
+- API không ép hai giá trị bằng nhau ở bất kỳ đường ghi nào:
+  - `templateValues()` (dùng khi tạo tòa) đặt `approvalStepKeys = DEFAULT_APPROVAL_STEP_KEYS = ['TECH']`, trong khi `defaultWorkflowStages()` có `PROPOSAL = [TECH_CONFIRM, TECH, BOARD]`.
+  - `applyTemplate` (theo mẫu) đặt lại `approvalStepKeys = ['TECH']` nhưng **giữ nguyên** `workflowStages` hiện có.
+  - `PUT config` và cập nhật hàng loạt (`mergeValues`) nhận hai trường độc lập.
+  - `validateConfigRules` không so sánh hai trường.
+- **Seed demo cũng lệch:** `DEMO_APPROVAL_STEP_KEYS = ['TECH', 'BOARD']` ghi đè chuỗi, giai đoạn vẫn mặc định ba bước. DB local `qltn_dev` ngày 26/10/2026: cả 4 tòa A–D có `approval_step_keys = {TECH,BOARD}` nhưng `PROPOSAL = [TECH_CONFIRM, TECH, BOARD]`.
+- **Hồ sơ cũng chụp hai giá trị lệch:** `SC-001`, `SC-002` có `approvalStepKeys = {TECH,BOARD}` còn `workflowStageApprovalStepKeys.PROPOSAL` có ba bước.
+- **Hệ quả:** người xem màn thiết kế thấy KT → TVKT → BQT, nhưng hồ sơ chạy TVKT → BQT (seed) hoặc chỉ TVKT (tòa tạo hay áp mẫu qua API, không lưu lại ở màn thiết kế). Trường hợp chỉ TVKT bỏ qua BQT, trái D5-QT bước 5 và DF-02.
+
+**Quyết định:**
+1. **Nguồn chuẩn là giai đoạn `PROPOSAL`.** `approvalStepKeys` của cấu hình trở thành giá trị **suy ra**: server luôn ghi `approvalStepKeys = PROPOSAL.approvalStepKeys` ở mọi đường ghi: tạo tòa (`templateValues`), áp mẫu, sao chép từ tòa khác, `PUT config`, cập nhật workflow hàng loạt, và seed.
+   - Nếu request gửi `approvalStepKeys` khác `PROPOSAL`, API trả 400 lỗi trường `approvalStepKeys`: "Chuỗi phê duyệt phải trùng các bước của giai đoạn Tờ trình."
+   - `validateConfigRules` thêm đúng luật này nên mọi đường ghi đều bị chặn.
+   - Cột `approval_step_keys` giữ lại để không đổi schema và hồ sơ cũ.
+2. **Mặc định mới:** `defaultWorkflowStages().PROPOSAL = [TECH, BOARD]` (DF-02). Bỏ `DEFAULT_APPROVAL_STEP_KEYS` và `DEMO_APPROVAL_STEP_KEYS`. `applyTemplate` đặt lại cả `workflowStages` và chuỗi duyệt về giá trị của mẫu, để hai giá trị luôn đi cùng nhau.
+3. **Migration dữ liệu cấu hình** (migration SQL, idempotent, có audit `migrateApprovalChain` cho từng tòa bị đổi): với tòa lệch, ghi `PROPOSAL.approvalStepKeys := approval_step_keys`, tức **giữ chuỗi bộ máy đang chạy**.
+   - Lý do: không đổi hành vi của hồ sơ sẽ tạo ngay sau migration, và seed khi đó khớp DF-02 (TVKT → BQT).
+   - Tòa chỉ có `[TECH]` vẫn thiếu BQT sau migration. Migration liệt kê các tòa này trong audit để quản trị áp mẫu `AQUA`/`STANDARD`. PM/BA có thể chọn "màn thiết kế thắng" thay vì cách này (Q9).
+4. **Hồ sơ đã tạo: không migrate.** Đồng ý với PM/BA: bộ máy vẫn đọc `record.approvalStepKeys` (chuỗi đã chạy). Riêng phần hiển thị của web không được dựng chuỗi tờ trình từ `workflowStageApprovalStepKeys.PROPOSAL` của hồ sơ, vì với hồ sơ cũ giá trị này có thể lệch. Hồ sơ mới thì hai giá trị trùng nhau.
+5. **Web mock:** `web/src/domain/building-config.ts` và `building-handlers.ts` có cùng cấu trúc. Sửa cùng gói để chế độ mock không lệch lại.
+6. Thuộc đợt **R2** (cùng `INTAKE`/người xác nhận). Test cần có: mỗi đường ghi lưu ra hai giá trị bằng nhau; request lệch trả 400; migration đổi đúng tòa lệch và không đổi tòa đã khớp; hồ sơ cũ vẫn chạy theo snapshot.
+
 ### 5. Ảnh hưởng chuyển đổi (migration)
 
 | Đối tượng | Việc phải làm | Rủi ro |
@@ -137,7 +167,7 @@ Nguyên tắc cũ vẫn giữ: ADMIN không có quyền quyết định nghiệp
 ### 7. Thứ tự triển khai đề xuất
 
 1. **R1:** ma trận quyền + vai trò Kế toán + migration CHECK + `LOCATION_MANAGE` + cập nhật e2e/web cho DF-11. Độc lập, nhỏ, review được riêng.
-2. **R2:** `stageCapability(INTAKE)`, luật `INTAKE` 1 bước, template `AQUA`, người xác nhận theo cấu hình (sửa S1). Có test hồ sơ cũ/mới.
+2. **R2:** `stageCapability(INTAKE)`, luật `INTAKE` 1 bước, template `AQUA`, người xác nhận theo cấu hình (sửa S1), và BG-01 (mục 4.7: một nguồn cho chuỗi duyệt + migration cấu hình). Có test hồ sơ cũ/mới.
 3. **R3:** bản đồ người giữ bước thống nhất + bước `MANAGER`. Làm cùng SPEC B03–B09 v2 S2 (tờ trình, `BOARD_MINUTES`) và S3 (nghiệm thu song song).
 4. **R4:** `PAYMENT_CONFIRM` cùng S4 (thanh toán nhiều đợt). `FUND_OPERATE` chờ SPEC F/T.
 
@@ -154,7 +184,7 @@ Nguyên tắc cũ vẫn giữ: ADMIN không có quyền quyết định nghiệp
 - **Khó hơn:** code đọc hồ sơ phải hiểu hai dạng snapshot (cũ: cột cố định; mới: bản đồ) cho đến khi hồ sơ cũ đóng hết; mỗi lần đổi ma trận vẫn phải sửa hai bản (API + web).
 - **Việc phải làm tiếp:** PM/BA trả lời các câu dưới, chấp nhận ADR, viết SPEC B03–B09 v2 và một gói R1 riêng cho ma trận quyền.
 
-## Câu hỏi mở cho PM/BA
+## Câu hỏi và trả lời (PD-07)
 
 | # | Câu hỏi | Đề xuất của dev-build |
 |---|---|---|
@@ -166,3 +196,14 @@ Nguyên tắc cũ vẫn giữ: ADMIN không có quyền quyết định nghiệp
 | Q6 | Giữ vai trò KT (`TECH_CONFIRMER`) trong mẫu `AQUA` không? KT còn làm gì ngoài kiểm tra bảo trì? | Giữ vai trò; mẫu `AQUA` không dùng KT trong chuỗi sửa chữa. |
 | Q7 | DF-11 bỏ `BUILDING_CONFIG` của BQL. Quản lý tầng/khu vực/vị trí có đi theo không? | Tách `LOCATION_MANAGE` để BQL vẫn quản lý vị trí; chỉ cấu hình workflow, hạn mức, giao việc là của Quản trị. |
 | Q8 | "Biên bản họp BQT" bắt buộc ở mọi bước có vai trò BQT (gồm duyệt thanh toán) hay chỉ ở bước duyệt tờ trình? | Chỉ bước duyệt tờ trình, theo đúng DF-02. |
+| Q9 | Migration BG-01: tòa có chuỗi bộ máy khác màn thiết kế thì giữ bên nào? | Giữ chuỗi bộ máy đang chạy (mục 4.7.3), liệt kê tòa chỉ có `[TECH]` để quản trị áp mẫu. Chưa có trả lời; nếu PM/BA chọn "màn thiết kế thắng" thì chỉ đổi một câu lệnh trong migration. |
+
+**Trả lời của PM/BA (PD-07, 26/10/2026):**
+- **Q1:** đồng ý. BQL quản lý hồ sơ được xác nhận ĐẠT với tư cách thành phần nghiệm thu.
+- **Q2:** cả hai. Mẫu chọn bước; khi tạo hồ sơ mà bước đó không có người, dùng người giữ `BOARD` và ghi audit.
+- **Q3:** có. Kế toán nằm trong `ASSIGNMENT_ROLES`, mặc định theo phạm vi tòa.
+- **Q4:** bất kỳ người có `PAYMENT_CONFIRM` trong phạm vi tòa, có ghi audit.
+- **Q5:** không tự bật. Màn Phân quyền hiện "có quyền mới chưa bật".
+- **Q6:** giữ KT. Mẫu `AQUA` không dùng KT trong chuỗi sửa chữa. NVKT của BQL là vai trò tùy chỉnh dựa trên BQL.
+- **Q7:** có. Tách `LOCATION_MANAGE` (ADMIN + BQL).
+- **Q8:** biên bản họp BQT chỉ bắt buộc ở bước duyệt tờ trình.
