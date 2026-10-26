@@ -1,7 +1,7 @@
 # SPEC — Luồng hồ sơ sửa chữa sau "Chờ xác nhận" (B03–B09, API)
 
-**Chủ sở hữu:** PM/BA (`dev-pm-ba@qltn`) · **Cập nhật:** 26/10/2026 · **Trạng thái:** `Chờ duyệt`  
-**Người duyệt:** chủ dự án, chưa duyệt · **Quyết định nền:** [PD-03](../../DECISIONS.md)
+**Chủ sở hữu:** PM/BA (`dev-pm-ba@qltn`) · **Cập nhật:** 26/10/2026 · **Trạng thái:** `Đã duyệt`  
+**Người duyệt:** chủ dự án (người dùng), 26/10/2026, dev-build chuyển lời lúc 07:13Z · **Quyết định nền:** [PD-03, PD-04](../../DECISIONS.md)
 
 ## 1. Mục tiêu
 

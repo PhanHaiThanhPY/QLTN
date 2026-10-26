@@ -13,6 +13,7 @@ Không xóa mục cũ. Khi thay đổi, thêm mục mới và cập nhật trạ
 |---|---|---|---|---|
 | PD-01 | 26/10/2026 | Tài liệu sản phẩm đặt tại `docs/product/`; mỗi tính năng có đúng một `SPEC.md` làm hợp đồng yêu cầu. | PM/BA seat theo phân công vai trò | Phân công vai trò ngày 26/10/2026 |
 | PD-02 | 26/10/2026 | Seat PM/BA không sửa code ứng dụng, schema, migration hay cấu hình deploy. Thay đổi kỹ thuật đi qua bàn giao cho dev-build. | Operator (phân công vai trò) | Phân công vai trò ngày 26/10/2026 |
+| PD-04 | 26/10/2026 | Duyệt [SPEC B03–B09](features/B03-B09-luong-sua-chua/SPEC.md) (bản đã sửa theo review kỹ thuật), gồm ba điểm phạm vi. (1) Xử lý khẩn cấp, thông báo chưa xử lý, giao lại người xử lý và việc còn tồn Đợt 1, hạn xử lý và công việc để sang SPEC riêng. (2) Dùng mã lỗi `details.reason` riêng. (3) Nghiệm thu song song hay tuần tự giữ như demo, chờ OD-12 chốt. Giao lần lượt từng slice cho dev-build qua hàng đợi, bắt đầu từ S1. | Chủ dự án (người dùng), dev-build chuyển lời lúc 07:13Z | Tin nhắn dev-build → dev-pm-ba 26/10/2026 07:13Z |
 | PD-03 | 26/10/2026 | Viết SPEC B03–B09 ngay. Hành vi của web demo được dùng làm quy tắc tạm; mỗi quy tắc ghi rõ OD-xx sẽ thay nó (theo [PROCESS.md](../PROCESS.md) §2). Không chờ khách trả lời OD-05, OD-10–OD-13. | Chủ dự án (người dùng), dev-build chuyển lời lúc 07:00Z | Tin nhắn dev-build → dev-pm-ba 26/10/2026 07:00Z |
 
 ## Đối chiếu nguồn gốc D1/D2 với review 23/10 (26/10/2026)
