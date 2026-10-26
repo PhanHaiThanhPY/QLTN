@@ -1,7 +1,8 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Put, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { AuthenticatedUser } from '../../common/auth/authenticated-user';
-import { assertBuildingInScope } from '../../common/auth/scope';
+import { assertBuildingInScope, hasCapability } from '../../common/auth/scope';
+import { forbidden } from '../../common/errors';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireCapabilities } from '../../common/decorators/require-capabilities.decorator';
 import type { PaginatedResult } from '../../common/interfaces/paginated.interface';
@@ -66,14 +67,20 @@ export class BuildingsController {
     return this.buildings.update(user, id, dto);
   }
 
+  /**
+   * Read-only history of configuration and locations: BUILDING_CONFIG (ADMIN) or LOCATION_MANAGE (BQL) since PD-13.
+   * The capability guard requires every listed capability, so this either-or check is done here.
+   */
   @Get(':id/audit')
-  @RequireCapabilities('BUILDING_CONFIG')
-  @ApiOperation({ summary: 'Lịch sử cấu hình tòa nhà, vị trí' })
+  @ApiOperation({ summary: 'Lịch sử cấu hình tòa nhà, vị trí (chỉ xem)' })
   history(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
     @Query() query: PaginationQueryDto,
   ): Promise<PaginatedResult<AuditEventView>> {
+    if (!hasCapability(user, 'BUILDING_CONFIG') && !hasCapability(user, 'LOCATION_MANAGE')) {
+      throw forbidden('Vai trò của bạn không xem được lịch sử tòa nhà.');
+    }
     assertBuildingInScope(user, id);
     return this.audit.listForSubject(SUBJECT_TYPE.BUILDING, id, query);
   }

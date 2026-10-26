@@ -6,7 +6,7 @@ import type { AppError } from '@/domain/errors';
 import { hasCapability } from '@/domain/permissions';
 import { asUser, recordByCode, run, seedAt } from '@/test/helpers';
 import { uploadAttachment } from './file-service';
-import { getBuildingSettings } from './building-service';
+import { getBuildingSettings, getLocationSettings } from './building-service';
 
 const expectCode = async (promise: Promise<unknown>, code: string): Promise<AppError> => {
   try {
@@ -262,6 +262,22 @@ describe('building configuration, roles and emergency repairs', () => {
     expect((await getDb().locations.get(locationId))?.active).toBe(false);
     asUser(USER_ID.TVKT);
     await expectCode(run('createLocation', 'BUILDING', 'bld-a', { floor: '8', name: 'Tầng 8' }), 'FORBIDDEN');
+  });
+
+  it('AC-1.3a (PD-13): BQL reads the same building history as ADMIN on the locations screen, read-only', async () => {
+    asUser(USER_ID.BQL_A);
+    await run('createLocation', 'BUILDING', 'bld-a', { floor: '7', zone: 'Khu A', name: 'Hành lang tầng 7' });
+    const asBql = await getLocationSettings('bld-a');
+    asUser(USER_ID.ADMIN);
+    const asAdmin = await getLocationSettings('bld-a');
+
+    expect(asBql.audit.map((event) => event.id)).toEqual(asAdmin.audit.map((event) => event.id));
+    expect(asBql.audit.some((event) => event.action === 'createLocation')).toBe(true);
+    // Reading the history never opens the configuration screen to BQL.
+    asUser(USER_ID.BQL_A);
+    await expectCode(getBuildingSettings('bld-a'), 'FORBIDDEN');
+    asUser(USER_ID.TVKT);
+    await expectCode(getLocationSettings('bld-a'), 'FORBIDDEN');
   });
 
   it('should copy a role without adding permissions and apply it to accounts', async () => {

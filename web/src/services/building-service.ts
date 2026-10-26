@@ -22,15 +22,16 @@ export interface BuildingSettings {
   canManage: boolean;
 }
 
-/** "Tầng, khu vực, vị trí": needs `LOCATION_MANAGE` only, so BQL keeps it after matrix v2 (DF-11). */
+/**
+ * "Tầng, khu vực, vị trí": needs `LOCATION_MANAGE` only, so BQL keeps it after matrix v2 (DF-11). The building
+ * history is readable with `LOCATION_MANAGE` too (PD-13), so BQL sees the same history as ADMIN, read-only.
+ */
 export interface LocationSettings {
   buildings: Building[];
   building: Building;
   locations: Location[];
-  /** Location history; the building audit needs `BUILDING_CONFIG`, so it stays empty for BQL. */
   audit: AuditEvent[];
   canEdit: boolean;
-  canSeeHistory: boolean;
 }
 
 export interface WorkflowIndexItem {
@@ -188,7 +189,7 @@ const listLocationAuditOf = async (building: Building): Promise<AuditEvent[]> =>
   return rows.reverse();
 };
 
-/** Locations of one building in scope (first one by code when none is given); history only with `BUILDING_CONFIG`. */
+/** Locations of one building in scope (first one by code when none is given) with the building history. */
 export const getLocationSettings = async (buildingId?: string): Promise<LocationSettings> => {
   const viewer = await requireViewer();
   if (!hasCapability(viewer, 'LOCATION_MANAGE')) throw forbidden('Vai trò của bạn không quản lý được vị trí.');
@@ -198,12 +199,8 @@ export const getLocationSettings = async (buildingId?: string): Promise<Location
         .filter((row): row is Building => Boolean(row))
         .sort((a, b) => a.code.localeCompare(b.code));
   const building = pickBuilding(buildings, buildingId);
-  const canSeeHistory = canConfigureOf(viewer);
-  const [locations, audit] = await Promise.all([
-    listLocationsOf(building),
-    canSeeHistory ? listLocationAuditOf(building) : Promise.resolve([]),
-  ]);
-  return { buildings, building, locations, audit, canEdit: true, canSeeHistory };
+  const [locations, audit] = await Promise.all([listLocationsOf(building), listLocationAuditOf(building)]);
+  return { buildings, building, locations, audit, canEdit: true };
 };
 
 /** Configurations of the viewer's buildings (to copy one building's settings to another). */

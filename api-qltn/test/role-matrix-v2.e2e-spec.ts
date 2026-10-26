@@ -102,7 +102,6 @@ describe('Role matrix v2, RM-S1 (e2e)', () => {
     await bqlA.post(config('/config/apply-template'), { templateKey: 'STANDARD', version: 1 }).expect(403);
     await bqlA.put('/api/building-configs/workflow', { targets: [] }).expect(403);
     await bqlA.get('/api/building-configs').expect(403);
-    await bqlA.get(config('/audit')).expect(403);
 
     await admin.get('/api/building-configs').expect(200);
     await admin.get(config('/audit')).expect(200);
@@ -110,6 +109,21 @@ describe('Role matrix v2, RM-S1 (e2e)', () => {
     await admin
       .post(config('/config/apply-template'), { templateKey: 'RESIDENTIAL', version: current.version })
       .expect(201);
+  });
+
+  it('AC-1.3 (PD-13): BQL and ADMIN read the building history in scope, out of scope is 404, KT is 403', async () => {
+    const buildings = dataOf<Building[]>(await admin.get('/api/buildings'));
+    const buildingB = buildings.find((row) => row.code === 'B') as Building;
+    const history = (session: Session, building: Building) => session.get(`/api/buildings/${building.id}/audit`);
+
+    const asAdmin = dataOf<{ data: unknown[] }>(await history(admin, buildingA).expect(200));
+    const asBql = dataOf<{ data: unknown[] }>(await history(bqlA, buildingA).expect(200));
+    expect(asBql.data).toEqual(asAdmin.data);
+    const outside = await history(bqlA, buildingB).expect(404);
+    expect(errorOf(outside).code).toBe('NOT_FOUND');
+    await history(ktA, buildingA).expect(403);
+    // Reading the history does not open the configuration itself.
+    await bqlA.get(`/api/buildings/${buildingA.id}/config`).expect(403);
   });
 
   it('AC-1.4: lets BQL create, edit and stop using a location of building A; KT is refused', async () => {

@@ -19,7 +19,7 @@ const LocationsPage = () => {
 
   if (query.isLoading) return <LoadingState rows={6} />;
   if (query.error || !query.data) return <ErrorState error={query.error} onRetry={() => void query.refetch()} />;
-  const { buildings, building, locations, audit, canEdit, canSeeHistory } = query.data;
+  const { buildings, building, locations, audit, canEdit } = query.data;
 
   return (
     <div className="space-y-5">
@@ -31,14 +31,12 @@ const LocationsPage = () => {
         </CardBody>
       </Card>
       <LocationsCard key={building.id} buildingId={building.id} locations={locations} canEdit={canEdit} />
-      {canSeeHistory ? (
-        <Card className="shadow-none">
-          <CardHeader title="Lịch sử thay đổi vị trí" />
-          <CardBody>
-            <AuditTimeline events={audit.filter((event) => LOCATION_ACTIONS.includes(event.action))} />
-          </CardBody>
-        </Card>
-      ) : null}
+      <Card className="shadow-none">
+        <CardHeader title="Lịch sử thay đổi vị trí" />
+        <CardBody>
+          <AuditTimeline events={audit.filter((event) => LOCATION_ACTIONS.includes(event.action))} />
+        </CardBody>
+      </Card>
     </div>
   );
 };
