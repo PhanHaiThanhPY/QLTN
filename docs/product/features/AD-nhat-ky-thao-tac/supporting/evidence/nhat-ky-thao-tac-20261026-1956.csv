@@ -1,0 +1,10 @@
+﻿Thời điểm,Tòa,Người thực hiện,Loại đối tượng,Mã đối tượng,Hành động,Trạng thái trước,Trạng thái sau,Lý do / ghi chú,correlationId
+26/10/2026 19:33:34,A,Võ Thanh Tâm (TVKT),Hồ sơ sửa chữa,SC-009,Xác nhận cần sửa,Chờ xác nhận,Chờ lập tờ trình,"Đúng hiện trạng, cần thay đoạn ống.",bdc4ebbd-28e5-47e3-b2e7-20634d873e8d
+26/10/2026 19:30:57,A,Võ Thanh Tâm (TVKT),Hồ sơ sửa chữa,SC-008,Xác nhận cần sửa,Chờ xác nhận,Chờ lập tờ trình,"Đúng hiện trạng, cần thay đoạn ống.",c05e6b23-9f29-4e22-ad20-1cf4af73f189
+26/10/2026 19:29:28,A,Võ Thanh Tâm (TVKT),Hồ sơ sửa chữa,SC-007,Xác nhận cần sửa,Chờ xác nhận,Chờ lập tờ trình,"Đúng hiện trạng, cần thay đoạn ống.",7e7f66d4-8baf-4c53-9056-e3b00cd3b6b1
+26/10/2026 19:29:05,A,Võ Thanh Tâm (TVKT),Hồ sơ sửa chữa,SC-006,Xác nhận cần sửa,Chờ xác nhận,Chờ lập tờ trình,"Đúng hiện trạng, cần thay đoạn ống.",2b8e139a-dcca-450f-890a-e0e1a8d0a8b4
+26/10/2026 19:28:00,A,Võ Thanh Tâm (TVKT),Hồ sơ sửa chữa,SC-005,Xác nhận cần sửa,Chờ xác nhận,Chờ lập tờ trình,"Đúng hiện trạng, cần thay đoạn ống.",ed770ecb-533c-4815-bd80-7473dfb13c46
+26/10/2026 19:26:15,A,Võ Thanh Tâm (TVKT),Hồ sơ sửa chữa,SC-004,Xác nhận cần sửa,Chờ xác nhận,Chờ lập tờ trình,"Đúng hiện trạng, cần thay đoạn ống.",d0fd38ca-970e-4e88-a859-b6ea2e88847e
+26/10/2026 17:11:04,A,Võ Thanh Tâm (TVKT),Hồ sơ sửa chữa,SC-003,Xác nhận cần sửa,Chờ xác nhận,Chờ lập tờ trình,"TVKT đã kiểm tra hiện trường, cần sửa chống thấm.",bb3bce82-da1a-448c-ac38-8eae62a4909b
+26/10/2026 14:55:12,A,Trần Minh Khoa (KT-A),Hồ sơ sửa chữa,SC-002,Xác nhận cần sửa,Chờ xác nhận,Chờ lập tờ trình,"Đã kiểm tra hiện trường, cần thay đoạn ống cấp bị rò.",d5317a00-3b7d-4285-99fc-7914ec0b024d
+26/10/2026 14:30:09,A,Trần Minh Khoa (KT-A),Hồ sơ sửa chữa,SC-001,Xác nhận cần sửa,Chờ xác nhận,Chờ lập tờ trình,"Đã kiểm tra, cần sửa (proxy check).",1d5e8ee3-68bb-4216-a4cd-16192757ef8f

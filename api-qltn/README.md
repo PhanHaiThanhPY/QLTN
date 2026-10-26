@@ -58,6 +58,7 @@ is audited in the same transaction. Out-of-scope buildings answer 404.
 | GET | `/api/roles` | any | System roles + custom roles (`holderCount`, `newBaseCapabilities` = capabilities the base role gained since the custom role was last saved and that it does not hold; never enabled automatically) |
 | POST / PATCH | `/api/roles`, `/api/roles/:id` | ACCOUNT_MANAGE | Custom roles only narrow their base role; codes `VT-NN` |
 | GET / POST / PATCH | `/api/departments[/:id]` | read: any · write: ACCOUNT_MANAGE | Scope cannot shrink below members' buildings |
+| GET | `/api/roles/:id/audit`, `/api/departments/:id/audit` | ADMIN_VIEW | History of a role / department (subject types `ROLE`, `DEPARTMENT` since AD-S1), paginated like `/users/:id/audit`; unknown id 404 |
 | GET | `/api/users`, `/api/users/:id`, `/api/users/:id/audit` | ADMIN_VIEW | `?q=&role=&buildingId=&departmentId=&active=&page=&limit=` |
 | POST / PATCH | `/api/users`, `/api/users/:id` | ACCOUNT_MANAGE | System role is fixed; deactivation revokes sessions |
 | POST | `/api/users/:id/reset-password` | ACCOUNT_MANAGE | `{ password }` (8–72); signs the account out everywhere and audits `resetPassword` (reason = account code, never the password). The signed-in account itself answers 400 `details.reason = self_reset_denied` (use change-password) |
@@ -134,6 +135,19 @@ Content lives under `STORAGE_DIR` (default `storage/`), named by a random id rat
 | --- | --- | --- | --- |
 | POST | `/api/attachments` | VIEW | Multipart `file`, `subjectType`, `subjectId`, `purpose` → 201 metadata; the purpose rule above decides who and when |
 | GET | `/api/attachments/:id/content` | any | Bytes with the stored `Content-Type`, `Content-Disposition: inline`; another building answers 404 |
+
+## Operation log (SPEC AD-S1)
+
+Read only by design: no endpoint changes or deletes an audit event, and events are kept indefinitely. Rows of a
+building show inside the caller's building scope; rows without a building (accounts, roles, departments, exports) show
+to ADMIN only. Location scope does not apply. Labels live in `src/domain/audit-labels.ts` (mirrored in the web, parity
+test): a slice that writes a new action code adds its label there.
+
+| Method | Path | Capability | Notes |
+| --- | --- | --- | --- |
+| GET | `/api/audit-events` | AUDIT_VIEW | `?buildingId=&dateFrom=&dateTo=&actorId=&subjectType=&action=&subjectCode=&page=&limit=`; dates `YYYY-MM-DD` Vietnam time, default the last 7 days, more than 366 days or an inverted range answers 400, `limit` ≤ 100. Newest first. Each row adds `subjectCode`, `buildingCode`, `actorCode`, `actorName`, `correlationId`. A `buildingId` outside the scope answers an empty page |
+| GET | `/api/audit-events/export` | AUDIT_VIEW | Same filters without paging → `text/csv`, UTF-8 with BOM, `nhat-ky-thao-tac-YYYYMMDD-HHmm.csv`; above 10 000 rows answers 400 `details = { reason: too_many_rows, total, limit }`. Each export writes an `exportAuditLog` row (system-wide) |
+| GET | `/api/public/health-check` | public | `{ status, database, uptimeSeconds }`; 503 with the same body when `database = down` |
 
 ## Tests
 
