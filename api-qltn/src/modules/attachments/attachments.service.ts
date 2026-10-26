@@ -9,6 +9,8 @@ import { FieldErrors, fieldError } from '../../common/validation/field-errors';
 import { SUBJECT_TYPE } from '../audit/entities/audit-event.entity';
 import { AuditService } from '../audit/audit.service';
 import { RepairRecord } from '../records/entities/repair-record.entity';
+import { PROPOSAL_EDIT_STATUSES } from '../records/record-actions';
+import { approvalStepOf, currentStepKeyOf, stepHolderOf } from '../records/record-steps';
 import { toAttachmentView, type AttachmentView } from './attachment-view';
 import type { UploadAttachmentDto } from './dto/upload-attachment.dto';
 import { Attachment } from './entities/attachment.entity';
@@ -29,16 +31,34 @@ const MAGIC_BYTES: Record<AllowedMimeType, readonly (number | null)[]> = {
 };
 const MAGIC_LENGTH = 12;
 
-/**
- * T2 only enables site photos of a repair record. The table stays general
- * (subject type + subject id + purpose) for the later steps.
- */
+/** Repair-record files only; the table stays general (subject type + subject id + purpose) for later modules. */
 const SUPPORTED_SUBJECT_TYPES = [SUBJECT_TYPE.REPAIR_RECORD] as const;
-const SUPPORTED_PURPOSES = ['SITE_PHOTO'] as const;
-/** Statuses where the managing BQL may attach a site photo (demo `REPAIR_MANAGER_UPLOADS`). */
-const UPLOAD_STATUSES = ['DRAFT', 'NEEDS_RECORD_UPDATE'] as const;
 
-const PURPOSE_LABEL: Record<string, string> = { SITE_PHOTO: 'Ảnh hiện trường' };
+const isManagerAt = (actor: AuthenticatedUser, record: RepairRecord, statuses: readonly string[]): boolean =>
+  record.managerUserId === actor.id && hasCapability(actor, 'RECORD_EDIT') && statuses.includes(record.status);
+
+/** The holder of the current BQT-role step while the proposal waits on it (BR-S2-05). */
+const isWaitingBoardHolder = (actor: AuthenticatedUser, record: RepairRecord): boolean => {
+  const key = currentStepKeyOf(record);
+  const step = key ? approvalStepOf(record, key) : undefined;
+  return step?.role === 'OWNERS_BOARD' && stepHolderOf(record, step.key) === actor.id;
+};
+
+/** Who may upload each purpose, and when (v1 BR-12, v2 BR-C-02). */
+const PURPOSE_RULES: Readonly<Record<string, (actor: AuthenticatedUser, record: RepairRecord) => boolean>> = {
+  SITE_PHOTO: (actor, record) => isManagerAt(actor, record, ['DRAFT', 'NEEDS_RECORD_UPDATE']),
+  QUOTATION: (actor, record) => isManagerAt(actor, record, PROPOSAL_EDIT_STATUSES),
+  INCIDENT_MINUTES: (actor, record) => isManagerAt(actor, record, PROPOSAL_EDIT_STATUSES),
+  BOARD_MINUTES: isWaitingBoardHolder,
+};
+const SUPPORTED_PURPOSES = Object.keys(PURPOSE_RULES);
+
+export const PURPOSE_LABEL: Readonly<Record<string, string>> = {
+  SITE_PHOTO: 'Ảnh hiện trường',
+  QUOTATION: 'Báo giá nhà thầu',
+  INCIDENT_MINUTES: 'Biên bản ghi nhận sự việc',
+  BOARD_MINUTES: 'Biên bản họp BQT',
+};
 
 const STEP_DENIED = 'Bước hiện tại không cho bạn tải loại tệp này.';
 const OUT_OF_LOCATION = 'Ngoài phạm vi khu vực của bạn.';
@@ -82,7 +102,7 @@ export class AttachmentsService {
         const repo = manager.getRepository(RepairRecord);
         const record = await repo.findOne({ where: { id: dto.subjectId }, lock: { mode: 'pessimistic_read' } });
         if (!record || !actor.buildingIds.includes(record.buildingId)) throw notFound('Không tìm thấy hồ sơ.');
-        this.assertCanUpload(actor, record);
+        this.assertCanUpload(actor, record, dto.purpose);
 
         const attachmentRepo = manager.getRepository(Attachment);
         await this.storage.save(key, content);
@@ -137,10 +157,7 @@ export class AttachmentsService {
     const supportedSubject = (SUPPORTED_SUBJECT_TYPES as readonly string[]).includes(dto.subjectType);
     const supportedPurpose = (SUPPORTED_PURPOSES as readonly string[]).includes(dto.purpose);
     if (!supportedSubject || !supportedPurpose) {
-      throw badRequestWithReason(
-        'attachment_purpose_not_supported',
-        'Mục đích tệp chưa được hỗ trợ. Hiện chỉ nhận ảnh hiện trường của hồ sơ sửa chữa.',
-      );
+      throw badRequestWithReason('attachment_purpose_not_supported', 'Mục đích tệp chưa được hỗ trợ.');
     }
   }
 
@@ -160,19 +177,12 @@ export class AttachmentsService {
     return file.buffer;
   }
 
-  /**
-   * Mirrors demo `assertCanUpload`: building → location → step → manager identity.
-   * Only the managing BQL may add a site photo, and only while the record is editable.
-   */
-  private assertCanUpload(actor: AuthenticatedUser, record: RepairRecord): void {
+  /** Mirrors demo `assertCanUpload`: building → location → the purpose's step and actor rule. */
+  private assertCanUpload(actor: AuthenticatedUser, record: RepairRecord, purpose: string): void {
     if (record.locationId && actor.locationIds.length > 0 && !actor.locationIds.includes(record.locationId)) {
       throw forbidden(OUT_OF_LOCATION);
     }
-    const allowed =
-      record.managerUserId === actor.id &&
-      hasCapability(actor, 'RECORD_EDIT') &&
-      (UPLOAD_STATUSES as readonly string[]).includes(record.status);
-    if (!allowed) throw forbiddenWithReason('attachment_step_denied', STEP_DENIED);
+    if (!PURPOSE_RULES[purpose]?.(actor, record)) throw forbiddenWithReason('attachment_step_denied', STEP_DENIED);
   }
 }
 

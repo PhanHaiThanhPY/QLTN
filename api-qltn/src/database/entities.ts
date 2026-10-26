@@ -7,7 +7,10 @@ import { Location } from '../modules/buildings/entities/location.entity';
 import { Department } from '../modules/organization/entities/department.entity';
 import { RoleDefinition } from '../modules/roles/entities/role-definition.entity';
 import { RepairConfirmation } from '../modules/records/entities/repair-confirmation.entity';
+import { RepairProposalDecision } from '../modules/records/entities/repair-proposal-decision.entity';
+import { RepairProposalSubmission } from '../modules/records/entities/repair-proposal-submission.entity';
 import { RepairRecord } from '../modules/records/entities/repair-record.entity';
+import { RepairSignature } from '../modules/records/entities/repair-signature.entity';
 import { User } from '../modules/users/entities/user.entity';
 
 /** Every TypeORM entity must be listed here (no glob discovery). */
@@ -23,4 +26,7 @@ export const ALL_ENTITIES = [
   Attachment,
   RepairRecord,
   RepairConfirmation,
+  RepairProposalSubmission,
+  RepairProposalDecision,
+  RepairSignature,
 ];

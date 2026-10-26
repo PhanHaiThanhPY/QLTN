@@ -30,12 +30,15 @@ const MEMORY_FILE_LIMIT = 20 * 1024 * 1024;
 export class AttachmentsController {
   constructor(private readonly attachments: AttachmentsService) {}
 
+  // Who may upload depends on the purpose (BQL for site photos and proposal files, the BQT holder for board
+  // minutes), so the per-purpose rule lives in the service; a refused step answers 403 `attachment_step_denied`.
   @Post()
-  @RequireCapabilities('RECORD_EDIT')
+  @RequireCapabilities('VIEW')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MEMORY_FILE_LIMIT } }))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
-    summary: 'Tải ảnh hiện trường của hồ sơ sửa chữa (multipart: file + subjectType + subjectId + purpose)',
+    summary:
+      'Tải tệp của hồ sơ sửa chữa (multipart: file + subjectType + subjectId + purpose: SITE_PHOTO, QUOTATION, INCIDENT_MINUTES, BOARD_MINUTES)',
   })
   upload(
     @CurrentUser() user: AuthenticatedUser,

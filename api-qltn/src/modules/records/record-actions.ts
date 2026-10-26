@@ -3,6 +3,14 @@ import { hasCapability } from '../../common/auth/scope';
 import { conflictWithReason, forbiddenWithReason } from '../../common/errors';
 import type { Capability } from '../../domain/permissions';
 import type { RepairRecord } from './entities/repair-record.entity';
+import { currentStepKeyOf, PROPOSAL_APPROVAL_STATUSES, stepHolderOf } from './record-steps';
+
+/** Statuses where the manager prepares or reworks a proposal (T04–T06). */
+export const PROPOSAL_EDIT_STATUSES: readonly string[] = [
+  'PENDING_PROPOSAL',
+  'NEEDS_SUBMISSION_UPDATE',
+  'REJECTED_RESUBMITTABLE',
+];
 
 /** Vietnamese labels of every repair status, mirroring web `REPAIR_STATUS_LABEL`. */
 export const RECORD_STATUS_LABEL: Record<string, string> = {
@@ -41,9 +49,11 @@ export interface RecordActionDef {
   capability: Capability;
   /**
    * Who may act, as the demo's `slot`: `manager` = the record's managing BQL, `confirmer` = the assigned
-   * technical confirmer. Both keep the order capability → assignee → source status (SPEC B03–B09 §4).
+   * confirmer; both check capability → assignee → source status. `approvalStep` = holder of the step the proposal
+   * waits on, checked capability → source status → holder, since outside those statuses there is no current step
+   * (SPEC B03–B09 §4).
    */
-  slot: 'manager' | 'confirmer';
+  slot: 'manager' | 'confirmer' | 'approvalStep';
 }
 
 /**
@@ -87,6 +97,42 @@ export const RECORD_ACTIONS = {
     capability: 'RECORD_CONFIRM',
     slot: 'confirmer',
   },
+  saveProposalDraft: {
+    label: 'Lưu nháp tờ trình',
+    from: PROPOSAL_EDIT_STATUSES,
+    capability: 'RECORD_EDIT',
+    slot: 'manager',
+  },
+  submitProposal: {
+    label: 'Trình duyệt',
+    from: ['PENDING_PROPOSAL'],
+    capability: 'RECORD_EDIT',
+    slot: 'manager',
+  },
+  resubmitProposal: {
+    label: 'Trình lại',
+    from: ['NEEDS_SUBMISSION_UPDATE', 'REJECTED_RESUBMITTABLE'],
+    capability: 'RECORD_EDIT',
+    slot: 'manager',
+  },
+  approveProposal: {
+    label: 'Duyệt tờ trình',
+    from: PROPOSAL_APPROVAL_STATUSES,
+    capability: 'PROPOSAL_DECIDE',
+    slot: 'approvalStep',
+  },
+  requestProposalUpdate: {
+    label: 'Yêu cầu bổ sung tờ trình',
+    from: PROPOSAL_APPROVAL_STATUSES,
+    capability: 'PROPOSAL_DECIDE',
+    slot: 'approvalStep',
+  },
+  rejectProposal: {
+    label: 'Từ chối tờ trình',
+    from: PROPOSAL_APPROVAL_STATUSES,
+    capability: 'PROPOSAL_DECIDE',
+    slot: 'approvalStep',
+  },
 } as const satisfies Record<string, RecordActionDef>;
 
 export type RecordAction = keyof typeof RECORD_ACTIONS;
@@ -111,5 +157,11 @@ export function assertRecordAction(actor: AuthenticatedUser, record: RepairRecor
       'invalid_status_transition',
       `Hồ sơ đang ở trạng thái «${recordStatusLabel(record.status)}», không thực hiện được «${def.label}». Vui lòng tải lại.`,
     );
+  }
+  if (def.slot === 'approvalStep') {
+    const key = currentStepKeyOf(record);
+    if (!key || stepHolderOf(record, key) !== actor.id) {
+      throw forbiddenWithReason('not_step_assignee', 'Chỉ người được giao ở bước duyệt hiện tại mới quyết định được.');
+    }
   }
 }

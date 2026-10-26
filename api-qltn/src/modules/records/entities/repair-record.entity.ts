@@ -4,6 +4,7 @@ import type { TaskDueDays, WorkflowApprovalStep, WorkflowStageConfig } from '../
 import { Building } from '../../buildings/entities/building.entity';
 import { Location } from '../../buildings/entities/location.entity';
 import { User } from '../../users/entities/user.entity';
+import type { ProposalDraft } from '../proposal.types';
 
 @Entity('repair_records')
 @Check('CHK_repair_records_priority', `priority IN ('LOW', 'NORMAL', 'HIGH', 'URGENT')`)
@@ -90,6 +91,27 @@ export class RepairRecord extends BaseEntity {
   /** Ordered ids of the files attached to the record; removing an id detaches it without deleting the file. */
   @Column({ name: 'attachment_ids', type: 'uuid', array: true, default: () => `'{}'` })
   attachmentIds: string[];
+
+  /** Proposal being prepared by the manager (S2); every field optional until submission. */
+  @Column({ name: 'proposal_draft', type: 'jsonb', nullable: true })
+  proposalDraft: ProposalDraft | null;
+
+  /** Approval step the record waits on (custom steps share one status, so the key is kept). */
+  @Column({ name: 'current_approval_step_key', type: 'varchar', length: 60, nullable: true })
+  currentApprovalStepKey: string | null;
+
+  @Column({ name: 'current_submission_id', type: 'uuid', nullable: true })
+  currentSubmissionId: string | null;
+
+  @Column({ name: 'approved_submission_id', type: 'uuid', nullable: true })
+  approvedSubmissionId: string | null;
+
+  /** Integer VND as a string (bigint column); set when the last approval step approves. */
+  @Column({ name: 'approved_amount_vnd', type: 'bigint', nullable: true })
+  approvedAmountVnd: string | null;
+
+  @Column({ name: 'executing_contractor_name', type: 'varchar', length: 200, nullable: true })
+  executingContractorName: string | null;
 
   @Column({ name: 'created_by', type: 'uuid' })
   createdBy: string;

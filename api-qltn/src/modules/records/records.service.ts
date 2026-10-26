@@ -3,7 +3,7 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { Brackets, DataSource, EntityManager, In } from 'typeorm';
 import type { AuthenticatedUser } from '../../common/auth/authenticated-user';
 import { assertBuildingInScope } from '../../common/auth/scope';
-import { assertVersion, notFound } from '../../common/errors';
+import { notFound } from '../../common/errors';
 import type { PaginatedResult } from '../../common/interfaces/paginated.interface';
 import { pageWindow, toPaginated } from '../../common/utils/pagination';
 import { FieldErrors } from '../../common/validation/field-errors';
@@ -12,11 +12,8 @@ import {
   APPROVAL_STEPS,
   approvalDefinitionsOf,
   intakeStepKeyOf,
-  type AssignmentRule,
-  type TaskDueDays,
   type WorkflowApprovalStep,
 } from '../../domain/building-config';
-import type { Role } from '../../domain/permissions';
 import { AuditService, type AuditEventView } from '../audit/audit.service';
 import { SUBJECT_TYPE } from '../audit/entities/audit-event.entity';
 import { ATTACHMENT_DRAFT_MESSAGES } from '../attachments/attachments.service';
@@ -24,7 +21,6 @@ import { toAttachmentView, type AttachmentView } from '../attachments/attachment
 import { Attachment } from '../attachments/entities/attachment.entity';
 import { BuildingConfig } from '../buildings/entities/building-config.entity';
 import { Location } from '../buildings/entities/location.entity';
-import { User } from '../users/entities/user.entity';
 import type { ListRecordsQueryDto } from './dto/list-records-query.dto';
 import type { RecordSummaryQueryDto } from './dto/record-summary-query.dto';
 import type {
@@ -36,7 +32,20 @@ import type {
 } from './dto/record.dto';
 import { RepairConfirmation, type ConfirmationOutcome } from './entities/repair-confirmation.entity';
 import { RepairRecord } from './entities/repair-record.entity';
-import { assertRecordAction, type RecordAction } from './record-actions';
+import { toRecordView, type RepairRecordView } from './record-view';
+import { ProposalsService, type ProposalHistoryView } from './proposals.service';
+
+export { toRecordView, type RepairRecordView } from './record-view';
+import {
+  type AssignmentContext,
+  defaultWorkflowApprovers,
+  firstActiveForApprovalStep,
+  firstActiveInRole,
+  isActiveUserForApprovalStep,
+  isActiveUserInRole,
+  loadAssignmentContext,
+} from './record-assignment';
+import { loadRecordForAction, validateText } from './record-loader';
 import { RECORD_FINAL_STATUSES, RECORD_NEEDS_UPDATE_STATUSES, statusesOfGroup } from './record-status-groups';
 
 const CODE_PREFIX = 'SC';
@@ -44,6 +53,7 @@ const CODE_WIDTH = 3;
 const DRAFT_STATUS = 'DRAFT';
 const PENDING_CONFIRMATION = 'PENDING_CONFIRMATION';
 const CLOSED_WITHDRAWN = 'CLOSED_WITHDRAWN';
+const PROPOSAL_FILE_PURPOSES = ['QUOTATION', 'INCIDENT_MINUTES', 'BOARD_MINUTES'] as const;
 
 /** The three confirmer actions of S1 (SPEC B03–B09 T01–T03): outcome stored, target status, label of `note`. */
 type ConfirmationAction = 'requestRecordUpdate' | 'confirmRepair' | 'closeNoRepair';
@@ -87,34 +97,6 @@ const FOLD_TO = FOLD_BASES.map(([base, marks]) => base.repeat(1 + marks.length *
 /** Escapes LIKE wildcards so a literal `%` or `_` in the search box stays literal. */
 const escapeLike = (value: string): string => value.replace(/[\\%_]/g, (char) => `\\${char}`);
 
-export interface RepairRecordView {
-  id: string;
-  code: string;
-  buildingId: string;
-  locationId: string;
-  noMaintenanceItem: boolean;
-  title: string;
-  description: string;
-  priority: string;
-  status: string;
-  managerUserId: string;
-  confirmationUserId: string;
-  consultantUserId: string;
-  boardUserId: string;
-  approvalStepKeys: string[];
-  workflowApprovalSteps: WorkflowApprovalStep[];
-  workflowStageApprovalStepKeys: Partial<Record<string, string[]>>;
-  approvalAssigneeUserIds: Record<string, string>;
-  /** Snapshot of the building's task due days when the record was created. */
-  dueDays: TaskDueDays;
-  /** Ordered ids of the site photos attached to the record. */
-  attachmentIds: string[];
-  createdBy: string;
-  version: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 export interface RepairConfirmationView {
   id: string;
   recordId: string;
@@ -130,6 +112,10 @@ export interface RecordDetailView {
   confirmations: RepairConfirmationView[];
   /** Site photos (and later, other files) attached to the record, in the record's order. */
   attachments: AttachmentView[];
+  /** Proposal draft and every submission with decisions and signatures (S2). */
+  proposal: ProposalHistoryView;
+  /** Quotations, incident minutes and board minutes of the record, oldest first (S2). */
+  proposalAttachments: AttachmentView[];
   audit: AuditEventView[];
 }
 
@@ -145,32 +131,6 @@ export interface RecordSummaryView {
   asOf: Date;
 }
 
-export const toRecordView = (record: RepairRecord): RepairRecordView => ({
-  id: record.id,
-  code: record.code,
-  buildingId: record.buildingId,
-  locationId: record.locationId ?? '',
-  noMaintenanceItem: record.noMaintenanceItem,
-  title: record.title,
-  description: record.description,
-  priority: record.priority,
-  status: record.status,
-  managerUserId: record.managerUserId,
-  confirmationUserId: record.confirmationUserId ?? '',
-  consultantUserId: record.consultantUserId ?? '',
-  boardUserId: record.boardUserId ?? '',
-  approvalStepKeys: [...record.approvalStepKeys],
-  workflowApprovalSteps: record.workflowApprovalSteps.map((step) => ({ ...step })),
-  workflowStageApprovalStepKeys: record.workflowStageApprovalStepKeys,
-  approvalAssigneeUserIds: { ...record.approvalAssigneeUserIds },
-  dueDays: { ...record.taskDueDays },
-  attachmentIds: [...record.attachmentIds],
-  createdBy: record.createdBy,
-  version: record.version,
-  createdAt: record.createdAt,
-  updatedAt: record.updatedAt,
-});
-
 const toConfirmationView = (row: RepairConfirmation): RepairConfirmationView => ({
   id: row.id,
   recordId: row.recordId,
@@ -179,104 +139,6 @@ const toConfirmationView = (row: RepairConfirmation): RepairConfirmationView => 
   note: row.note,
   createdAt: row.createdAt,
 });
-
-interface AssignmentContext {
-  users: User[];
-  rules: AssignmentRule[];
-}
-
-const canAccessLocation = (user: User, buildingId: string, locationId: string | null): boolean => {
-  if (!user.buildings.some((building) => building.id === buildingId)) return false;
-  const locationIds = user.locations.map((location) => location.id);
-  return !locationId || locationIds.length === 0 || locationIds.includes(locationId);
-};
-
-const rulesFor = (ctx: AssignmentContext, role: Role, locationId: string | null): AssignmentRule[] =>
-  ctx.rules
-    .filter((rule) => rule.role === role)
-    .filter(
-      (rule) =>
-        !locationId || !rule.locationIds || rule.locationIds.length === 0 || rule.locationIds.includes(locationId),
-    )
-    .sort((a, b) => a.priority - b.priority);
-
-const byCode = (a: User, b: User): number => a.code.localeCompare(b.code);
-
-/** Mirrors web `isActiveUserInRole`: active, right role, in the building/location and matching the assignment rules. */
-const isActiveUserInRole = (
-  ctx: AssignmentContext,
-  userId: string | null,
-  role: Role,
-  buildingId: string,
-  locationId: string | null,
-): boolean => {
-  const user = userId ? ctx.users.find((row) => row.id === userId) : undefined;
-  if (!user || !user.isActive || user.role !== role || !canAccessLocation(user, buildingId, locationId)) return false;
-  const rules = ctx.rules.filter((rule) => rule.role === role);
-  if (rules.length === 0) return true;
-  return rulesFor(ctx, role, locationId).some((rule) => rule.departmentId === user.departmentId);
-};
-
-/** Mirrors web `isActiveUserForApprovalStep`: active, in the area, and holding the step's role. */
-const isActiveUserForApprovalStep = (
-  ctx: AssignmentContext,
-  userId: string | null | undefined,
-  step: WorkflowApprovalStep,
-  buildingId: string,
-  locationId: string | null,
-): boolean => {
-  const user = userId ? ctx.users.find((row) => row.id === userId) : undefined;
-  if (!user || !user.isActive || !canAccessLocation(user, buildingId, locationId)) return false;
-  if (step.roleDefId) return user.roleDefId === step.roleDefId;
-  return isActiveUserInRole(ctx, user.id, step.role, buildingId, locationId);
-};
-
-/** Mirrors web `firstActiveInRole`: the first active user selected by the building assignment rules. */
-const firstActiveInRole = (
-  ctx: AssignmentContext,
-  role: Role,
-  buildingId: string,
-  locationId: string | null,
-): string | undefined => {
-  const candidates = ctx.users
-    .filter((user) => user.isActive && user.role === role && canAccessLocation(user, buildingId, locationId))
-    .sort(byCode);
-  const rules = ctx.rules.filter((rule) => rule.role === role);
-  if (rules.length === 0) return candidates[0]?.id;
-  for (const rule of rulesFor(ctx, role, locationId)) {
-    const match = candidates.find((user) => user.departmentId === rule.departmentId);
-    if (match) return match.id;
-  }
-  return undefined;
-};
-
-const firstActiveForApprovalStep = (
-  ctx: AssignmentContext,
-  step: WorkflowApprovalStep,
-  buildingId: string,
-  locationId: string | null,
-): string | undefined => {
-  if (step.roleDefId) {
-    return ctx.users
-      .filter(
-        (user) => user.isActive && user.roleDefId === step.roleDefId && canAccessLocation(user, buildingId, locationId),
-      )
-      .sort(byCode)[0]?.id;
-  }
-  return firstActiveInRole(ctx, step.role, buildingId, locationId);
-};
-
-const defaultWorkflowApprovers = (
-  ctx: AssignmentContext,
-  steps: readonly WorkflowApprovalStep[],
-  buildingId: string,
-  locationId: string | null,
-): Record<string, string> =>
-  Object.fromEntries(
-    steps
-      .map((step) => [step.key, firstActiveForApprovalStep(ctx, step, buildingId, locationId)] as const)
-      .filter((entry): entry is readonly [string, string] => Boolean(entry[1])),
-  );
 
 /** Requested approval steps resolved against the library kept on the building configuration. */
 const workflowApprovalStepsOf = (config: BuildingConfig): WorkflowApprovalStep[] => {
@@ -329,13 +191,14 @@ export class RecordsService {
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly audit: AuditService,
     private readonly codes: CodeCounterService,
+    private readonly proposals: ProposalsService,
   ) {}
 
   async create(actor: AuthenticatedUser, dto: CreateRecordDto): Promise<RepairRecordView> {
     assertBuildingInScope(actor, dto.buildingId);
     return this.dataSource.transaction(async (manager) => {
       const config = await this.loadConfig(manager, dto.buildingId);
-      const assignment = await this.loadAssignmentContext(manager, dto.buildingId);
+      const assignment = await loadAssignmentContext(manager, dto.buildingId);
       const locationId = dto.locationId ?? null;
       const errors = new FieldErrors();
       await this.validateLocation(manager, errors, dto.buildingId, locationId, null);
@@ -394,8 +257,8 @@ export class RecordsService {
   /** Draft save: only editable fields, version-locked, same audit trail as the demo command. */
   async updateDraft(actor: AuthenticatedUser, id: string, dto: UpdateRecordDraftDto): Promise<RepairRecordView> {
     return this.dataSource.transaction(async (manager) => {
-      const record = await this.loadRecordForAction(manager, actor, id, dto.version, 'saveRecordDraft');
-      const assignment = await this.loadAssignmentContext(manager, record.buildingId);
+      const record = await loadRecordForAction(manager, actor, id, dto.version, 'saveRecordDraft');
+      const assignment = await loadAssignmentContext(manager, record.buildingId);
       await this.applyDraftFields(manager, assignment, record, dto);
       const fromStatus = record.status;
       record.version += 1;
@@ -420,8 +283,8 @@ export class RecordsService {
    */
   async submit(actor: AuthenticatedUser, id: string, dto: SubmitRecordDto): Promise<RepairRecordView> {
     return this.dataSource.transaction(async (manager) => {
-      const record = await this.loadRecordForAction(manager, actor, id, dto.version, 'submitRecord');
-      const assignment = await this.loadAssignmentContext(manager, record.buildingId);
+      const record = await loadRecordForAction(manager, actor, id, dto.version, 'submitRecord');
+      const assignment = await loadAssignmentContext(manager, record.buildingId);
       await this.applyDraftFields(manager, assignment, record, dto);
       await this.assertSubmittable(manager, assignment, record);
       const fromStatus = record.status;
@@ -445,10 +308,10 @@ export class RecordsService {
   /** Withdraws an editable draft (another status answers 409 `invalid_status_transition`); reason is mandatory. */
   async withdraw(actor: AuthenticatedUser, id: string, dto: WithdrawRecordDto): Promise<RepairRecordView> {
     return this.dataSource.transaction(async (manager) => {
-      const record = await this.loadRecordForAction(manager, actor, id, dto.version, 'withdrawRecord');
+      const record = await loadRecordForAction(manager, actor, id, dto.version, 'withdrawRecord');
       const reason = (dto.reason ?? '').trim();
       const errors = new FieldErrors();
-      this.validateText(errors, 'reason', 'Lý do', reason, REASON_MIN, REASON_MAX);
+      validateText(errors, 'reason', 'Lý do', reason, REASON_MIN, REASON_MAX);
       errors.throwIfAny();
       const fromStatus = record.status;
       record.status = CLOSED_WITHDRAWN;
@@ -481,10 +344,10 @@ export class RecordsService {
   ): Promise<RepairRecordView> {
     const rule = CONFIRMATION_RULES[action];
     return this.dataSource.transaction(async (manager) => {
-      const record = await this.loadRecordForAction(manager, actor, id, dto.version, action);
+      const record = await loadRecordForAction(manager, actor, id, dto.version, action);
       const note = (dto.note ?? '').trim();
       const errors = new FieldErrors();
-      this.validateText(errors, 'note', rule.noteLabel, note, REASON_MIN, REASON_MAX);
+      validateText(errors, 'note', rule.noteLabel, note, REASON_MIN, REASON_MAX);
       errors.throwIfAny();
       await manager
         .getRepository(RepairConfirmation)
@@ -612,44 +475,26 @@ export class RecordsService {
   async getDetail(actor: AuthenticatedUser, id: string): Promise<RecordDetailView> {
     const record = await this.dataSource.getRepository(RepairRecord).findOneBy({ id });
     if (!record || !actor.buildingIds.includes(record.buildingId)) throw notFound('Không tìm thấy hồ sơ.');
-    const [confirmations, attachments, audit] = await Promise.all([
+    const [confirmations, attachments, proposal, proposalAttachments, audit] = await Promise.all([
       this.dataSource
         .getRepository(RepairConfirmation)
         .find({ where: { recordId: id }, order: { createdAt: 'ASC', id: 'ASC' } }),
       this.attachmentsOf(record),
+      this.proposals.historyOf(record),
+      this.dataSource.getRepository(Attachment).find({
+        where: { subjectId: id, purpose: In([...PROPOSAL_FILE_PURPOSES]) },
+        order: { createdAt: 'ASC', id: 'ASC' },
+      }),
       this.audit.listForSubject(SUBJECT_TYPE.REPAIR_RECORD, id, { page: 1, limit: 100 }),
     ]);
     return {
       record: toRecordView(record),
       confirmations: confirmations.map(toConfirmationView),
       attachments,
+      proposal,
+      proposalAttachments: proposalAttachments.map(toAttachmentView),
       audit: audit.data,
     };
-  }
-
-  /**
-   * Locks the record, hides records outside the caller's buildings or location scope (404), enforces the
-   * version then the shared action rules.
-   */
-  private async loadRecordForAction(
-    manager: EntityManager,
-    actor: AuthenticatedUser,
-    id: string,
-    version: number,
-    action: RecordAction,
-  ): Promise<RepairRecord> {
-    const record = await manager
-      .getRepository(RepairRecord)
-      .findOne({ where: { id }, lock: { mode: 'pessimistic_write' } });
-    if (!record || !actor.buildingIds.includes(record.buildingId)) throw notFound('Không tìm thấy hồ sơ.');
-    const outsideLocations =
-      Boolean(record.locationId) &&
-      actor.locationIds.length > 0 &&
-      !actor.locationIds.includes(record.locationId ?? '');
-    if (outsideLocations) throw notFound('Không tìm thấy hồ sơ.');
-    assertVersion(record.version, version);
-    assertRecordAction(actor, record, action);
-    return record;
   }
 
   /**
@@ -692,8 +537,8 @@ export class RecordsService {
   /** Mirrors web `assertSubmittable`; T3 only supports "no specific equipment" (maintenance items are Đợt 3). */
   private async assertSubmittable(manager: EntityManager, ctx: AssignmentContext, record: RepairRecord): Promise<void> {
     const errors = new FieldErrors();
-    this.validateText(errors, 'title', 'Tên hồ sơ', record.title, TITLE_MIN, TITLE_MAX);
-    this.validateText(errors, 'description', 'Mô tả hư hỏng', record.description, DESCRIPTION_MIN, DESCRIPTION_MAX);
+    validateText(errors, 'title', 'Tên hồ sơ', record.title, TITLE_MIN, TITLE_MAX);
+    validateText(errors, 'description', 'Mô tả hư hỏng', record.description, DESCRIPTION_MIN, DESCRIPTION_MAX);
     const location = record.locationId
       ? await manager.getRepository(Location).findOneBy({ id: record.locationId })
       : null;
@@ -736,19 +581,6 @@ export class RecordsService {
     return rows.some((row) => row.purpose === 'SITE_PHOTO' && row.mimeType.startsWith('image/'));
   }
 
-  private validateText(
-    errors: FieldErrors,
-    field: string,
-    label: string,
-    value: string | null | undefined,
-    min: number,
-    max: number,
-  ): void {
-    const text = (value ?? '').trim();
-    if (text.length < min) errors.add(field, `${label} cần tối thiểu ${min} ký tự.`);
-    else if (text.length > max) errors.add(field, `${label} tối đa ${max} ký tự.`);
-  }
-
   private async attachmentsOf(record: RepairRecord): Promise<AttachmentView[]> {
     if (record.attachmentIds.length === 0) return [];
     const rows = await this.dataSource.getRepository(Attachment).findBy({ id: In(record.attachmentIds) });
@@ -784,20 +616,6 @@ export class RecordsService {
     const config = await manager.getRepository(BuildingConfig).findOneBy({ buildingId });
     if (!config) throw notFound('Tòa nhà chưa có cấu hình.');
     return config;
-  }
-
-  private async loadAssignmentContext(manager: EntityManager, buildingId: string): Promise<AssignmentContext> {
-    const config = await this.loadConfig(manager, buildingId);
-    const users = await manager
-      .getRepository(User)
-      .createQueryBuilder('u')
-      .leftJoinAndSelect('u.buildings', 'b')
-      .leftJoinAndSelect('u.locations', 'l')
-      .where('EXISTS (SELECT 1 FROM user_buildings ub WHERE ub.user_id = u.id AND ub.building_id = :buildingId)', {
-        buildingId,
-      })
-      .getMany();
-    return { users, rules: config.assignmentRules ?? [] };
   }
 
   private async validateLocation(
