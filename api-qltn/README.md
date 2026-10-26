@@ -60,7 +60,7 @@ is audited in the same transaction. Out-of-scope buildings answer 404.
 | GET / POST / PATCH | `/api/departments[/:id]` | read: any · write: ACCOUNT_MANAGE | Scope cannot shrink below members' buildings |
 | GET | `/api/users`, `/api/users/:id`, `/api/users/:id/audit` | ADMIN_VIEW | `?q=&role=&buildingId=&departmentId=&active=&page=&limit=` |
 | POST / PATCH | `/api/users`, `/api/users/:id` | ACCOUNT_MANAGE | System role is fixed; deactivation revokes sessions |
-| POST | `/api/users/:id/reset-password` | ACCOUNT_MANAGE | Signs the account out everywhere |
+| POST | `/api/users/:id/reset-password` | ACCOUNT_MANAGE | `{ password }` (8–72); signs the account out everywhere and audits `resetPassword` (reason = account code, never the password). The signed-in account itself answers 400 `details.reason = self_reset_denied` (use change-password) |
 | GET | `/api/buildings`, `/api/buildings/:id` | any | |
 | POST / PATCH | `/api/buildings`, `/api/buildings/:id` | ACCOUNT_MANAGE | New building starts from a template and joins the creator's scope |
 | GET | `/api/buildings/:id/audit` | BUILDING_CONFIG | Config and location history |

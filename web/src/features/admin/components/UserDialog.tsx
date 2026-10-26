@@ -1,13 +1,19 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Input, NativeSelect } from '@/components/ui/input';
 import { IS_API_MODE } from '@/config/data-source';
+import { hasCapability } from '@/domain/permissions';
 import type { Department, RoleDefinition, User } from '@/domain/types';
 import { useCommand } from '@/hooks/useCommand';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useReferenceData } from '@/hooks/useReferenceData';
 import { PASSWORD_LIMITS, passwordError } from '@/services/http/mappers';
+import { AccountHistory, accountHistoryKey } from './AccountHistory';
+import { ResetPasswordDialog } from './ResetPasswordDialog';
 
 interface UserDialogProps {
   user?: User;
@@ -22,6 +28,9 @@ const roleIdOf = (user: User | undefined, roles: RoleDefinition[]): string =>
 /** Create or edit an employee; scope stays within the administrator's assigned buildings. */
 export const UserDialog = ({ user, departments, roles, onClose }: UserDialogProps) => {
   const { data } = useReferenceData();
+  const viewer = useCurrentUser();
+  const queryClient = useQueryClient();
+  const [isResetting, setIsResetting] = useState(false);
   const [code, setCode] = useState(user?.code ?? '');
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState(user?.fullName ?? '');
@@ -49,6 +58,11 @@ export const UserDialog = ({ user, departments, roles, onClose }: UserDialogProp
   };
   const toggleLocation = (id: string) => setLocationIds((prev) => (prev.includes(id) ? prev.filter((row) => row !== id) : [...prev, id]));
   const createsWithPassword = !user && IS_API_MODE;
+  // US-S1: api mode only, on an existing account; a reset never targets the signed-in account (BR-04).
+  const viewerCan = (capability: 'ACCOUNT_MANAGE' | 'ADMIN_VIEW'): boolean => Boolean(viewer && hasCapability(viewer, capability));
+  const isOtherAccount = Boolean(user && viewer && user.id !== viewer.id);
+  const canResetPassword = IS_API_MODE && isOtherAccount && viewerCan('ACCOUNT_MANAGE');
+  const canSeeHistory = IS_API_MODE && Boolean(user) && viewerCan('ADMIN_VIEW');
   const submit = () => {
     if (createsWithPassword) {
       const issue = passwordError(password);
@@ -176,6 +190,25 @@ export const UserDialog = ({ user, departments, roles, onClose }: UserDialogProp
           </div>
         </Field>
       </div>
+      {user && (canResetPassword || canSeeHistory) ? (
+        <div className="mt-5 space-y-3 border-t border-line pt-4">
+          {canResetPassword ? (
+            <>
+              <Button variant="outline" onClick={() => setIsResetting(true)}>
+                <KeyRound />
+                Đặt lại mật khẩu
+              </Button>
+              <ResetPasswordDialog
+                user={user}
+                open={isResetting}
+                onOpenChange={setIsResetting}
+                onReset={() => void queryClient.invalidateQueries({ queryKey: accountHistoryKey(user.id) })}
+              />
+            </>
+          ) : null}
+          {canSeeHistory ? <AccountHistory userId={user.id} /> : null}
+        </div>
+      ) : null}
     </Dialog>
   );
 };

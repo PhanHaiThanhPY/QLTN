@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { Brackets, DataSource, EntityManager, In, IsNull } from 'typeorm';
 import type { AuthenticatedUser } from '../../common/auth/authenticated-user';
-import { assertVersion, notFound } from '../../common/errors';
+import { assertVersion, badRequestWithReason, notFound } from '../../common/errors';
 import type { PaginatedResult } from '../../common/interfaces/paginated.interface';
 import { pageWindow, toPaginated } from '../../common/utils/pagination';
 import { FieldErrors, fieldError } from '../../common/validation/field-errors';
@@ -168,8 +168,14 @@ export class UserAdminService {
     return this.get(actor, id);
   }
 
-  /** Sets a new password and signs the account out everywhere. */
+  /**
+   * Sets a new password and signs the account out everywhere. Not for the signed-in account itself: a reset skips
+   * the current-password check, so that account goes through change-password (US-S1 BR-04).
+   */
   async resetPassword(actor: AuthenticatedUser, id: string, dto: ResetPasswordDto): Promise<{ reset: true }> {
+    if (id === actor.id) {
+      throw badRequestWithReason('self_reset_denied', 'Dùng chức năng Đổi mật khẩu cho tài khoản của bạn.');
+    }
     const passwordHash = await hashPassword(dto.password);
     await this.dataSource.transaction(async (manager) => {
       const user = await manager.getRepository(User).findOne({ where: { id }, relations: { buildings: true } });
