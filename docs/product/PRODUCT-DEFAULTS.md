@@ -1,6 +1,6 @@
 # Phương án mặc định của sản phẩm cho các câu hỏi chưa có khách trả lời
 
-**Chủ sở hữu:** PM/BA · **Cập nhật:** 26/10/2026 · **Hiệu lực:** theo [PD-06](DECISIONS.md)
+**Chủ sở hữu:** PM/BA · **Cập nhật:** 26/10/2026 · **Trạng thái:** `Đã duyệt`, chủ dự án duyệt ngày 26/10/2026 (PD-09) · **Hiệu lực:** theo [PD-06](DECISIONS.md)
 
 ## Vì sao có file này
 

@@ -31,7 +31,7 @@ Khớp với workflow OpenRig `qltn-pm-ba-review-loop`.
 | Bước | Ai | Đầu ra bắt buộc |
 |---|---|---|
 | 1. Yêu cầu | PM/BA (`dev-pm-ba`) | `product/features/<mã>/SPEC.md` trạng thái `Chờ duyệt`: phạm vi, AC đánh số, trạng thái, quy tắc, hợp đồng API nghiệp vụ, phụ thuộc OD-xx, mục "Ngoài phạm vi". |
-| 1b. Duyệt | Chủ dự án (người dùng), hoặc PM/BA theo PD-05 | Chủ dự án duyệt SPEC có quyết định phạm vi hoặc thương mại còn mở, hoặc dựa vào OD chưa chốt. Các SPEC khác PM/BA tự duyệt (PD-05). Người duyệt và ngày ghi ở đầu SPEC; SPEC chuyển `Đã duyệt` rồi mới giao cho dev-build. Dev-build chỉ làm SPEC `Đã duyệt`. Giao xong thì PM/BA chuyển ngay sang module kế tiếp. |
+| 1b. Duyệt | Chủ dự án (người dùng) | **Mọi SPEC** đều do chủ dự án review và xác nhận (PD-08). PM/BA không tự duyệt. Người duyệt và ngày ghi ở đầu SPEC; SPEC chuyển `Đã duyệt` rồi mới giao cho dev-build. Dev-build chỉ làm SPEC `Đã duyệt`. Giao xong thì PM/BA chuyển ngay sang module kế tiếp. |
 | 2. Triển khai | Dev (`dev-build`) | Code + test; cập nhật README kỹ thuật/ADR nếu có quyết định kỹ thuật; ghi `handoff.md`: AC nào đã làm, bằng chứng (lệnh test, kết quả), điểm chưa làm. |
 | 3. Review | Reviewer (`dev-review`) | Kết quả review trong `handoff.md`: đạt hoặc danh sách phát hiện có mức độ và vị trí. |
 | 4. Sửa | Dev | Chỉ sửa phát hiện đã ghi, cập nhật `handoff.md`, trả lại review. |
