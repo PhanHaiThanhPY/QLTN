@@ -117,7 +117,61 @@ Candidate chấp nhận được để chuyển sang bước PM/BA close.
 
 ### Bằng chứng triển khai (dev-build)
 
-_Chưa có._
+**Candidate:** branch `feature/rm-s2-intake-config`, code commit `32c732c` (parent `0bab62e`, RM-S1 closed). Not pushed. 26/10/2026.
+
+**What changed (API)**
+- `domain/building-config.ts`:
+  - BR-06: `stageCapability('INTAKE') = RECORD_CONFIRM`; INTAKE must have exactly 1 step whose role can confirm (400 on `workflowStages.<i>.approvalStepKeys`).
+  - BR-10: `approvalStepKeys` must equal the PROPOSAL stage (400 on `approvalStepKeys`, "Chuỗi phê duyệt phải trùng các bước của giai đoạn Tờ trình."). Default PROPOSAL = `[TECH, BOARD]`.
+  - BR-09: template `AQUA` (`stageSteps`, thresholds of RESIDENTIAL).
+  - `stepBindingsOf` binds to the stage's first step when the default step is missing. `DEFAULT_APPROVAL_STEP_KEYS` removed.
+- `building-config.service.ts`: `approvalStepKeys` is derived from the PROPOSAL stage when the request omits it; `applyTemplate` resets stages and chain together. Create, copy, PUT and bulk all go through `validateConfigRules`.
+- Seed: `DEMO_APPROVAL_STEP_KEYS` removed; demo configs come from their template (same chain TVKT → BQT).
+- Migration `2026-10-26c-approval-chain-single-source.sql` (BR-11):
+  - An out-of-sync PROPOSAL stage gets the running chain, with bindings re-pointed, `version + 1`, and an audit `migrateApprovalChain`.
+  - A building without BQT is audited once ("Thiếu BQT…").
+  - Records are untouched.
+  - Applied to `qltn_dev` on restart: A–D were `{TECH,BOARD}` vs PROPOSAL 3 steps → now `[TECH, BOARD]`, 4 audit rows.
+- `records.service.ts` (BR-07): the confirmer is the first eligible holder of the INTAKE step, resolved against the building's step library.
+  - If nobody is eligible, the BQT holder is used and the `createRecord` audit gets the reason "Không có người xác nhận theo cấu hình, dùng BQT".
+  - The draft and submit checks accept that INTAKE step, or BQT only when nobody is eligible.
+  - BR-08 message updated (`not_step_assignee` unchanged).
+
+**What changed (web)**
+- `domain/building-config.ts` mirrors the API:
+  - default PROPOSAL `[TECH, BOARD]` (`DEFAULT_PROPOSAL_STEP_KEYS` replaces `DEFAULT_APPROVAL_STEP_KEYS`);
+  - `AQUA` in `CONFIG_TEMPLATES` (the apply-template dialog lists it);
+  - binding fallback, `proposalChainOf`, `withProposalChain`.
+- Mock handlers:
+  - same INTAKE / chain rules on save; templates reset stages;
+  - the confirmer is picked from the INTAKE step with BQT fallback (audited) and validated the same way.
+- Settings `ConfigCard` sends the stages with the PROPOSAL stage set to the edited chain, so it never trips BR-10.
+- Record form: the confirmer field ("Người xác nhận hiện trạng") defaults to "Theo cấu hình tòa (tự động)" and lists active users with `RECORD_CONFIRM`. An empty choice is not sent, so the backend picks per BR-07. Without this, the form would pre-pick a KT and the AQUA building would refuse it.
+
+**AC evidence**
+
+| AC | Evidence | Result |
+|---|---|---|
+| AC-2.1 | unit `building-config.spec.ts` "refuses an INTAKE stage…"; e2e `rm-s2-intake-config.e2e-spec.ts` "AC-2.1" (0 steps, 2 steps, BQL custom step → 400 on `workflowStages.<i>.approvalStepKeys`) | Pass |
+| AC-2.2 | e2e "AC-2.2": AQUA on building A → new record confirmer = `tvkt`; `tvkt` T02 → `PENDING_PROPOSAL`; `kt-a` → 403 `not_step_assignee` with the new message | Pass |
+| AC-2.3 | e2e "AC-2.3": TVKT deactivated → confirmer `bqt`, audit reason as BR-07, `bqt` confirms. **Note:** with AQUA's chain `[TECH, BOARD]` and no TVKT, *submit* is refused by the existing S1 rule that checks every proposal-chain holder (`approvalStepKeys.0`). The test therefore sets PROPOSAL `[BOARD]` (INTAKE stays `[TECH]`). See question Q-RM2-1. | Pass |
+| AC-2.4 | e2e "AC-2.4": building B (INTAKE `[TECH_CONFIRM]`) → `kt-b` is confirmer and confirms; `record-confirmations.e2e` (S1) unchanged | Pass |
+| AC-2.5 | e2e "AC-2.5": mismatch → 400 with the BR-10 message; PUT without the chain derives it; apply-template, copy, bulk, create building → `approvalStepKeys == PROPOSAL` each time; new building = `[TECH, BOARD]` | Pass |
+| AC-2.6 | e2e "AC-2.6": record on a default-template building snapshots `[TECH, BOARD]`. Proposal submit/approve endpoints do not exist yet (S2), so "không sang thẳng Chờ thi công" can only be shown through the snapshot until S2. | Pass (snapshot level) |
+| AC-2.7 | e2e "AC-2.7": building C `{TECH,BOARD}` / PROPOSAL 3 steps → `[TECH, BOARD]`, version +1, 1 audit; building D `{TECH}` → `[TECH]` with "Thiếu BQT"; second run changes nothing; an old record keeps its `approvalStepKeys` | Pass |
+| AC-2.8 | web `ApprovalChainSource.test.tsx`: the record stepper uses `record.approvalStepKeys` even when the record's PROPOSAL snapshot differs; the designer gets the stored PROPOSAL stage over a stale chain | Pass |
+| AC-2.9 | Browser (headless Chrome), [`supporting/rm-s2-ui-check.mjs`](supporting/rm-s2-ui-check.mjs): ADMIN applies "Mẫu: Aqua…" to Tòa A in the detail dialog; BQL creates and submits SC-003 with the confirmer on "Theo cấu hình tòa"; detail shows TVKT (Võ Thanh Tâm) as confirmer; TVKT sees it in "Hồ sơ sửa chữa" and confirms → "Chờ lập tờ trình". Run: `AC-2.9 RM-S2 UI flow: PASS`; building A restored to STANDARD (201). Screenshots `evidence/RM2-1` … `RM2-5`. | Pass |
+
+**Checks** (isolated e2e DB `qltn_build_e2e`)
+- `api-qltn`: `format:check`, `lint`, `typecheck` OK · `npm test` 48/48 · e2e `rm-s2-intake-config`, `catalog-admin`, `records`, `record-confirmations`, `record-transitions`, `role-matrix-v2`, `auth`: 7 suites, 77/77 · build OK.
+- `web`: full `vitest run` 47 files, 343/343 · `tsc -b` OK.
+- Grep: no `DEFAULT_APPROVAL_STEP_KEYS` / `DEMO_APPROVAL_STEP_KEYS` left in `api-qltn` or `web`.
+
+**Notes and questions for review / PM/BA**
+- **Q-RM2-1:** should *submit to confirmation* still require every proposal-chain holder to be valid? In AQUA, a building without TVKT can create a record (BQT fallback) but cannot submit it until the chain changes (AC-2.3 note).
+- `records.e2e` read the configuration as `bql-a`, which RM-S1 forbids; the test now reads it as admin. Test-only; RM-S1's run did not include this suite.
+- Cosmetic, outside the SPEC: the record's "Người xử lý" card still labels the confirmer "Kỹ thuật xác nhận" even when it is TVKT/BQT, and the apply-template preview does not list per-stage step changes (only the chain and thresholds). Candidates for a later small slice.
+
 
 ### Kết quả review (dev-review)
 
