@@ -1,9 +1,10 @@
-import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { createHash, randomBytes, randomUUID } from 'crypto';
 import { DataSource, EntityManager, IsNull } from 'typeorm';
+import { fieldError } from '../../common/validation/field-errors';
 import { UsersService, type UserProfile } from '../users/users.service';
 import { User } from '../users/entities/user.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
@@ -94,16 +95,17 @@ export class AuthService {
     return this.buildTokens(identity, outcome.plain);
   }
 
-  /** Changes the caller's password after checking the current one; every session is signed out. */
+  /**
+   * Changes the caller's password after checking the current one; every session is signed out.
+   * The new password must differ from the current one, checked only once the current one is proven.
+   */
   async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
     const user = await this.users.findWithPassword(userId);
-    const ok = user?.passwordHash ? await verifyPassword(currentPassword, user.passwordHash) : false;
-    if (!user || !ok) {
-      throw new BadRequestException({
-        code: 'VALIDATION_ERROR',
-        message: 'Mật khẩu hiện tại không đúng.',
-        details: { fields: [{ field: 'currentPassword', message: 'Mật khẩu hiện tại không đúng.' }] },
-      });
+    const currentHash = user?.passwordHash ?? null;
+    const ok = currentHash ? await verifyPassword(currentPassword, currentHash) : false;
+    if (!currentHash || !ok) throw fieldError('currentPassword', 'Mật khẩu hiện tại không đúng.');
+    if (await verifyPassword(newPassword, currentHash)) {
+      throw fieldError('newPassword', 'Mật khẩu mới phải khác mật khẩu hiện tại.');
     }
     const passwordHash = await hashPassword(newPassword);
     await this.dataSource.transaction(async (manager) => {

@@ -93,7 +93,7 @@ export const mapApiError = (status: number, body: unknown): AppError => {
     const message = messageOf(body, fieldErrors ? Object.values(fieldErrors)[0] : VALIDATION_MESSAGE);
     return new AppError(ERROR_CODE.VALIDATION_ERROR, message, fieldErrors);
   }
-  if (status === 429) return new AppError(ERROR_CODE.NETWORK_ERROR, messageOf(body, 'Bạn thao tác quá nhanh. Vui lòng thử lại sau ít phút.'));
+  if (status === 429) return new AppError(ERROR_CODE.RATE_LIMITED, messageOf(body, 'Bạn thao tác quá nhanh. Vui lòng thử lại sau ít phút.'));
   return new AppError(ERROR_CODE.NETWORK_ERROR, messageOf(body, NETWORK_MESSAGE));
 };
 

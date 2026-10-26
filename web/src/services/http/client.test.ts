@@ -147,6 +147,14 @@ describe('http client', () => {
     expect(server.message).toBe('Hệ thống gặp lỗi khi xử lý yêu cầu. Vui lòng thử lại.');
   });
 
+  it('should map a 429 answer to RATE_LIMITED so screens can tell it from a network failure', async () => {
+    mockFetch(() => jsonResponse(429, errorBody('TOO_MANY_REQUESTS', 'Quá nhiều yêu cầu.')));
+
+    const error = await captureAppError(apiRequest('POST', '/auth/change-password', { body: {} }));
+
+    expect(error.code).toBe(ERROR_CODE.RATE_LIMITED);
+  });
+
   it('should report a malformed payload as NETWORK_ERROR instead of swallowing it', async () => {
     mockFetch(() => jsonResponse(200, { unexpected: true }));
 

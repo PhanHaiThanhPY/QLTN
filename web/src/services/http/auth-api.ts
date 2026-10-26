@@ -54,6 +54,14 @@ export const clearViewerProfile = (): void => {
   cachedViewer = null;
 };
 
+/**
+ * `POST /auth/change-password`. On success the backend revokes every refresh token of the account, the current
+ * one included, so the caller must drop the local session afterwards.
+ */
+export const changeOwnPassword = async (currentPassword: string, newPassword: string): Promise<void> => {
+  await apiRequest<{ changed: true }>('POST', '/auth/change-password', { body: { currentPassword, newPassword } });
+};
+
 /** Best-effort logout: revokes the refresh token server-side; the local session is already gone. */
 export const logoutWithRefreshToken = async (refreshToken: string): Promise<void> => {
   if (!refreshToken) return;

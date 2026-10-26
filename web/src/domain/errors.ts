@@ -7,6 +7,8 @@ export const ERROR_CODE = {
   INVALID_TRANSITION: 'INVALID_TRANSITION',
   CONFLICT: 'CONFLICT',
   NETWORK_ERROR: 'NETWORK_ERROR',
+  /** Too many requests (HTTP 429): nothing was processed; the caller may retry after a while. */
+  RATE_LIMITED: 'RATE_LIMITED',
 } as const;
 export type ErrorCode = (typeof ERROR_CODE)[keyof typeof ERROR_CODE];
 

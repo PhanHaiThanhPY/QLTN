@@ -44,6 +44,8 @@ accounts if missing. Demo usernames are the lower-case account codes: `admin-dem
 | GET | `/api/auth/me` | Current profile, effective capabilities and building scope. |
 
 `POST /api/auth/change-password` `{ currentPassword, newPassword }` changes the caller's password and signs out every session.
+A wrong current password answers 400 on `currentPassword`; once it is proven, a new password equal to the current one
+answers 400 on `newPassword` ("Mật khẩu mới phải khác mật khẩu hiện tại."). The web dialog lives in the sidebar account block (api mode).
 
 ## Catalog & administration endpoints
 

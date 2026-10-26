@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { LogOut } from 'lucide-react';
+import { KeyRound, LogOut } from 'lucide-react';
 import { IS_API_MODE } from '@/config/data-source';
 import { ROLE_LABEL } from '@/domain/constants';
 import type { User } from '@/domain/types';
 import { Tooltip } from '@/components/ui/tooltip';
+import { ChangePasswordDialog } from '@/features/auth/ChangePasswordDialog';
 import { useSessionStore } from '@/store/session-store';
 
 const initials = (name: string): string =>
@@ -14,10 +16,18 @@ const initials = (name: string): string =>
     .map((part) => part[0]?.toUpperCase() ?? '')
     .join('');
 
-/** Current demo account at the bottom of the sidebar with the switch-account action. */
+const CHANGE_PASSWORD_LABEL = 'Đổi mật khẩu';
+const ICON_BUTTON_CLASS =
+  'flex size-8 shrink-0 items-center justify-center rounded-lg text-sky-100/65 transition-colors hover:bg-white/10 hover:text-white';
+
+/**
+ * Current account at the bottom of the sidebar: sign out (api) or switch demo account (mock), and in api mode
+ * the "Đổi mật khẩu" entry (SPEC AU-S1), reachable whether the sidebar is collapsed or not.
+ */
 export const SidebarUser = ({ user, isCollapsed }: { user?: User; isCollapsed: boolean }) => {
   const navigate = useNavigate();
   const signOut = useSessionStore((state) => state.signOut);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   if (!user) return null;
   const actionLabel = IS_API_MODE ? 'Đăng xuất' : 'Đổi tài khoản demo';
   const handleSwitch = () => {
@@ -29,14 +39,31 @@ export const SidebarUser = ({ user, isCollapsed }: { user?: User; isCollapsed: b
       {initials(user.fullName)}
     </span>
   );
+  const changePasswordButton = IS_API_MODE ? (
+    <Tooltip content={CHANGE_PASSWORD_LABEL}>
+      <button
+        type="button"
+        onClick={() => setIsChangingPassword(true)}
+        className={ICON_BUTTON_CLASS}
+        aria-label={CHANGE_PASSWORD_LABEL}
+      >
+        <KeyRound className="size-4" />
+      </button>
+    </Tooltip>
+  ) : null;
+  const changePasswordDialog = IS_API_MODE ? (
+    <ChangePasswordDialog open={isChangingPassword} onOpenChange={setIsChangingPassword} />
+  ) : null;
   if (isCollapsed) {
     return (
-      <div className="flex shrink-0 justify-center border-t border-white/10 py-3">
+      <div className="flex shrink-0 flex-col items-center gap-1 border-t border-white/10 py-3">
         <Tooltip content={`${user.fullName} · ${actionLabel}`}>
           <button type="button" onClick={handleSwitch} aria-label={actionLabel}>
             {avatar}
           </button>
         </Tooltip>
+        {changePasswordButton}
+        {changePasswordDialog}
       </div>
     );
   }
@@ -50,17 +77,14 @@ export const SidebarUser = ({ user, isCollapsed }: { user?: User; isCollapsed: b
             {user.code} · {ROLE_LABEL[user.role]}
           </p>
         </div>
+        {changePasswordButton}
         <Tooltip content={actionLabel}>
-          <button
-            type="button"
-            onClick={handleSwitch}
-            className="flex size-8 shrink-0 items-center justify-center rounded-lg text-sky-100/65 transition-colors hover:bg-white/10 hover:text-white"
-            aria-label={actionLabel}
-          >
+          <button type="button" onClick={handleSwitch} className={ICON_BUTTON_CLASS} aria-label={actionLabel}>
             <LogOut className="size-4" />
           </button>
         </Tooltip>
       </div>
+      {changePasswordDialog}
     </div>
   );
 };

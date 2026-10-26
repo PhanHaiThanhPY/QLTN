@@ -2,11 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { SubjectType } from '@/domain/constants';
-import { isAppError, toErrorMessage } from '@/domain/errors';
-import type { FieldErrors } from '@/domain/errors';
+import { ERROR_CODE, isAppError, toErrorMessage } from '@/domain/errors';
+import type { ErrorCode, FieldErrors } from '@/domain/errors';
 import { executeCommand } from '@/services/command-engine';
 import type { CommandResult } from '@/services/command-engine';
 import { newId } from '@/services/runtime';
+
+/** Failures where nothing was processed: a retry keeps the same command id. */
+const RETRYABLE_CODES: ReadonlySet<ErrorCode> = new Set([ERROR_CODE.NETWORK_ERROR, ERROR_CODE.RATE_LIMITED]);
 
 export interface CommandRequest {
   subjectType: SubjectType;
@@ -68,8 +71,8 @@ export const useCommand = (options: UseCommandOptions = {}) => {
           lastFieldErrorsRef.current = error.fieldErrors;
           setFieldErrors(error.fieldErrors);
         }
-        // A payload change is a new intent; keep the id only for transport failures.
-        if (!isAppError(error) || error.code !== 'NETWORK_ERROR') commandIdRef.current = newId('cmd');
+        // A payload change is a new intent; keep the id only for transport failures and rate limits.
+        if (!isAppError(error) || !RETRYABLE_CODES.has(error.code)) commandIdRef.current = newId('cmd');
         toast.error(message);
         return null;
       }
