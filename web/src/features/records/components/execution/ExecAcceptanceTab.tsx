@@ -4,22 +4,16 @@ import { Notice } from '@/components/common/Notice';
 import { EmptyState } from '@/components/common/States';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import type { ExecutionHistory } from '@/domain/execution';
-import { useRepairAction } from '../../hooks/useRepairAction';
 import { useRecordContext } from '../../record-context';
-import { withPrecondition } from '../../record-utils';
 import { MemberDecisionDialog } from './MemberDecisionDialog';
 import { MinutesCard } from './MinutesCard';
 import { RepairDraftCard } from './RepairDraftCard';
-import { memberLabel, openStepsOf } from './execution-utils';
-
-const NOT_MEMBER = 'Bạn không còn bước nghiệm thu nào cần quyết định trong lượt này.';
+import { memberDecisionState, memberLabel, openStepsOf } from './execution-utils';
 
 /** Tab "Nghiệm thu" for records served by api-qltn (S3): the open round, repair work and every set of minutes. */
 export const ExecAcceptanceTab = ({ execution }: { execution: ExecutionHistory }) => {
   const { detail, viewer } = useRecordContext();
   const { record } = detail;
-  const pass = useRepairAction('passAcceptance');
-  const fail = useRepairAction('failAcceptance');
   const [outcome, setOutcome] = useState<'pass' | 'fail' | null>(null);
   const rounds = execution.acceptances;
   if (rounds.length === 0) {
@@ -32,6 +26,7 @@ export const ExecAcceptanceTab = ({ execution }: { execution: ExecutionHistory }
   }
   const open = rounds.find((round) => round.outcome === 'PENDING');
   const myStep = open ? openStepsOf(record, open, viewer.id)[0] : undefined;
+  const decisionState = memberDecisionState(viewer, record, myStep);
   const waiting = open
     ? open.memberStepKeys.filter((key) => !open.decisions.some((row) => row.stepKey === key)).map((key) => memberLabel(record, key))
     : [];
@@ -44,16 +39,14 @@ export const ExecAcceptanceTab = ({ execution }: { execution: ExecutionHistory }
             title={`Lượt ${open.roundNo} đang chờ nghiệm thu`}
             description={`Còn chờ: ${waiting.join(', ') || '—'}. Các thành phần quyết định song song; một người KHÔNG ĐẠT thì lượt không đạt ngay.`}
             actions={
-              pass.relevant ? (
-                <>
-                  <ActionButton variant="secondary" state={withPrecondition(fail.state, Boolean(myStep), NOT_MEMBER)} onClick={() => setOutcome('fail')}>
-                    Không đạt
-                  </ActionButton>
-                  <ActionButton state={withPrecondition(pass.state, Boolean(myStep), NOT_MEMBER)} onClick={() => setOutcome('pass')}>
-                    Đạt
-                  </ActionButton>
-                </>
-              ) : null
+              <>
+                <ActionButton variant="secondary" state={decisionState} onClick={() => setOutcome('fail')}>
+                  Không đạt
+                </ActionButton>
+                <ActionButton state={decisionState} onClick={() => setOutcome('pass')}>
+                  Đạt
+                </ActionButton>
+              </>
             }
           />
           {myStep ? (
