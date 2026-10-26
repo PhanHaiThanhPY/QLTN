@@ -67,7 +67,7 @@ Mỗi phase nhỏ, kết thúc bằng một artifact có thể review. Thứ t�
 |---|---|---|
 | P0 | Thư mục sản phẩm, thứ bậc nguồn, nhật ký quyết định | Xong |
 | P1 | Bảng phạm vi có phiên bản B/F/T/S/A (gom H01–H04, H07) dưới dạng đề xuất chờ khách hàng chốt | Chưa bắt đầu |
-| P2 | [SPEC B03–B09 luồng sửa chữa](features/B03-B09-luong-sua-chua/SPEC.md): S1 (v1) + S2–S4 (v2) | **`Đã triển khai`** 26/10/2026: cả 4 slice đạt review, nhánh đã có trên origin, chưa merge. Việc tồn VT-01, VT-02 |
+| P2 | [SPEC B03–B09 luồng sửa chữa](features/B03-B09-luong-sua-chua/SPEC.md): S1 (v1) + S2–S4 (v2) | **`Đã triển khai`** 26/10/2026: cả 4 slice đạt review và **đã merge vào `main` (`8bfd6e3`, PD-15)**. Việc tồn VT-01, VT-02 |
 | P3 | Workflow và ma trận quyền cho luồng sửa chữa B03–B09 | Chưa bắt đầu |
 | P4 | Đặc tả thanh toán B09 và hai quỹ F/T | Chờ OD-01, OD-05, OD-06 |
 | P5 | Bộ nghiệm thu nghiệp vụ gắn theo mã | Chưa bắt đầu |
