@@ -1,0 +1,40 @@
+---
+title: "10 PHÂN HỆ — MỘT CHU TRÌNH QUỸ KHÉP KÍN"
+---
+flowchart TB
+ accTitle: Mười phân hệ quản lý khoản thu khai thác khu vực chung
+ accDescr: Chu trình tổ chức lựa chọn, ký kết, trình hội nghị, ghi nhận tiền và thuế, đối chiếu quỹ và chấm dứt thanh lý.
+ subgraph R1["01 · LỰA CHỌN ĐƠN VỊ KHAI THÁC"]
+ direction LR
+ A["01 · Hồ sơ mời thầu<br/>Tiêu chí · Tài liệu"]
+ B["02 · Hồ sơ dự thầu<br/>Tiếp nhận · So sánh"]
+ C["03 · Kết quả chọn thầu<br/>Biên bản · Quyết định"]
+ A ~~~ B ~~~ C
+ end
+ subgraph R2["02 · HOÀN THIỆN HỒ SƠ HỢP TÁC"]
+ direction LR
+ D["04 · Ký hợp đồng<br/>Điều khoản · Kỳ thu"]
+ E["05 · Trình hội nghị<br/>Hồ sơ · Quyết nghị"]
+ F[("Hồ sơ liên kết<br/>Tòa · Vị trí · Đơn vị")]
+ D ~~~ E ~~~ F
+ end
+ subgraph R3["03 · GHI NHẬN TỪNG NGHĨA VỤ"]
+ direction LR
+ G["06 · Thanh toán<br/>Từng lần thu · Công nợ"]
+ H["07 · Nộp thuế<br/>Từng lần · Chứng từ"]
+ I["08 · Sao kê tài khoản<br/>Ghép giao dịch"]
+ G ~~~ H ~~~ I
+ end
+ subgraph R4["04 · KIỂM SOÁT VÀ KHÉP HỒ SƠ"]
+ direction LR
+ J["09 · Báo cáo thu chi<br/>Đầu kỳ · Thu · Chi · Cuối kỳ"]
+ K["10 · Chấm dứt, thanh lý<br/>Bàn giao · Công nợ"]
+ L{"Đủ điều kiện<br/>đóng hồ sơ?"}
+ J ~~~ K ~~~ L
+ end
+ R1 -->|"LƯU KẾT QUẢ LỰA CHỌN"| R2
+ R2 -->|"ÁP DỤNG THEO QUY TRÌNH ĐƯỢC CẤU HÌNH"| R3
+ R3 -->|"ĐỐI CHIẾU CHỨNG TỪ VÀ NGHĨA VỤ"| R4
+ class A,B,C,D,E,G,H,I,J,K action;
+ class F data;
+ class L decision;

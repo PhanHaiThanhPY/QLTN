@@ -1,0 +1,48 @@
+---
+title: "MỘT NỀN TẢNG — QUẢN TRỊ TRỌN BỐN TÒA"
+---
+flowchart TB
+ accTitle: Các phân hệ kết nối trong giải pháp Aqua 1 đến 4
+ accDescr: Người sử dụng truy cập theo quyền, xử lý vận hành, quỹ khai thác và tiền gửi quỹ bảo trì; xem dashboard trên web và điện thoại.
+ subgraph R1["01 · NGƯỜI SỬ DỤNG"]
+ direction LR
+ A["Ban quản trị<br/>Xem và phê duyệt"]
+ B["Ban quản lý<br/>Điều phối công việc"]
+ C["Kỹ thuật · Kế toán<br/>Xử lý nghiệp vụ"]
+ A ~~~ B ~~~ C
+ end
+ subgraph R2["02 · VẬN HÀNH TÒA NHÀ"]
+ direction LR
+ D["Sửa chữa<br/>Hồ sơ đến nghiệm thu"]
+ E["Bảo trì · Thiết bị<br/>Lịch và cảnh báo"]
+ F["Không gian trực quan<br/>Tòa · Tầng · Vị trí"]
+ D ~~~ E ~~~ F
+ end
+ subgraph R3["03 · QUỸ KHAI THÁC KHU VỰC CHUNG"]
+ direction LR
+ G["Mời thầu · Chọn thầu<br/>Hợp đồng · Hội nghị"]
+ H["Thu tiền · Nộp thuế<br/>Sao kê · Thu chi"]
+ I["Chấm dứt · Thanh lý<br/>Khép hồ sơ nghĩa vụ"]
+ G ~~~ H ~~~ I
+ end
+ subgraph R4["04 · TIỀN GỬI QUỸ BẢO TRÌ"]
+ direction LR
+ J["Chào lãi · Chọn ngân hàng<br/>Hợp đồng tiền gửi"]
+ K[("Gốc · Lãi · Chứng từ<br/>Hồ sơ liên kết")]
+ L["Trả lãi · Tất toán<br/>Tái tục kỳ gửi"]
+ J ~~~ K ~~~ L
+ end
+ subgraph R5["05 · KẾT QUẢ QUẢN TRỊ"]
+ direction LR
+ M["Dashboard từng phân hệ<br/>Mở đến hồ sơ gốc"]
+ N["AI theo quyền<br/>Nhật ký · Báo cáo quỹ"]
+ O(["Web và điện thoại<br/>Thống nhất dữ liệu"])
+ M ~~~ N ~~~ O
+ end
+ R1 -->|"TRUY CẬP THEO QUYỀN"| R2
+ R2 -->|"LIÊN KẾT VỊ TRÍ VÀ HỒ SƠ"| R3
+ R3 -->|"HAI QUỸ THEO DÕI RIÊNG"| R4
+ R4 -->|"TỔNG HỢP CHO ĐIỀU HÀNH"| R5
+ class A,B,C,O primary;
+ class D,E,F,G,H,I,J,L,M,N action;
+ class K data;

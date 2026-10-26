@@ -1,0 +1,40 @@
+---
+title: "TIỀN GỬI QUỸ BẢO TRÌ — KIỂM SOÁT GỐC VÀ LÃI"
+---
+flowchart TB
+ accTitle: Quản lý đầy đủ sáu nghiệp vụ tiền gửi quỹ bảo trì
+ accDescr: Liên kết thư mời, lựa chọn ngân hàng, hợp đồng, trả lãi và xử lý tất toán hoặc tái tục, giữ riêng lịch sử và chứng từ.
+ subgraph R1["01 · CHUẨN BỊ KHOẢN TIỀN GỬI"]
+ direction LR
+ A["1 · Thư mời chào lãi suất<br/>Số tiền · Kỳ hạn · Phản hồi"]
+ B["2 · Chọn ngân hàng<br/>So sánh · Biên bản"]
+ C["3 · Hợp đồng tiền gửi<br/>Bản ký · Điều khoản"]
+ A ~~~ B ~~~ C
+ end
+ subgraph R2["02 · THEO DÕI NGÂN HÀNG TRẢ LÃI"]
+ direction LR
+ D["4 · Trả lãi<br/>Lịch và số phải nhận"]
+ E[("Tiền thực nhận<br/>Chứng từ · Sao kê")]
+ F["Phần lãi còn thiếu<br/>Đến hạn · Đối chiếu"]
+ D ~~~ E ~~~ F
+ end
+ subgraph R3["03 · XỬ LÝ KẾT THÚC KỲ GỬI"]
+ direction LR
+ G{"Phương án<br/>theo hồ sơ?"}
+ H["5 · Tất toán<br/>Gốc · Lãi · Đóng hồ sơ"]
+ I["6 · Tái tục<br/>Liên kết cũ và mới"]
+ G ~~~ H ~~~ I
+ end
+ subgraph R4["04 · KIỂM SOÁT XUYÊN SUỐT"]
+ direction LR
+ J["Dashboard từng phân hệ<br/>Web · Điện thoại"]
+ K["Gốc không cộng trùng<br/>Hai quỹ theo dõi riêng"]
+ L[("Phân quyền · Nhật ký<br/>Lịch sử · Chứng từ")]
+ J ~~~ K ~~~ L
+ end
+ R1 -->|"ĐIỀU KHOẢN ĐÃ GHI NHẬN"| R2
+ R2 -->|"THEO HỒ SƠ XỬ LÝ KỲ GỬI"| R3
+ R3 -->|"CẬP NHẬT SỐ DƯ VÀ LỊCH SỬ"| R4
+ class A,B,C,D,F,H,I,J,K action;
+ class E,L data;
+ class G decision;
