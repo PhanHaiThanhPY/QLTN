@@ -13,6 +13,7 @@ Không xóa mục cũ. Khi thay đổi, thêm mục mới và cập nhật trạ
 |---|---|---|---|---|
 | PD-01 | 26/10/2026 | Tài liệu sản phẩm đặt tại `docs/product/`; mỗi tính năng có đúng một `SPEC.md` làm hợp đồng yêu cầu. | PM/BA seat theo phân công vai trò | Phân công vai trò ngày 26/10/2026 |
 | PD-02 | 26/10/2026 | Seat PM/BA không sửa code ứng dụng, schema, migration hay cấu hình deploy. Thay đổi kỹ thuật đi qua bàn giao cho dev-build. | Operator (phân công vai trò) | Phân công vai trò ngày 26/10/2026 |
+| PD-03 | 26/10/2026 | Viết SPEC B03–B09 ngay. Hành vi của web demo được dùng làm quy tắc tạm; mỗi quy tắc ghi rõ OD-xx sẽ thay nó (theo [PROCESS.md](../PROCESS.md) §2). Không chờ khách trả lời OD-05, OD-10–OD-13. | Chủ dự án (người dùng), dev-build chuyển lời lúc 07:00Z | Tin nhắn dev-build → dev-pm-ba 26/10/2026 07:00Z |
 
 ## Đối chiếu nguồn gốc D1/D2 với review 23/10 (26/10/2026)
 
@@ -67,6 +68,7 @@ OD-01 đến OD-08 lấy từ [review 23/10 §10](../reviews/2026-10-23/review-t
 | OD-11 | Tờ trình có bắt buộc chia hạng mục dự toán, mỗi hạng mục gắn báo giá, như D1 tr. 19 không? Có cần so sánh nhiều báo giá không? (D5 có bảng báo giá; D3 cũ đã bỏ so sánh báo giá.) | B05; dữ liệu tờ trình; số được duyệt dùng cho B09 | DG-01, M10 |
 | OD-12 | Nghiệm thu có dùng danh sách hạng mục kiểm tra như D1 tr. 22 không? Nếu có: danh sách lấy từ đâu (mẫu theo loại việc, theo thiết bị hay nhập tay), và mọi hạng mục phải đạt mới qua? | B08; điều kiện chuyển sang thanh toán | DG-02 |
 | OD-13 | Tài liệu nào được ký trong hệ thống và ai ký: tờ trình (demo), biên bản nghiệm thu do hệ thống tạo (D1 tr. 21), đề nghị thanh toán? Sau khi ký mà sửa nội dung thì xử lý phiên bản thế nào? | B07, B05, B08 | M04, DG-03 |
+| OD-15 | Mỗi hồ sơ được trình tờ trình tối đa bao nhiêu lần? Hết số lần thì xử lý thế nào? Demo cho 3 lần; từ chối lần thứ 3 thì hồ sơ thành "Chưa xử lý" và kèm thông báo. D1 và D2 không nêu giới hạn này. | B05; trạng thái `UNRESOLVED` | SPEC B03–B09 TR-06 |
 | OD-14 | Tiêu chí nghiệm thu hợp đồng cho nhóm B01–B18 là gì? D1 tr. 44 chỉ nêu F và T; D2 mục 03 hẹn "phụ lục nghiệm thu" nhưng phụ lục này chưa có. | Điều kiện hoàn thành của mọi SPEC nhóm B | RC-05, H04 |
 
 ## Đã trả lời (không cần chốt thêm)
