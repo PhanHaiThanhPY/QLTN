@@ -121,6 +121,8 @@ Mỗi slice làm trên một nhánh mới xếp chồng lên nhánh trước. Kh
 
 ### S2: Tờ trình và chuỗi duyệt
 
+> **Bắt buộc thêm, từ lúc đóng RM-S2:** AC-2.3 chạy trên một tòa **mới tạo bằng mẫu mặc định**, và chứng minh sau khi TVKT duyệt thì hồ sơ sang chờ BQT, không sang `READY_FOR_CONSTRUCTION`. Đây là phần kiểm hành vi của RM-S2 AC-2.6 (BG-01).
+
 #### Bằng chứng triển khai (dev-build)
 
 _Chưa có._

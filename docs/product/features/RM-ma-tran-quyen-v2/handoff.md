@@ -212,4 +212,11 @@ Candidate chấp nhận được để chuyển sang bước PM/BA close.
 
 ### Đóng (PM/BA)
 
-_Chưa có._
+**Ngày:** 26/10/2026 · **Kết quả:** RM-S2 **đạt**, đóng. Code `32c732c` cùng bản sửa `2fa2954`, nhánh `feature/rm-s2-intake-config` (xếp trên RM-S1); bằng chứng `e9518d3`. Chưa merge, chưa push.
+
+- **Bằng chứng:** AC-2.1 đến AC-2.9 đều có. Vòng 1 review không đạt với một phát hiện, F-RM-S2-01 (BR-07a: gửi hồ sơ kiểm cả người giữ các bước của chuỗi duyệt). Vòng sửa đã xử lý; reviewer chạy lại: e2e 77, unit 48/48, web 343.
+- **Phần còn lại được chấp nhận:**
+  - **AC-2.6** mới chứng minh ở mức dữ liệu chụp: hồ sơ trên tòa mẫu mặc định lưu `[TECH, BOARD]`. Thao tác trình và duyệt tờ trình chưa có, vì thuộc S2. **Phần kiểm hành vi chuyển sang S2:** AC-2.3 của SPEC B03–B09 v2 phải chạy trên **một tòa mới tạo bằng mẫu mặc định**, và phải chứng minh sau khi TVKT duyệt thì hồ sơ sang chờ BQT, không sang `READY_FOR_CONSTRUCTION`.
+  - Seat review không chạy lại được script trình duyệt (không có Chrome).
+- **Cập nhật tài liệu:** [modules/buildings.md](../../modules/buildings.md) BG-01 và BG-02 đã xử lý.
+- **Việc tiếp theo:** S2 (đã duyệt, PD-12) được bắt đầu. Merge do chủ dự án quyết định.
