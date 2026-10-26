@@ -65,7 +65,22 @@
 
 ## Kết quả review (dev-review)
 
-_Chưa có._
+**FAILED — 26/10/2026.** Candidate API `3cb3b76`, web `052b0a9`, evidence/docs `a7ab367`, trên nhánh `feature/ad-s1-audit-log`.
+
+- API unit đạt `8 suites / 53 tests`; focused/full e2e đạt `14 suites / 123 tests` trên DB cô lập `qltn_review_ad_s1_e2e`. AC-1 đến AC-7, migration chạy lại, scope audit, CSV/BOM/giới hạn dòng, lịch sử ROLE/DEPARTMENT và health 503 đều đạt.
+- API lint và typecheck đạt; web full Vitest đạt `53 files / 368 tests`; `tsc -b` đạt.
+- Đã kiểm tra 4 screenshot AC-11 và CSV: ADMIN lọc A + `Xác nhận cần sửa`, mở SC-009, xuất CSV có BOM, đúng header/correlationId và 9 dòng; BQL thấy menu và 86 dòng không có dòng hệ thống.
+- Rerun `ad-s1-ui-check.mjs` dừng trước khi mở page vì `Chrome did not expose a page target`; không có mutation/cleanup nào xảy ra. Đây là giới hạn môi trường; evidence script, screenshot và CSV của dev-build vẫn được giữ.
+- **Finding F-AD-S1-01 (quality gate):** `api-qltn` `npm run format:check` fail vì `test/audit-log.e2e-spec.ts` chưa được Prettier format. Sai khác nằm ở lệnh tạo department tại khoảng dòng 91, cần xuống dòng như output chuẩn của Prettier. Đây là file test thuộc candidate và phải sửa để format gate pass.
+- `git diff --check` chỉ cảnh báo các dòng CSV evidence do CRLF/BOM; đây là artifact được xuất để Excel đọc, không phải finding chức năng.
+
+Candidate cần trả về `dev-build` để sửa F-AD-S1-01 và rerun `npm run format:check`.
+
+### Sửa F-AD-S1-01 (dev-build, 26/10/2026)
+
+- `api-qltn/test/audit-log.e2e-spec.ts` đã chạy lại Prettier. Lỗi do một lần sửa bằng `sed` sau bước format.
+- `npm run format:check` nay đạt trên toàn `api-qltn` ("All matched files use Prettier code style!"). Không đổi gì về hành vi.
+- Từ nay dev-build chạy `format:check` trước mỗi lần bàn giao.
 
 ## Đóng (PM/BA)
 

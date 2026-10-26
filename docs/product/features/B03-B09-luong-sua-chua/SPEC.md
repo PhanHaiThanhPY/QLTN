@@ -188,6 +188,14 @@ Tạm ứng không đổi trạng thái hồ sơ. Đợt tạm ứng có vòng �
 ### S3
 
 - **BR-S3-01:** `startConstruction` tạo một **thông báo trong hệ thống** "Kế hoạch thi công «mã hồ sơ»" gửi người giữ bước BQT và TVKT của hồ sơ. Thông báo gồm nhà thầu thực hiện, ngày bắt đầu, ngày dự kiến xong và ghi chú. Thông báo cho cư dân không thuộc phạm vi này.
+- **BR-S3-01a (làm rõ khi build S3):** API chưa có module thông báo, nên S3 làm **phần tối thiểu** để BR-S3-01 và AC-3.1 kiểm được:
+  - bảng `notifications`;
+  - `GET /api/notifications`: chỉ thông báo của chính mình, mới nhất trước, có số chưa đọc;
+  - `POST /api/notifications/:id/read`;
+  - `startConstruction` ghi mỗi người nhận (người giữ bước BQT và TVKT) một dòng, trong cùng transaction;
+  - web chế độ `api` hiện thông báo trên trang **Thông báo** sẵn có (bật menu ở chế độ `api`).
+
+  Không có email, push hay loại thông báo nào khác. Module thông báo đầy đủ (B14) phân tích và làm riêng.
 - **BR-S3-02:** Thành phần nghiệm thu bắt buộc lấy theo `ACCEPTANCE.approvalStepKeys` trong snapshot.
   - Mọi thành phần quyết định **song song**, không theo thứ tự.
   - Lượt đạt khi **tất cả** đã đạt. Một người KHÔNG ĐẠT thì lượt không đạt ngay.
@@ -278,3 +286,4 @@ Chỉ chạy các test liên quan, không chạy toàn bộ suite.
 | 26/10/2026 | v1 (PD-03, PD-04). S1 triển khai và đóng. |
 | 26/10/2026 | v2 viết lại S2–S4 theo PRODUCT-DEFAULTS (PD-09) và ADR-0001 R3/R4. |
 | 26/10/2026 | Chủ dự án duyệt v2 (PD-12). |
+| 26/10/2026 | BR-S3-01a: phần thông báo tối thiểu cho S3, theo đề xuất của dev-build; nằm trong BR-S3-01 đã duyệt, không mở rộng phạm vi. |

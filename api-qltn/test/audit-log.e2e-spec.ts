@@ -88,7 +88,9 @@ describe('Operation log, slice AD-S1 (e2e)', () => {
       await admin.post('/api/roles', { name: 'AD-S1 vai trò', baseRole: 'BQL' }).expect(201),
     ).id;
     departmentId = dataOf<{ id: string }>(
-      await admin.post('/api/departments', { code: 'ad-s1', name: 'AD-S1 bộ phận', buildingIds: [building('A').id] }).expect(201),
+      await admin
+        .post('/api/departments', { code: 'ad-s1', name: 'AD-S1 bộ phận', buildingIds: [building('A').id] })
+        .expect(201),
     ).id;
     // A change of building B made by the system (no actor).
     await dataSource.query(
