@@ -197,6 +197,19 @@ Candidate cần trả về `dev-build` để sửa F-RM-S2-01 và cập nhật b
 
 **Checks rerun:** `api-qltn` format/lint/typecheck OK, unit 48/48, e2e `rm-s2-intake-config` + `records` + `record-transitions` + `record-confirmations` 32/32 (isolated DB) · `web` `vitest run src/services` 194/194, `tsc -b` OK.
 
+### Vòng review 2 (dev-review)
+
+**PASS WITH RESIDUE — 26/10/2026.** Fix `2fa2954` xử lý F-RM-S2-01; evidence `e9518d3`.
+
+- API format/lint/typecheck đạt; unit đạt `7 suites / 48 tests`.
+- API focused e2e (`rm-s2-intake-config`, `catalog-admin`, `records`, `record-confirmations`, `record-transitions`, `role-matrix-v2`, `auth`) đạt `7 suites / 77 tests` trên DB cô lập `qltn_review_rm_s2_fix_full_e2e`. Riêng AC-2.3 đạt trên AQUA nguyên bản `[TECH, BOARD]` khi TVKT bị vô hiệu: BQT được chọn làm confirmer fallback, submit thành công và BQT confirm thành công.
+- Web full Vitest đạt `47 files / 343 tests`; `tsc -b` đạt.
+- Browser script vẫn không rerun được trong môi trường review vì Chrome không expose page target trước khi flow bắt đầu. Screenshot AC-2.9 của dev-build đã được kiểm tra ở vòng trước; thay đổi fix này chỉ tách kiểm tra proposal-chain ra khỏi `submitRecord`, không thay đổi flow UI AC-2.9.
+- Không còn finding chức năng trong scope RM-S2/BR-07a. Hằng `APPROVAL_STEP_SLOT` và helper `approvalStepsOf` không còn được dùng sau fix.
+- **Residue AC-2.6:** bằng chứng hiện vẫn ở mức snapshot chuỗi `[TECH, BOARD]`; handoff ghi rõ endpoint trình/duyệt tờ trình chưa tồn tại trong slice này, nên phần chuyển trạng thái thực tế của proposal chưa được kiểm chứng. Đây là residue đã nêu, không phải lỗi của fix RM-S2.
+
+Candidate chấp nhận được để chuyển sang bước PM/BA close.
+
 ### Đóng (PM/BA)
 
 _Chưa có._
