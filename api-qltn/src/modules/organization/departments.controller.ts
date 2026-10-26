@@ -1,8 +1,11 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { AuthenticatedUser } from '../../common/auth/authenticated-user';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireCapabilities } from '../../common/decorators/require-capabilities.decorator';
+import type { PaginatedResult } from '../../common/interfaces/paginated.interface';
+import { PaginationQueryDto } from '../../common/utils/pagination';
+import type { AuditEventView } from '../audit/audit.service';
 import { DepartmentsService, type DepartmentView } from './departments.service';
 import { CreateDepartmentDto, UpdateDepartmentDto } from './dto/department.dto';
 
@@ -32,5 +35,15 @@ export class DepartmentsController {
     @Body() dto: UpdateDepartmentDto,
   ): Promise<DepartmentView> {
     return this.departments.update(user, id, dto);
+  }
+
+  @Get(':id/audit')
+  @RequireCapabilities('ADMIN_VIEW')
+  @ApiOperation({ summary: 'Lịch sử thay đổi bộ phận' })
+  history(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: PaginationQueryDto,
+  ): Promise<PaginatedResult<AuditEventView>> {
+    return this.departments.history(id, query);
   }
 }

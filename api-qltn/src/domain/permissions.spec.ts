@@ -55,6 +55,14 @@ describe('permissions', () => {
     });
   });
 
+  it('gives the operation log to ADMIN, BQL and BQT only (AD-S1 BR-01)', () => {
+    expect(ROLES.filter((role) => roleCapabilities(role).includes(CAPABILITY.AUDIT_VIEW))).toEqual([
+      'ADMIN',
+      'BQL',
+      'OWNERS_BOARD',
+    ]);
+  });
+
   it('recognises only system roles', () => {
     expect(isRole('BQL')).toBe(true);
     expect(isRole('OWNER')).toBe(false);

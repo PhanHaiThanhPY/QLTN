@@ -3,6 +3,10 @@ import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 
 export const SUBJECT_TYPE = {
   BUILDING: 'BUILDING',
   ACCOUNT: 'ACCOUNT',
+  /** Custom role definitions (before AD-S1 they were written as ACCOUNT; migration 2026-10-26e). */
+  ROLE: 'ROLE',
+  /** Departments (before AD-S1 they were written as ACCOUNT; migration 2026-10-26e). */
+  DEPARTMENT: 'DEPARTMENT',
   REPAIR_RECORD: 'REPAIR_RECORD',
   MAINTENANCE_ITEM: 'MAINTENANCE_ITEM',
   MAINTENANCE_PLAN: 'MAINTENANCE_PLAN',
@@ -14,6 +18,7 @@ export type SubjectType = (typeof SUBJECT_TYPE)[keyof typeof SUBJECT_TYPE];
 @Entity('audit_events')
 @Index('IDX_audit_events_subject', ['subjectType', 'subjectId', 'createdAt'])
 @Index('IDX_audit_events_building', ['buildingId', 'createdAt'])
+// IDX_audit_events_created (created_at DESC, id DESC) is created by migration 2026-10-26e for the operation log.
 export class AuditEvent {
   @PrimaryGeneratedColumn('uuid')
   id: string;

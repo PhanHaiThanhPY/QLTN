@@ -52,6 +52,8 @@ export const CAPABILITY = {
   ACCOUNT_MANAGE: 'ACCOUNT_MANAGE',
   /** Let work start before approval within the building's emergency limit. */
   EMERGENCY_START: 'EMERGENCY_START',
+  /** Read the operation log of the buildings in scope (AD-S1 BR-01); system-wide rows stay ADMIN only. */
+  AUDIT_VIEW: 'AUDIT_VIEW',
 } as const;
 export type Capability = (typeof CAPABILITY)[keyof typeof CAPABILITY];
 export const CAPABILITIES = Object.values(CAPABILITY);
@@ -69,6 +71,7 @@ const ROLE_CAPABILITIES: Readonly<Record<Role, readonly Capability[]>> = {
     'BUILDING_CONFIG',
     'LOCATION_MANAGE',
     'ACCOUNT_MANAGE',
+    'AUDIT_VIEW',
   ],
   BQL: [
     'VIEW',
@@ -82,6 +85,7 @@ const ROLE_CAPABILITIES: Readonly<Record<Role, readonly Capability[]>> = {
     'REPORT_VIEW',
     'LOCATION_MANAGE',
     'EMERGENCY_START',
+    'AUDIT_VIEW',
   ],
   // KT changes item condition only while confirming an occurrence.
   TECH_CONFIRMER: ['VIEW', 'RECORD_CONFIRM', 'PROPOSAL_DECIDE', 'ACCEPTANCE_DECIDE', 'MAINTENANCE_REVIEW'],
@@ -96,6 +100,7 @@ const ROLE_CAPABILITIES: Readonly<Record<Role, readonly Capability[]>> = {
     'PAYMENT_DECIDE',
     'PAYMENT_CONFIRM',
     'REPORT_VIEW',
+    'AUDIT_VIEW',
   ],
   // Kế toán on the BQT side: confirms transfers and runs fund money operations (DF-10).
   ACCOUNTANT: ['VIEW', 'PAYMENT_CONFIRM', 'FUND_OPERATE', 'REPORT_VIEW'],

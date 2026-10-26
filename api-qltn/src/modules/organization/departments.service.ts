@@ -4,7 +4,9 @@ import { DataSource, EntityManager, In } from 'typeorm';
 import type { AuthenticatedUser } from '../../common/auth/authenticated-user';
 import { assertVersion, notFound } from '../../common/errors';
 import { FieldErrors } from '../../common/validation/field-errors';
-import { AuditService } from '../audit/audit.service';
+import type { PaginatedResult } from '../../common/interfaces/paginated.interface';
+import type { PaginationQueryDto } from '../../common/utils/pagination';
+import { AuditService, type AuditEventView } from '../audit/audit.service';
 import { SUBJECT_TYPE } from '../audit/entities/audit-event.entity';
 import { Building } from '../buildings/entities/building.entity';
 import type { CreateDepartmentDto, UpdateDepartmentDto } from './dto/department.dto';
@@ -26,6 +28,12 @@ export class DepartmentsService {
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly audit: AuditService,
   ) {}
+
+  /** Change history of a department (SPEC AD-S1 AC-6); an unknown id answers 404. */
+  async history(id: string, query: PaginationQueryDto): Promise<PaginatedResult<AuditEventView>> {
+    if (!(await this.dataSource.getRepository(Department).existsBy({ id }))) throw notFound('Không tìm thấy bộ phận.');
+    return this.audit.listForSubject(SUBJECT_TYPE.DEPARTMENT, id, query);
+  }
 
   /** Departments that cover at least one of the viewer's buildings (or no building at all). */
   async list(viewer: AuthenticatedUser): Promise<DepartmentView[]> {
@@ -115,7 +123,7 @@ export class DepartmentsService {
 
   private recordAudit(manager: EntityManager, actor: AuthenticatedUser, department: Department, action: string) {
     return this.audit.record(manager, {
-      subjectType: SUBJECT_TYPE.ACCOUNT,
+      subjectType: SUBJECT_TYPE.DEPARTMENT,
       subjectId: department.id,
       buildingId: null,
       action,

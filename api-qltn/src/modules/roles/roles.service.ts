@@ -4,9 +4,11 @@ import { DataSource, EntityManager } from 'typeorm';
 import type { AuthenticatedUser } from '../../common/auth/authenticated-user';
 import { assertVersion, notFound } from '../../common/errors';
 import { CodeCounterService } from '../../common/services/code-counter.service';
+import type { PaginatedResult } from '../../common/interfaces/paginated.interface';
+import type { PaginationQueryDto } from '../../common/utils/pagination';
 import { fieldError } from '../../common/validation/field-errors';
 import { type Capability, type Role, ROLE_LABEL, ROLES, roleCapabilities } from '../../domain/permissions';
-import { AuditService } from '../audit/audit.service';
+import { AuditService, type AuditEventView } from '../audit/audit.service';
 import { SUBJECT_TYPE } from '../audit/entities/audit-event.entity';
 import { User } from '../users/entities/user.entity';
 import type { CreateRoleDto, UpdateRoleDto } from './dto/role.dto';
@@ -60,6 +62,13 @@ export class RolesService {
     private readonly codes: CodeCounterService,
   ) {}
 
+  /** Change history of a role (SPEC AD-S1 AC-6); an unknown id answers 404. */
+  async history(id: string, query: PaginationQueryDto): Promise<PaginatedResult<AuditEventView>> {
+    if (!(await this.dataSource.getRepository(RoleDefinition).existsBy({ id })))
+      throw notFound('Không tìm thấy vai trò.');
+    return this.audit.listForSubject(SUBJECT_TYPE.ROLE, id, query);
+  }
+
   /** System roles first, then custom roles by code. */
   async list(): Promise<RoleView[]> {
     const rows = await this.dataSource.getRepository(RoleDefinition).find();
@@ -94,7 +103,7 @@ export class RolesService {
         }),
       );
       await this.audit.record(manager, {
-        subjectType: SUBJECT_TYPE.ACCOUNT,
+        subjectType: SUBJECT_TYPE.ROLE,
         subjectId: role.id,
         buildingId: null,
         action: 'createRoleDef',
@@ -126,7 +135,7 @@ export class RolesService {
       const holders = await manager.getRepository(User).countBy({ roleDefId: role.id });
       // TODO(Đợt 2): re-evaluate open steps of holders whose permissions were narrowed ("Cần phân công lại").
       await this.audit.record(manager, {
-        subjectType: SUBJECT_TYPE.ACCOUNT,
+        subjectType: SUBJECT_TYPE.ROLE,
         subjectId: role.id,
         buildingId: null,
         action: 'updateRoleDef',

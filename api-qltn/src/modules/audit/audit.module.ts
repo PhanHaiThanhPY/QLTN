@@ -1,6 +1,8 @@
 import { Global, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CodeCounterService } from '../../common/services/code-counter.service';
+import { AuditLogController } from './audit-log.controller';
+import { AuditLogService } from './audit-log.service';
 import { AuditService } from './audit.service';
 import { AuditEvent } from './entities/audit-event.entity';
 
@@ -8,7 +10,8 @@ import { AuditEvent } from './entities/audit-event.entity';
 @Global()
 @Module({
   imports: [TypeOrmModule.forFeature([AuditEvent])],
-  providers: [AuditService, CodeCounterService],
+  controllers: [AuditLogController],
+  providers: [AuditService, AuditLogService, CodeCounterService],
   exports: [AuditService, CodeCounterService],
 })
 export class AuditModule {}

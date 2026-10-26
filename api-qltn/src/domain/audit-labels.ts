@@ -1,0 +1,64 @@
+/**
+ * Vietnamese labels of the operation log (SPEC AD-S1 BR-04, BR-05). Mirrors web/src/domain/audit-labels.ts; change
+ * both together. Every slice that writes a new action code adds its label here (review checklist item).
+ */
+
+export const AUDIT_SUBJECT_LABEL: Readonly<Record<string, string>> = {
+  REPAIR_RECORD: 'Hồ sơ sửa chữa',
+  BUILDING: 'Tòa nhà và cấu hình',
+  ACCOUNT: 'Tài khoản',
+  ROLE: 'Vai trò',
+  DEPARTMENT: 'Bộ phận',
+  MAINTENANCE_ITEM: 'Thiết bị',
+  MAINTENANCE_PLAN: 'Kế hoạch bảo trì',
+  MAINTENANCE_OCCURRENCE: 'Lượt bảo trì',
+};
+
+export const AUDIT_ACTION_LABEL: Readonly<Record<string, string>> = {
+  // Hồ sơ
+  createRecord: 'Tạo hồ sơ',
+  saveRecordDraft: 'Lưu nháp',
+  submitRecord: 'Gửi xác nhận',
+  withdrawRecord: 'Rút hồ sơ',
+  requestRecordUpdate: 'Trả bổ sung',
+  confirmRepair: 'Xác nhận cần sửa',
+  closeNoRepair: 'Đóng không cần sửa',
+  // Tờ trình (B03–B09 v2 S2)
+  saveProposalDraft: 'Lưu nháp tờ trình',
+  submitProposal: 'Trình duyệt',
+  resubmitProposal: 'Trình lại',
+  approveProposal: 'Duyệt tờ trình',
+  requestProposalUpdate: 'Yêu cầu bổ sung tờ trình',
+  rejectProposal: 'Từ chối tờ trình',
+  // Tệp
+  uploadAttachment: 'Tải tệp lên',
+  // Tòa và vị trí
+  createBuilding: 'Tạo tòa',
+  updateBuilding: 'Sửa tòa',
+  createLocation: 'Tạo vị trí',
+  updateLocation: 'Sửa vị trí',
+  deactivateLocation: 'Ngừng dùng vị trí',
+  activateLocation: 'Dùng lại vị trí',
+  // Cấu hình
+  updateBuildingConfig: 'Sửa cấu hình',
+  applyConfigTemplate: 'Áp mẫu cấu hình',
+  updateWorkflowConfig: 'Sửa workflow',
+  migrateApprovalChain: 'Chuẩn hóa chuỗi duyệt',
+  // Tài khoản
+  createUser: 'Tạo tài khoản',
+  updateUser: 'Cập nhật thông tin',
+  deactivateUser: 'Ngừng hoạt động',
+  resetPassword: 'Đặt lại mật khẩu',
+  // Vai trò
+  createRoleDef: 'Tạo vai trò',
+  updateRoleDef: 'Sửa vai trò',
+  // Bộ phận
+  createDepartment: 'Tạo bộ phận',
+  updateDepartment: 'Sửa bộ phận',
+  // Nhật ký
+  exportAuditLog: 'Xuất nhật ký thao tác',
+};
+
+/** Label of a code, or the code itself when none is defined yet (BR-05). */
+export const auditActionLabel = (action: string): string => AUDIT_ACTION_LABEL[action] ?? action;
+export const auditSubjectLabel = (subjectType: string): string => AUDIT_SUBJECT_LABEL[subjectType] ?? subjectType;
