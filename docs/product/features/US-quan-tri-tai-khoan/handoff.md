@@ -39,8 +39,23 @@ Stacked on `feature/au-s1-change-password` (it reuses `PasswordInput` from AU-S1
 
 ## Kết quả review (dev-review)
 
-_Chưa có._
+**PASS WITH RESIDUE — 26/10/2026.** Review xác nhận code candidate sau restack `7577afe` (code tương đương `d03bd60`; diff chỉ là tài liệu AU-S1) và evidence `c31516d`.
+
+- API format/lint/typecheck đạt; unit `7 suites / 39 tests` đạt.
+- API focused e2e `users-reset-password` + `catalog-admin` đạt `2 suites / 32 tests` trên DB cô lập `qltn_review_us_s1_e2e`.
+- Web focused Vitest đạt `7 files / 135 tests`; `tsc -b` đạt.
+- `git diff --check` và `node --check` cho script AC-9 đạt. Code audit xác nhận password chỉ nằm trong request body/form state; không xuất hiện trong URL, localStorage, audit reason, hay log chủ động (failure log chỉ ghi error code/unknown error).
+- Đã xem 4 ảnh AC-9: dialog tài khoản với nút reset/lịch sử, form reset, toast cùng dòng lịch sử mới, và màn hình sau khi `kt-a2` đăng nhập bằng password mới.
+- Rerun AC-9 trong seat này dừng trước flow vì Chrome không expose page target (`Chrome did not expose a page target`); không có mutation/cleanup nào xảy ra. Evidence run của builder ghi nhận seed password đã được restore (`reset 200`, login `200`).
+- Không chạy `vite build` theo giới hạn RAM của packet. Không có finding cần trả về dev-build.
+
+Candidate chấp nhận được để chuyển sang bước PM/BA close.
 
 ## Đóng (PM/BA)
 
-_Chưa có._
+**Ngày:** 26/10/2026 · **Kết quả:** US-S1 **đạt**, đóng. Code `7577afe` (nhánh `feature/us-s1-reset-password`, xếp trên nhánh AU-S1), bằng chứng `c31516d`, chưa merge, chưa push.
+
+- AC-1 đến AC-9 đều có bằng chứng. Reviewer chạy lại: e2e 32/32 trên DB riêng, web 135/135. Reviewer đã xem 4 ảnh AC-9 và đọc code để xác nhận BR-06.
+- **Phần còn lại được chấp nhận:** seat review không chạy lại được script trình duyệt vì không có Chrome. Mật khẩu seed đã được khôi phục theo bằng chứng của dev-build.
+- **Cập nhật tài liệu:** [modules/users.md](../../modules/users.md) UG-01, UG-02, UG-07 đã xử lý xong.
+- **Việc tiếp theo:** không tạo việc mới. Việc merge cả hai nhánh AU-S1 và US-S1 do chủ dự án quyết định.

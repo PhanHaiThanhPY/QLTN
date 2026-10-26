@@ -17,8 +17,8 @@
 | US-03 | Tạo tài khoản (mã, tên đăng nhập, mật khẩu ban đầu, họ tên, vai trò, bộ phận, tòa, khu vực, chức danh, email, điện thoại) | `POST /api/users` (ACCOUNT_MANAGE) | `UserDialog` (chế độ `api` có ô mật khẩu) | `creates an account …`, `validates scope, department coverage and location ownership`, trùng tên đăng nhập hoặc email | Có |
 | US-04 | Sửa tài khoản (tên đăng nhập không đổi được) | `PATCH /api/users/:id` + `version` | `UserDialog` | `rejects a username sent when updating`, trùng email | Có |
 | US-05 | Ngừng hoạt động hoặc kích hoạt lại tài khoản | `PATCH … active` | `UserDialog` | `deactivation signs the account out immediately and blocks login`, `refuses … to deactivate oneself` | Có |
-| US-06 | Đặt lại mật khẩu do quản trị | `POST /api/users/:id/reset-password` | **không có** (không file web nào gọi endpoint này) | không có e2e riêng | **Chỉ có API** |
-| US-07 | Lịch sử thay đổi của tài khoản | `GET /api/users/:id/audit` | **không có** | không có | **Chỉ có API** |
+| US-06 | Đặt lại mật khẩu do quản trị | `POST /api/users/:id/reset-password` | **không có** (không file web nào gọi endpoint này) | không có e2e riêng | **Có**, qua US-S1 (`7577afe`, chưa merge) |
+| US-07 | Lịch sử thay đổi của tài khoản | `GET /api/users/:id/audit` | **không có** | `AccountHistory` trong `UserDialog` | `users-reset-password.e2e-spec.ts` AC-4 | **Có**, qua US-S1 |
 | US-08 | Thay người phụ trách (`replaceManager`) | không có | `ReplaceManagerDialog` và `ManagerGapsCard` có trong code nhưng **không màn hình nào import** (đã grep `features/`, `app/`). Ở chế độ `mock`, handler `replaceManager` có trong `link-and-assignment-handlers.ts` | — | **Chưa dùng được ở cả hai chế độ** (cần dev-build xác nhận) |
 | US-09 | Tự động chuyển các bước đang mở sang "Cần phân công lại" khi khóa tài khoản hoặc thu hẹp phạm vi | không có (`TODO(Đợt 2)` tại `user-admin.service.ts` dòng 158) | — | — | **Chưa có** |
 
@@ -50,13 +50,13 @@
 
 | ID | Nội dung | Căn cứ | Mức | Hướng xử lý |
 |---|---|---|---|---|
-| UG-01 | Quản trị không đặt lại được mật khẩu cho nhân viên trên web, dù API đã có | US-06 | Cao cho vận hành thật: nhân viên quên mật khẩu thì không ai cứu được | SPEC US-S1 (mục 5) |
-| UG-02 | Không xem được lịch sử thay đổi tài khoản trên web | US-07; D1 tr. 39 yêu cầu "lưu vết thay đổi" | Trung bình | SPEC US-S1 |
+| UG-01 | ~~Quản trị không đặt lại được mật khẩu trên web~~ **Đã xử lý ở US-S1** | US-06 | Cao cho vận hành thật: nhân viên quên mật khẩu thì không ai cứu được | SPEC US-S1 (mục 5) |
+| UG-02 | ~~Không xem được lịch sử tài khoản trên web~~ **Đã xử lý ở US-S1** | US-07; D1 tr. 39 yêu cầu "lưu vết thay đổi" | Trung bình | SPEC US-S1 |
 | UG-03 | Khóa tài khoản hoặc thu hẹp phạm vi/khu vực thì **các bước đang giao cho người đó không ai làm được**. Ví dụ người xác nhận đã nghỉ thì hồ sơ kẹt ở "Chờ xác nhận". Với tờ trình, SPEC B03–B09 BR-05 chỉ chặn ở bước trình | `TODO(Đợt 2)`; D2 nhóm 02 và 17 yêu cầu "phân công lại", "chuyển giao công việc" | **Cao**: dữ liệu thật sẽ kẹt | SPEC riêng (US-S2), cần chốt quy tắc (UQ-01, UQ-02) |
 | UG-04 | Không có chức năng thay người phụ trách (US-08) | D2 nhóm 17 "thay người phụ trách" | Cao, đi cùng UG-03 | Gộp vào US-S2 |
 | UG-05 | Không đổi được vai trò gốc. Người được thăng chức (ví dụ Kỹ thuật lên BQL) phải có tài khoản mới; lịch sử của họ nằm ở hai tài khoản | `user-admin.service.ts` dòng 137–141 | Trung bình | Chờ khách chốt (UQ-03) |
 | UG-06 | Màn hình nhân viên tải toàn bộ tài khoản về client, tối đa 10.000 dòng. Vượt mức đó thì danh sách **bị cắt mà không báo** | `admin-service.ts` `MAX_USER_PAGES = 100` | Thấp với 4 tòa | Ghi nợ kỹ thuật; làm phân trang phía server khi cần |
-| UG-07 | Chưa có e2e cho `reset-password` (đặt mật khẩu mới, thu hồi phiên, phạm vi 404) | danh sách test | Thấp | Thêm vào US-S1 |
+| UG-07 | ~~Chưa có e2e cho reset-password~~ **Đã xử lý ở US-S1** | danh sách test | Thấp | Thêm vào US-S1 |
 | UG-08 | Chưa có vai trò Kế toán và Người nghiệm thu như hình D1 | OD-10 | Chờ khách | Phiếu L0 câu B1 |
 
 ## 4. Câu hỏi

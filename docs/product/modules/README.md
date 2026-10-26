@@ -25,10 +25,10 @@ Mỗi module code có một file `<module>.md`. Mẫu tham chiếu: [auth.md](au
 | # | Module code | API (`api-qltn/src/modules`) | Web (`web/src/features`) | Mã D1 | File | Trạng thái |
 |---|---|---|---|---|---|---|
 | 1 | auth | `auth` | `auth` | nền tảng (B17) | [auth.md](auth.md) | Xong lần 1 (26/10); AU-S1 đạt review và đóng (`9de70f3`, chưa merge) |
-| 2 | users | `users` | `admin` (nhân viên) | B17 | [users.md](users.md) | Xong lần 1 (26/10); US-S1 đã giao |
+| 2 | users | `users` | `admin` (nhân viên) | B17 | [users.md](users.md) | Xong lần 1 (26/10); US-S1 đạt review và đóng (`7577afe`, chưa merge); US-S2 chờ ADR-0001 |
 | 3 | roles và phân quyền | `roles`, `domain/permissions.ts` | `admin` (vai trò) | B17 | [roles.md](roles.md) | Xong lần 1 (26/10); chưa giao (chờ RQ-01, OD-10) |
-| 4 | organization (bộ phận) | `organization` | `admin` (bộ phận) | B17 | — | Kế tiếp |
-| 5 | buildings, locations, config | `buildings` | `buildings`, `workflow` | B15, B16 | — | Chưa |
+| 4 | organization (bộ phận) | `organization` | `admin` (bộ phận) | B17 | [organization.md](organization.md) | Xong lần 1 (26/10); không giao riêng, gom vào `buildings` và DF-14 |
+| 5 | buildings, locations, config | `buildings` | `buildings`, `workflow` | B15, B16 | — | Kế tiếp |
 | 6 | reference, audit, health | `reference`, `audit`, `health` | dùng chung | nền tảng | — | Chưa |
 | 7 | records | `records` | `records` | B03–B09 | [SPEC](../features/B03-B09-luong-sua-chua/SPEC.md) | Đã có SPEC; còn B04, B06, B07 |
 | 8 | attachments | `attachments` | `components/common/FileUploader` | B03, B07 | — | Chưa |
