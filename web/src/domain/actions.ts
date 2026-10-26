@@ -133,6 +133,10 @@ const OPEN_REPAIR = (Object.keys(REPAIR_STATUS_LABEL) as RepairStatus[]).filter(
   (status) => !REPAIR_FINAL_STATUSES.includes(status),
 );
 
+/** Record statuses of a new advance (SPEC v2 §5.4 A1) and of its follow-up after acceptance (A1b, A2, A3). */
+const ADVANCE_REQUEST: readonly RepairStatus[] = ['READY_FOR_CONSTRUCTION', 'IN_CONSTRUCTION', 'PENDING_ACCEPTANCE', 'NEEDS_REPAIR'];
+const ADVANCE_FOLLOW_UP: readonly RepairStatus[] = [...ADVANCE_REQUEST, 'PENDING_PAYMENT_REQUEST', 'NEEDS_PAYMENT_UPDATE'];
+
 export const REPAIR_ACTIONS = {
   saveRecordDraft: { label: 'Lưu nháp', from: ['DRAFT', 'NEEDS_RECORD_UPDATE'], capability: 'RECORD_EDIT', slot: 'manager' },
   submitRecord: { label: 'Gửi xác nhận', from: ['DRAFT', 'NEEDS_RECORD_UPDATE'], capability: 'RECORD_EDIT', slot: 'manager' },
@@ -197,6 +201,13 @@ export const REPAIR_ACTIONS = {
   },
   recordPayment: { label: 'Ghi nhận thanh toán', from: ['PENDING_PAYMENT'], capability: 'PAYMENT_RECORD', slot: 'manager' },
   completeRecord: { label: 'Đóng hoàn tất', from: ['PENDING_PAYMENT'], capability: 'PAYMENT_RECORD', slot: 'manager' },
+  // B03–B09 v2 S4 (api mode): transfers confirmed by any PAYMENT_CONFIRM holder, advances alongside the record.
+  confirmPaymentTransfer: { label: 'Xác nhận đã chuyển khoản', from: ['PENDING_PAYMENT'], capability: 'PAYMENT_CONFIRM', slot: null },
+  submitAdvanceRequest: { label: 'Đề nghị tạm ứng', from: ADVANCE_REQUEST, capability: 'PAYMENT_RECORD', slot: 'manager' },
+  resubmitAdvanceRequest: { label: 'Gửi lại đề nghị tạm ứng', from: ADVANCE_FOLLOW_UP, capability: 'PAYMENT_RECORD', slot: 'manager' },
+  approveAdvance: { label: 'Duyệt tạm ứng', from: ADVANCE_FOLLOW_UP, capability: 'PAYMENT_DECIDE', slot: 'PAYMENT_APPROVAL' },
+  requestAdvanceUpdate: { label: 'Trả đề nghị tạm ứng', from: ADVANCE_FOLLOW_UP, capability: 'PAYMENT_DECIDE', slot: 'PAYMENT_APPROVAL' },
+  confirmAdvanceTransfer: { label: 'Xác nhận chuyển khoản tạm ứng', from: ADVANCE_FOLLOW_UP, capability: 'PAYMENT_CONFIRM', slot: null },
   reassignRepair: { label: 'Giao lại', from: OPEN_REPAIR, capability: 'REASSIGN', slot: 'manager' },
 } as const satisfies Record<string, ActionDef<RepairStatus>>;
 export type RepairAction = keyof typeof REPAIR_ACTIONS;

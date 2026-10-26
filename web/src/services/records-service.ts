@@ -30,6 +30,7 @@ import { getDb } from '@/storage/db';
 import { toVnDate } from '@/utils/date';
 import { apiList, apiRequest } from './http/client';
 import type { ExecutionHistory } from '@/domain/execution';
+import type { PaymentHistory } from '@/domain/payment';
 import type { QuoteProposalHistory } from '@/domain/quote-proposal';
 import { mapRecordDetail, mapRepairRecord } from './http/mappers';
 import type { ApiRecordDetail, ApiRepairRecord } from './http/mappers';
@@ -255,6 +256,8 @@ export interface RecordDetail {
   quoteProposal?: QuoteProposalHistory;
   /** S3 construction and acceptance minutes; present only when the detail comes from api-qltn. */
   execution?: ExecutionHistory;
+  /** S4 payment instalments; present only when the detail comes from api-qltn (`payments` is the demo's list). */
+  paymentHistory?: PaymentHistory;
   signatures: ProposalSignature[];
   notice?: UnresolvedNotice;
   alerts: RepairAlert[];

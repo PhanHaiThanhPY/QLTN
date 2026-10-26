@@ -32,6 +32,7 @@ import {
 } from './mappers';
 import { toExecutionBody, type ExecutionAction } from './execution-mappers';
 import { markApiNotificationsRead } from './notifications-api';
+import { PAYMENT_ROUTES, toPaymentBody, type PaymentAction } from './payment-mappers';
 import { toProposalBody, toProposalDecisionBody } from './proposal-mappers';
 import type {
   ApiBuilding,
@@ -337,6 +338,19 @@ const executionCommand =
     return { ok: true, subjectId: updated.id };
   };
 
+/** S4 payment actions T17–T22 and A1–A3: `POST /records/:id/<route>`. */
+const paymentCommand =
+  (action: PaymentAction): ApiCommandHandler =>
+  async (command) => {
+    const id = command.subjectId?.trim() ?? '';
+    if (!id) throw new AppError(ERROR_CODE.NOT_FOUND, 'Không tìm thấy hồ sơ.');
+    const body = toPaymentBody(action, command.payload, command.expectedVersion);
+    const { route } = PAYMENT_ROUTES[action];
+    const updated = await apiRequest<ApiRepairRecord>('POST', `/records/${encodeURIComponent(id)}/${route}`, { body });
+    broadcastChange();
+    return { ok: true, subjectId: updated.id };
+  };
+
 /** `POST /notifications/:id/read` for each id (BR-S3-01a minimum: no bulk route). */
 const markNotificationRead: ApiCommandHandler = async (command) => {
   await markApiNotificationsRead(asStringArray(asRecord(command.payload).notificationIds));
@@ -347,7 +361,7 @@ const markNotificationRead: ApiCommandHandler = async (command) => {
 /**
  * Actions wired to api-qltn. T2a accounts; T2b departments and roles; T2c buildings and locations; T2d configuration;
  * Đợt 2 repair records (draft, submit, withdraw); B03–B09 slice S1 confirmation; v2 slice S2 proposal and approval;
- * v2 slice S3 construction and acceptance.
+ * v2 slice S3 construction and acceptance; v2 slice S4 payments.
  */
 const API_COMMANDS: Readonly<Record<string, ApiCommandHandler>> = {
   createUser,
@@ -378,6 +392,9 @@ const API_COMMANDS: Readonly<Record<string, ApiCommandHandler>> = {
   requestProposalUpdate: proposalCommand('requestProposalUpdate'),
   rejectProposal: proposalCommand('rejectProposal'),
   markNotificationRead,
+  ...(Object.fromEntries(
+    (Object.keys(PAYMENT_ROUTES) as PaymentAction[]).map((action) => [action, paymentCommand(action)]),
+  ) as Record<PaymentAction, ApiCommandHandler>),
   ...(Object.fromEntries(
     (Object.keys(EXECUTION_ROUTES) as ExecutionAction[]).map((action) => [action, executionCommand(action)]),
   ) as Record<ExecutionAction, ApiCommandHandler>),

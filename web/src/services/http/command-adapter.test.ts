@@ -1113,6 +1113,20 @@ describe('api command adapter — configuration and workflow', () => {
     expect(bodyOf(init)).toEqual({ version: 7, ...expected });
   });
 
+  it.each([
+    ['submitAdvanceRequest', 'submit-advance-request', { amountVnd: '4000000', payeeName: 'NT', accountNo: '0123456789', bankName: 'VCB', requestAttachmentIds: ['att-r'], invoiceAttachmentIds: ['ignored'], signature: 'data:image/png;base64,AA' }, { amountVnd: '4000000', payeeName: 'NT', accountNo: '0123456789', bankName: 'VCB', requestAttachmentIds: ['att-r'], signature: 'data:image/png;base64,AA' }],
+    ['submitPaymentRequest', 'submit-payment-request', { amountVnd: '10000000', invoiceAttachmentIds: ['att-i'], signature: 'data:image/png;base64,AA' }, { amountVnd: '10000000', invoiceAttachmentIds: ['att-i'], signature: 'data:image/png;base64,AA' }],
+    ['requestAdvanceUpdate', 'request-advance-update', { paymentId: 'pay-1', reason: 'Bổ sung.' }, { paymentId: 'pay-1', reason: 'Bổ sung.' }],
+    ['confirmPaymentTransfer', 'confirm-payment-transfer', { paymentId: 'pay-2', amountVnd: '6000000', transferDate: '2026-10-26', reference: 'FT1', proofAttachmentIds: ['att-p'] }, { paymentId: 'pay-2', amountVnd: '6000000', transferDate: '2026-10-26', reference: 'FT1', proofAttachmentIds: ['att-p'] }],
+    ['completeRecord', 'complete', { anything: 1 }, {}],
+  ])('should POST S4 %s to /records/:id/%s with only its own fields', async (action, route, payload, expected) => {
+    const mock = mockFetch(() => jsonResponse(200, successBody({ ...RECORD_VIEW, version: 10 })));
+    await executeApiCommand(createCommand(payload, { subjectType: 'REPAIR_RECORD', action, subjectId: 'rec-1', expectedVersion: 9 }));
+    const [url, init] = mock.mock.calls[0];
+    expect(String(url)).toBe(`/api/records/rec-1/${route}`);
+    expect(bodyOf(init)).toEqual({ version: 9, ...expected });
+  });
+
   it('should mark each notification read through POST /notifications/:id/read', async () => {
     const mock = mockFetch(() => jsonResponse(200, successBody({ id: 'n', readAt: '2026-10-26T00:00:00.000Z' })));
     await executeApiCommand(

@@ -8,6 +8,7 @@ import { useRecordContext } from '../../record-context';
 import { approvedSubmission, isActionRelevant } from '../../record-utils';
 import { ActorLine } from '../shared/ActorLine';
 import { RecordFiles } from '../shared/RecordFiles';
+import { ExecPaymentTab } from '../instalments/ExecPaymentTab';
 import { PaymentClosingCard } from './PaymentClosingCard';
 import { PaymentDecisionCard } from './PaymentDecisionCard';
 import { PaymentRequestForm } from './PaymentRequestForm';
@@ -16,6 +17,7 @@ import { PaymentRevisionList } from './PaymentRevisionList';
 /** Thanh toán: request revisions, approver decision, payment record, final close. */
 export const PaymentTab = () => {
   const { detail } = useRecordContext();
+  if (detail.paymentHistory) return <ExecPaymentTab history={detail.paymentHistory} />;
   const { record, paymentRequests, payments } = detail;
   const approved = approvedSubmission(detail);
   const isOpen = isActionRelevant('savePaymentDraft', record.status);

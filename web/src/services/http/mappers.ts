@@ -25,7 +25,9 @@ import type {
 import { asNumber, asOptionalString, asRecord, asString, asStringArray, requireVndAmount } from '@/domain/validation';
 import type { RecordDetail } from '../records-service';
 import type { ExecutionHistory } from '@/domain/execution';
+import type { PaymentHistory } from '@/domain/payment';
 import { mapExecution } from './execution-mappers';
+import { mapPaymentHistory } from './payment-mappers';
 import { mapProposalHistory, type ApiProposalHistory } from './proposal-mappers';
 import { MISSING_VERSION_MESSAGE } from './version';
 
@@ -1086,6 +1088,8 @@ export interface ApiRecordDetail {
   proposalAttachments?: readonly ApiAttachment[];
   /** S3: construction, acceptance rounds and saved repair work. */
   execution?: ExecutionHistory;
+  /** S4: payment instalments. */
+  payment?: PaymentHistory;
   audit?: readonly ApiAuditEvent[];
 }
 
@@ -1100,6 +1104,7 @@ export const mapRecordDetail = (row: ApiRecordDetail): RecordDetail => ({
   submissions: [],
   quoteProposal: mapProposalHistory(row.proposal, row.record),
   execution: mapExecution(row.execution),
+  paymentHistory: mapPaymentHistory(row.payment),
   signatures: [],
   acceptances: [],
   paymentRequests: [],
