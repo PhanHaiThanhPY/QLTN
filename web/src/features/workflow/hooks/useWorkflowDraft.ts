@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { APPROVAL_STEPS, BUSINESS_WORKFLOW_STEPS } from '@/domain/constants';
+import { ACCEPTANCE_ONLY_STEP_KEYS, APPROVAL_STEPS, BUSINESS_WORKFLOW_STEPS } from '@/domain/constants';
 import type { ApprovalStepKey, BusinessWorkflowStepKey } from '@/domain/constants';
 import type { BuildingConfig, RoleDefinition, WorkflowApprovalStep, WorkflowStageConfig, WorkflowStageKey, WorkflowStepBinding } from '@/domain/types';
 import { workflowStagesOf, workflowStepBindingsOf } from '@/domain/building-config';
@@ -37,7 +37,16 @@ export const useWorkflowDraft = (config: BuildingConfig) => {
   const steps = currentStage?.approvalStepKeys ?? [];
   const stepBindings = currentStage ? workflowStepBindingsOf(currentStage) : [];
   const selectedStep = selectedIndex === null ? undefined : approvalSteps.find((step) => step.key === steps[selectedIndex]);
-  const availableSteps = useMemo(() => approvalSteps.filter((step) => !steps.includes(step.key)), [approvalSteps, steps]);
+  // «BQL nghiệm thu» is offered only in the ACCEPTANCE stage (ADR-0001 R3).
+  const availableSteps = useMemo(
+    () =>
+      approvalSteps.filter(
+        (step) =>
+          !steps.includes(step.key) &&
+          (currentStage?.key === 'ACCEPTANCE' || !ACCEPTANCE_ONLY_STEP_KEYS.includes(step.key)),
+      ),
+    [approvalSteps, steps, currentStage?.key],
+  );
   const availableBusinessSteps = useMemo(
     () => BUSINESS_WORKFLOW_STEPS.filter((step) => step.stage === currentStage?.key),
     [currentStage?.key],

@@ -550,7 +550,7 @@ describe('building configuration mappers', () => {
   it('should merge the web system approval steps with custom backend steps', () => {
     const config = mapBuildingConfig(configView());
 
-    expect(config.workflowApprovalSteps?.map((step) => step.key)).toEqual(['TECH_CONFIRM', 'TECH', 'BOARD', 'CUSTOM_1']);
+    expect(config.workflowApprovalSteps?.map((step) => step.key)).toEqual(['TECH_CONFIRM', 'TECH', 'BOARD', 'MANAGER', 'CUSTOM_1']);
     expect(config.approvalStepKeys).toEqual(['TECH', 'BOARD']);
   });
 

@@ -1,6 +1,6 @@
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { APPROVAL_STEPS } from '@/domain/constants';
+import { ACCEPTANCE_ONLY_STEP_KEYS, APPROVAL_STEPS } from '@/domain/constants';
 import type { ApprovalStepKey } from '@/domain/constants';
 import { NativeSelect } from '@/components/ui/input';
 
@@ -32,7 +32,7 @@ export const ApprovalChainEditor = ({ value, disabled = false, onChange }: Appro
     onChange([...value, key]);
   };
 
-  const availableSteps = APPROVAL_STEPS.filter((step) => !value.includes(step.key));
+  const availableSteps = APPROVAL_STEPS.filter((step) => !value.includes(step.key) && !ACCEPTANCE_ONLY_STEP_KEYS.includes(step.key));
 
   return (
     <div className="space-y-3">

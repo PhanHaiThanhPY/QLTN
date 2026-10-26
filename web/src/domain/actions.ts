@@ -32,6 +32,7 @@ export const APPROVAL_STEP_SLOT: Partial<Record<ApprovalStepKey, AssigneeSlot>> 
   TECH_CONFIRM: 'confirmer',
   TECH: 'consultant',
   BOARD: 'board',
+  MANAGER: 'manager',
 };
 
 export type ApprovalStep = WorkflowApprovalStep;

@@ -154,7 +154,11 @@ export const APPROVAL_STEPS = [
   { key: 'TECH_CONFIRM', status: 'PENDING_TECH_APPROVAL', role: 'TECH_CONFIRMER', actor: 'KT', label: 'Kỹ thuật duyệt' },
   { key: 'TECH', status: 'PENDING_TECH_REVIEW', role: 'TECH_CONSULTANT', actor: 'TVKT', label: 'TVKT thẩm định' },
   { key: 'BOARD', status: 'PENDING_BOARD_APPROVAL', role: 'OWNERS_BOARD', actor: 'BQT', label: 'BQT duyệt' },
+  // ADR-0001 R3: the record's own manager as an acceptance member, valid only in the ACCEPTANCE stage.
+  { key: 'MANAGER', status: 'PENDING_ACCEPTANCE', role: 'BQL', actor: 'BQL', label: 'BQL nghiệm thu' },
 ] as const satisfies readonly ApprovalStepDefinition[];
+/** Built-in steps valid only in the ACCEPTANCE stage (mirrors api-qltn). */
+export const ACCEPTANCE_ONLY_STEP_KEYS: readonly string[] = ['MANAGER'];
 export type ApprovalStepKey = string;
 /**
  * Default PROPOSAL stage of a new building (DF-02: TVKT reviews, then BQT approves). The proposal approval chain is
@@ -163,7 +167,7 @@ export type ApprovalStepKey = string;
 export const DEFAULT_PROPOSAL_STEP_KEYS: readonly ApprovalStepKey[] = ['TECH', 'BOARD'];
 export type ApprovalStatus = RepairStatus;
 export const APPROVAL_STATUSES: readonly RepairStatus[] = [
-  ...APPROVAL_STEPS.map((step) => step.status),
+  ...APPROVAL_STEPS.filter((step) => !ACCEPTANCE_ONLY_STEP_KEYS.includes(step.key)).map((step) => step.status),
   'PENDING_CUSTOM_APPROVAL',
 ];
 

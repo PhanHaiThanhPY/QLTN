@@ -147,7 +147,7 @@ export const CONFIG_TEMPLATES: readonly { key: string; name: string; description
   {
     key: 'AQUA',
     name: 'Aqua – theo quy trình Ban quản trị',
-    description: 'TVKT xác nhận hiện trạng và thẩm định tờ trình, BQT phê duyệt; nghiệm thu gồm BQT và TVKT (D5-QT). Ngưỡng như mẫu Chung cư.',
+    description: 'TVKT xác nhận hiện trạng và thẩm định tờ trình, BQT phê duyệt; nghiệm thu gồm BQL, BQT và TVKT (D5-QT). Ngưỡng như mẫu Chung cư.',
     values: templateOf(
       {
         templateKey: 'AQUA',
@@ -158,7 +158,7 @@ export const CONFIG_TEMPLATES: readonly { key: string; name: string; description
         repeatMinRecords: 2,
         priceRatio: 1.5,
       },
-      { INTAKE: ['TECH'], PROPOSAL: ['TECH', 'BOARD'], ACCEPTANCE: ['BOARD', 'TECH'], PAYMENT: ['BOARD'] },
+      { INTAKE: ['TECH'], PROPOSAL: ['TECH', 'BOARD'], ACCEPTANCE: ['MANAGER', 'BOARD', 'TECH'], PAYMENT: ['BOARD'] },
     ),
   },
 ];

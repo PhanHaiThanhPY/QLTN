@@ -1,6 +1,6 @@
 import { ASSIGNMENT_ROLES, CONFIG_DUE_KINDS, CONFIG_LIMITS, approvalStepKeysOf, assignmentRulesOf, defaultConfigValues, diffConfig, proposalChainOf, templateValues, workflowApprovalDefinitionsOf, workflowStagesOf } from '@/domain/building-config';
 import type { ConfigValues } from '@/domain/building-config';
-import { APPROVAL_STEPS, BUSINESS_WORKFLOW_STEPS, ROLE } from '@/domain/constants';
+import { ACCEPTANCE_ONLY_STEP_KEYS, APPROVAL_STEPS, BUSINESS_WORKFLOW_STEPS, ROLE } from '@/domain/constants';
 import type { ApprovalStepKey, BusinessWorkflowStepKey, TaskKind } from '@/domain/constants';
 import { assertNoFieldErrors, conflict, forbidden, notFound, validationError } from '@/domain/errors';
 import { hasCapability, roleCapabilities } from '@/domain/permissions';
@@ -240,7 +240,8 @@ const validateWorkflowApprovalSteps = async (
     }
   }
   steps.forEach((step, index) => {
-    const capabilities = requiredCapabilities.get(step.key) ?? new Set<Capability>(['PROPOSAL_DECIDE']);
+    const unused: Capability = ACCEPTANCE_ONLY_STEP_KEYS.includes(step.key) ? 'ACCEPTANCE_DECIDE' : 'PROPOSAL_DECIDE';
+    const capabilities = requiredCapabilities.get(step.key) ?? new Set<Capability>([unused]);
     if (step.roleDefId) {
       const role = roleById.get(step.roleDefId);
       errors.when(!role, `workflowApprovalSteps.${index}.roleDefId`, 'Vai trò tùy chỉnh không tồn tại.');
@@ -270,6 +271,11 @@ const assertChainRules = (stages: readonly WorkflowStageConfig[], chain: readonl
   const errors = new FieldErrorCollector();
   errors.when(chain.join('|') !== proposalChainOf(stages).join('|'), 'approvalStepKeys', 'Chuỗi phê duyệt phải trùng các bước của giai đoạn Tờ trình.');
   stages.forEach((stage, index) => {
+    errors.when(
+      stage.key !== 'ACCEPTANCE' && stage.approvalStepKeys.some((key) => ACCEPTANCE_ONLY_STEP_KEYS.includes(key)),
+      `workflowStages.${index}.approvalStepKeys`,
+      'Bước «BQL nghiệm thu» chỉ dùng trong giai đoạn Nghiệm thu.',
+    );
     if (stage.key !== 'INTAKE') return;
     const step = steps.find((row) => row.key === stage.approvalStepKeys[0]);
     errors.when(
