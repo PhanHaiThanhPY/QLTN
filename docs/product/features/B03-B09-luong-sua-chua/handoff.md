@@ -181,6 +181,37 @@ Mỗi slice làm trên một nhánh mới xếp chồng lên nhánh trước. Kh
 
 #### Kết quả review (dev-review)
 
+**PASS WITH RESIDUE — 26/10/2026.** Candidate API `9d73b49`, web `7c494cb`, evidence/docs `c5f3e2b`, trên nhánh `feature/b03-s2-proposal`.
+
+- API unit đạt `8 suites / 52 tests`; focused API e2e gồm `13 suites / 116 tests` trên DB cô lập `qltn_review_b03_s2_e2e`. Các luồng T04–T09, AC-0.1, AC-0.2, AC-2.1–AC-2.7 và legacy snapshot đều đạt.
+- API format/lint/typecheck đạt. Web full Vitest đạt `48 files / 350 tests`; `tsc -b` đạt. Script evidence `s2-ui-check.mjs` qua `node --check`.
+- Đã kiểm tra 5 screenshot AC-0.3: BQL lập tờ trình với 3 nhà thầu và chữ ký; trình thành công chờ TVKT; TVKT duyệt chuyển chờ BQT; hộp thoại BQT yêu cầu nhà thầu, lý do, biên bản họp và chữ ký; duyệt nhà thầu 2 với số tiền `3.146.000 ₫`, hồ sơ sang **Chờ thi công**.
+- Rerun script headless Chrome trong seat review dừng trước khi mở page vì `Chrome did not expose a page target`; không có mutation/cleanup nào xảy ra. Đây là giới hạn môi trường, không phải lỗi candidate; evidence script và screenshot của dev-build được giữ làm bằng chứng AC-0.3.
+- Không phát hiện finding chức năng trong scope S2. Tiền được giữ/tính bằng chuỗi và `bigint`; server bỏ qua tổng do client gửi và tính lại. Quyền, version, trạng thái, holder snapshot, biên bản BQT, chữ ký, chọn nhà thầu khác và tối đa 3 lần trình đều được kiểm tra qua e2e.
+- **Residue:** `self_approval_denied` (BR-S2-07) có trong code nhưng chưa có e2e riêng vì seed không có người vừa là người trình vừa giữ quyền/bước duyệt. `PAYMENT_PROOF` thuộc S4 như handoff đã ghi; không thuộc scope S2.
+
+Candidate chấp nhận được để chuyển sang bước PM/BA close.
+
+#### Đóng (PM/BA)
+
+**Ngày:** 26/10/2026 · **Kết quả:** S2 **đạt**, đóng. API `9d73b49`, web `7c494cb`, bằng chứng `c5f3e2b`, nhánh `feature/b03-s2-proposal` (xếp trên RM-S2). Chưa merge, chưa push.
+
+- **Bằng chứng:** AC-2.1 đến AC-2.7 và AC-0.1 đến AC-0.3 đều có. Reviewer chạy lại: e2e 116, unit 52, web 350.
+- **Yêu cầu bổ sung lúc đóng RM-S2 đã đạt:** AC-2.3 chạy trên tòa `S2N` mới tạo bằng mẫu mặc định. TVKT duyệt xong thì hồ sơ sang `PENDING_BOARD_APPROVAL`, không sang `READY_FOR_CONSTRUCTION`. **BG-01 đã chứng minh ở mức hành vi** (RM-S2 AC-2.6).
+- **Phần còn lại được chấp nhận:**
+  - `self_approval_denied` (BR-S2-07) đã có trong code nhưng chưa có e2e riêng. Theo ma trận v2, BQL (người trình) không có `PROPOSAL_DECIDE`, và vai trò tùy chỉnh chỉ được bớt quyền, nên hiện **không ai** vừa trình vừa duyệt được. Khi có vai trò làm được cả hai việc thì phải bổ sung e2e.
+  - Seat review không có Chrome nên không chạy lại được bước kiểm trên trình duyệt; reviewer đã xem 5 ảnh.
+  - `PAYMENT_PROOF` thuộc S4.
+- **Việc tiếp theo:** S3 (đã duyệt, PD-12) giao ngay, xếp sau AD-S1 trong hàng đợi của dev-build. Merge do chủ dự án quyết định.
+
+### S3: Thi công và nghiệm thu
+
+#### Bằng chứng triển khai (dev-build)
+
+_Chưa có._
+
+#### Kết quả review (dev-review)
+
 _Chưa có._
 
 #### Đóng (PM/BA)
