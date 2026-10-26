@@ -39,7 +39,6 @@ export const DEMO_BUILDING_TEMPLATES: Readonly<Record<string, string>> = {
   C: 'RESIDENTIAL',
   D: 'OFFICE',
 };
-export const DEMO_APPROVAL_STEP_KEYS = ['TECH', 'BOARD'];
 
 /** Department code → workflow role resolved by the default assignment rules of every demo building. */
 export const DEMO_ASSIGNMENT_RULES: ReadonlyArray<{ departmentCode: string; role: Role; priority: number }> = [

@@ -1,7 +1,7 @@
 import {
   APPROVAL_STATUSES,
   APPROVAL_STEPS,
-  DEFAULT_APPROVAL_STEP_KEYS,
+  DEFAULT_PROPOSAL_STEP_KEYS,
   OCCURRENCE_STATUS_LABEL,
   PLAN_STATUS_LABEL,
   REPAIR_FINAL_STATUSES,
@@ -41,7 +41,7 @@ export const approvalStepsFor = (
   keys?: readonly ApprovalStepKey[],
   definitions?: readonly WorkflowApprovalStep[],
 ): ApprovalStep[] => {
-  const order = keys && keys.length > 0 ? keys : DEFAULT_APPROVAL_STEP_KEYS;
+  const order = keys && keys.length > 0 ? keys : DEFAULT_PROPOSAL_STEP_KEYS;
   const available = definitions && definitions.length > 0 ? definitions : APPROVAL_STEPS;
   return order
     .map((key) => available.find((step) => step.key === key))

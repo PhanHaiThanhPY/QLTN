@@ -37,6 +37,7 @@ interface Config {
   assignmentRules: Array<{ departmentId: string; role: string; priority: number; locationIds?: string[] }>;
   taskDueDays: Record<string, number>;
   workflowApprovalSteps: Array<{ key: string }>;
+  workflowStages: Stage[];
   emergencyDocHours: number;
   recentRepairDays: number;
   repeatMinRecords: number;
@@ -53,6 +54,31 @@ interface Profile {
   buildingIds: string[];
   version: number;
 }
+
+interface Stage {
+  key: string;
+  approvalStepKeys: string[];
+  stepBindings: Array<{ businessStepKey: string; approvalStepKey?: string }>;
+}
+
+/**
+ * Stages with another proposal chain (BR-10: the PROPOSAL stage is the only source of `approvalStepKeys`);
+ * a business step bound to a removed step moves to the chain's first step.
+ */
+const withProposalChain = (stages: Stage[], keys: string[]): Stage[] =>
+  stages.map((stage) =>
+    stage.key !== 'PROPOSAL'
+      ? stage
+      : {
+          ...stage,
+          approvalStepKeys: keys,
+          stepBindings: stage.stepBindings.map((binding) =>
+            binding.approvalStepKey && !keys.includes(binding.approvalStepKey)
+              ? { ...binding, approvalStepKey: keys[0] }
+              : binding,
+          ),
+        },
+  );
 
 /** Body for PUT /config built from the current config (scalar fields must always be sent). */
 const configBody = (config: Config, overrides: Record<string, unknown> = {}) => ({
@@ -398,6 +424,7 @@ describe('Catalog & administration (e2e)', () => {
           configBody(config, {
             workflowApprovalSteps: [{ key: 'BQL_SIGN', label: 'BQL ký duyệt', role: 'BQL' }],
             approvalStepKeys: ['BQL_SIGN'],
+            workflowStages: withProposalChain(config.workflowStages, ['BQL_SIGN']),
           }),
         )
         .expect(400);
@@ -409,6 +436,7 @@ describe('Catalog & administration (e2e)', () => {
           configBody(config, {
             workflowApprovalSteps: [{ key: 'LEGAL', label: 'Pháp chế duyệt', actor: 'PC', role: 'OWNERS_BOARD' }],
             approvalStepKeys: ['TECH', 'LEGAL', 'BOARD'],
+            workflowStages: withProposalChain(config.workflowStages, ['TECH', 'LEGAL', 'BOARD']),
           }),
         )
         .expect(200);
@@ -439,7 +467,8 @@ describe('Catalog & administration (e2e)', () => {
         .expect(201);
       const saved = dataOf<{ config: Config; skipped: SkippedPart[] }>(res);
       expect(saved.config.emergencyLimitVnd).toBe('15000000');
-      expect(saved.config.approvalStepKeys).toEqual(['TECH']);
+      // BR-10: a template resets the chain together with its PROPOSAL stage (default TVKT → BQT).
+      expect(saved.config.approvalStepKeys).toEqual(['TECH', 'BOARD']);
       expect(saved.config.assignmentRules).toEqual(config.assignmentRules);
       expect(saved.skipped).toEqual([]);
     });

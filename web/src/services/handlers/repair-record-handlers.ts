@@ -1,4 +1,4 @@
-import { DEFAULT_APPROVAL_STEP_KEYS, LIMITS, PRIORITY } from '@/domain/constants';
+import { DEFAULT_PROPOSAL_STEP_KEYS, LIMITS, PRIORITY } from '@/domain/constants';
 import type { Priority } from '@/domain/constants';
 import { assertNoFieldErrors, forbidden, validationError } from '@/domain/errors';
 import { APPROVER_SLOTS, SLOT_FIELD, SLOT_ROLE, hasCapability } from '@/domain/permissions';
@@ -11,13 +11,16 @@ import { assertBuildingScope, nextCode, writeAudit } from '../command-context';
 import type { CommandContext } from '../command-context';
 import { newId } from '../runtime';
 import {
+  BOARD_FALLBACK_REASON,
   approverErrors,
   assertOwnAttachments,
   commitRecord,
+  defaultConfirmerOf,
   defaultWorkflowApprovers,
   defaultApprovers,
-  firstActiveInRole,
+  intakeStepOf,
   isActiveUserInRole,
+  isValidConfirmer,
   loadRecordFor,
 } from './repair-helpers';
 import { loadBuildingConfig } from './building-handlers';
@@ -89,7 +92,11 @@ const applyDraftFields = async (
       next[field] = '';
       continue;
     }
-    errors.when(!isActiveUserInRole(ctx, userId, SLOT_ROLE[slot], record.buildingId, next.locationId), field, 'Người được chọn phải đúng vai trò, cùng tòa, đúng khu vực và còn hoạt động.');
+    // The confirmer follows the record's INTAKE step (BR-07); approvers keep their slot role.
+    const valid = slot === 'confirmer'
+      ? isValidConfirmer(ctx, userId, intakeStepOf(record), record.buildingId, next.locationId)
+      : isActiveUserInRole(ctx, userId, SLOT_ROLE[slot], record.buildingId, next.locationId);
+    errors.when(!valid, field, 'Người được chọn phải đúng vai trò, cùng tòa, đúng khu vực và còn hoạt động.');
     next[field] = userId;
   }
   assertNoFieldErrors(errors.errors);
@@ -107,7 +114,7 @@ export const assertSubmittable = async (ctx: CommandContext, record: RepairRecor
   const location = await ctx.db.locations.get(record.locationId);
   errors.when(!location || location.buildingId !== record.buildingId, 'locationId', 'Vị trí phải thuộc tòa nhà của hồ sơ.');
   errors.when(!isActiveUserInRole(ctx, record.managerUserId, 'BQL', record.buildingId, record.locationId), 'managerUserId', 'BQL quản lý không còn hoạt động hoặc không đúng khu vực.');
-  errors.when(!isActiveUserInRole(ctx, record.confirmationUserId, 'TECH_CONFIRMER', record.buildingId, record.locationId), 'confirmationUserId', 'Người xác nhận đã ngừng hoạt động, sai khu vực hoặc không hợp lệ. Cần phân công lại.');
+  errors.when(!isValidConfirmer(ctx, record.confirmationUserId, intakeStepOf(record), record.buildingId, record.locationId), 'confirmationUserId', 'Người xác nhận đã ngừng hoạt động, sai khu vực hoặc không hợp lệ. Cần phân công lại.');
   for (const [field, message] of Object.entries(approverErrors(ctx, record))) errors.add(field, message);
   const item = record.maintenanceItemId ? await ctx.db.maintenanceItems.get(record.maintenanceItemId) : undefined;
   errors.when(recordItemLink(record) === RECORD_ITEM_LINK.UNLINKED, 'maintenanceItemId', RECORD_ITEM_REQUIRED_MESSAGE);
@@ -129,6 +136,10 @@ const createRecord: CommandHandler = async (ctx, command) => {
   const id = newId('rec');
   const buildingConfig = await loadBuildingConfig(ctx, buildingId);
   const workflowApprovalSteps = workflowApprovalStepsOf(workflowApprovalDefinitionsOf(buildingConfig.workflowApprovalSteps));
+  const workflowStageApprovalStepKeys = workflowStageApprovalStepKeysOf(buildingConfig.workflowStages, buildingConfig.approvalStepKeys);
+  const locationId = asString(payload.locationId);
+  // BR-07: the INTAKE step's first eligible holder, else BQT (audited).
+  const confirmer = defaultConfirmerOf(ctx, intakeStepOf({ workflowStageApprovalStepKeys, workflowApprovalSteps }), buildingId, locationId);
   const base: RepairRecord = {
     id,
     code: await nextCode(ctx, 'SC'),
@@ -139,12 +150,12 @@ const createRecord: CommandHandler = async (ctx, command) => {
     priority: 'NORMAL',
     status: 'DRAFT',
     managerUserId: ctx.actor.id,
-    confirmationUserId: firstActiveInRole(ctx, 'TECH_CONFIRMER', buildingId, asString(payload.locationId)) ?? '',
+    confirmationUserId: confirmer.userId,
     ...defaultApprovers(ctx, buildingId, asString(payload.locationId)),
     dueDays: buildingConfig.taskDueDays,
-    approvalStepKeys: [...(buildingConfig.approvalStepKeys ?? DEFAULT_APPROVAL_STEP_KEYS)],
+    approvalStepKeys: [...(buildingConfig.approvalStepKeys ?? DEFAULT_PROPOSAL_STEP_KEYS)],
     workflowApprovalSteps,
-    workflowStageApprovalStepKeys: workflowStageApprovalStepKeysOf(buildingConfig.workflowStages, buildingConfig.approvalStepKeys),
+    workflowStageApprovalStepKeys,
     approvalAssigneeUserIds: defaultWorkflowApprovers(ctx, workflowApprovalSteps, buildingId, asString(payload.locationId)),
     attachmentIds: [],
     createdBy: ctx.actor.id,
@@ -152,8 +163,11 @@ const createRecord: CommandHandler = async (ctx, command) => {
     updatedAt: ctx.now,
     version: 0,
   };
-  const { attachmentIds: _ignored, ...fields } = payload;
+  const { attachmentIds: _ignored, ...requested } = payload;
   void _ignored;
+  // An empty confirmer means "theo cấu hình tòa": keep the default picked above.
+  const { confirmationUserId: requestedConfirmer, ...rest } = requested;
+  const fields = asString(requestedConfirmer) ? requested : rest;
   const filled = await applyDraftFields(ctx, base, { title: '', locationId: '', ...fields });
   const record = { ...filled, version: 1 };
   await ctx.db.records.add(record);
@@ -164,6 +178,7 @@ const createRecord: CommandHandler = async (ctx, command) => {
     action: 'createRecord',
     toStatus: 'DRAFT',
     entityVersion: 1,
+    ...(confirmer.boardFallback && record.confirmationUserId === confirmer.userId ? { reason: BOARD_FALLBACK_REASON } : {}),
   });
   return { ok: true, subjectId: id, data: { code: record.code } };
 };

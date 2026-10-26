@@ -4,8 +4,7 @@ import { addDays } from '@/utils/date';
 import { broadcastChange } from '@/services/change-channel';
 import { registerAllHandlers } from '@/services/handlers';
 import { enableSequentialIds, getSessionUserId, setFixedNow, setSessionUserId, todayVn } from '@/services/runtime';
-import { ROLE, ROLE_CODE, ROLE_LABEL } from '@/domain/constants';
-import type { ApprovalStepKey } from '@/domain/constants';
+import { DEFAULT_PROPOSAL_STEP_KEYS, ROLE, ROLE_CODE, ROLE_LABEL } from '@/domain/constants';
 import { DEFAULT_WORKFLOW_STAGES, defaultConfigValues, templateValues } from '@/domain/building-config';
 import { roleCapabilities } from '@/domain/permissions';
 import type { RoleDefinition } from '@/domain/types';
@@ -16,7 +15,6 @@ import { SeedRunner } from './seed-runner';
 
 const SEED_META_KEY = 'seed';
 /** Demo scenarios exercise a multi-step chain; production users can replace it per building. */
-const DEMO_APPROVAL_STEP_KEYS: readonly ApprovalStepKey[] = ['TECH', 'BOARD'];
 
 export interface SeedInfo {
   seedDate: IsoDate;
@@ -98,7 +96,7 @@ export const seedDemo = async (seedDate: IsoDate = todayVn()): Promise<SeedInfo>
         SEED_BUILDINGS.map((building) => ({
           buildingId: building.id,
           ...(templateValues(SEED_BUILDING_TEMPLATES[building.id]) ?? defaultConfigValues()),
-          approvalStepKeys: [...DEMO_APPROVAL_STEP_KEYS],
+          approvalStepKeys: [...DEFAULT_PROPOSAL_STEP_KEYS],
           workflowStages: DEFAULT_WORKFLOW_STAGES.map((stage) => ({ ...stage, approvalStepKeys: [...stage.approvalStepKeys] })),
           assignmentRules: assignmentRulesForBuilding(),
           version: 1,

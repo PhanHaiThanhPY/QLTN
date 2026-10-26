@@ -81,7 +81,8 @@ describe('Repair records (e2e)', () => {
     buildingB = buildings.find((row) => row.code === 'B') as Building;
     referenceA = dataOf<Reference>(await bqlA.get('/api/reference'));
     referenceB = dataOf<Reference>(await bqlB.get('/api/reference'));
-    configA = dataOf<Config>(await bqlA.get(`/api/buildings/${buildingA.id}/config`));
+    // Since matrix v2 only ADMIN reads the configuration (DF-11).
+    configA = dataOf<Config>(await admin.get(`/api/buildings/${buildingA.id}/config`));
 
     // Same building, holds RECORD_EDIT, but is not the record manager (the slot rule under test).
     const roles = dataOf<RoleRow[]>(await admin.get('/api/roles'));

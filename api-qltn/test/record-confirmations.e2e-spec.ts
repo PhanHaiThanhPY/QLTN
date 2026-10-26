@@ -177,7 +177,7 @@ describe('Repair record confirmation, slice S1 (e2e)', () => {
 
     const unassigned = await ktA2.post(`/api/records/${record.id}/confirm-repair`, body).expect(403);
     expect(reasonOf(unassigned)).toBe('not_step_assignee');
-    expect(errorOf(unassigned).message).toBe('Chỉ kỹ thuật xác nhận được giao mới thực hiện được bước này.');
+    expect(errorOf(unassigned).message).toBe('Chỉ người xác nhận hiện trạng được giao mới thực hiện được bước này.');
 
     const bql = await bqlA.post(`/api/records/${record.id}/confirm-repair`, body).expect(403);
     expect(reasonOf(bql)).toBe('missing_capability');

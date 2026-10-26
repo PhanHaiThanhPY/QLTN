@@ -17,9 +17,9 @@ import {
   type ConfigChange,
   type ConfigValues,
   CUSTOM_APPROVAL_STATUS,
-  DEFAULT_APPROVAL_STEP_KEYS,
   defaultWorkflowStages,
   diffConfig,
+  proposalChainOf,
   requiredStepCapabilities,
   sortAssignmentRules,
   stepBindingsOf,
@@ -68,7 +68,7 @@ export interface ConfigSaveResult {
 /** Static catalog the workflow designer needs (steps, templates, limits). */
 export const WORKFLOW_CATALOG = {
   approvalSteps: APPROVAL_STEPS,
-  defaultApprovalStepKeys: DEFAULT_APPROVAL_STEP_KEYS,
+  defaultApprovalStepKeys: proposalChainOf(defaultWorkflowStages()),
   businessSteps: BUSINESS_WORKFLOW_STEPS,
   defaultStages: defaultWorkflowStages(),
   dueKinds: CONFIG_DUE_KINDS,
@@ -150,16 +150,18 @@ const normalizeStages = (input: readonly WorkflowStageDto[]): WorkflowStageConfi
 
 /** Request values merged over the current configuration (omitted workflow parts are kept). */
 function mergeValues(current: ConfigValues, dto: ConfigValuesDto, errors: FieldErrors): ConfigValues {
+  const workflowStages = dto.workflowStages ? normalizeStages(dto.workflowStages) : current.workflowStages;
   return {
     templateKey: dto.templateKey !== undefined ? dto.templateKey : current.templateKey,
     workflowName: dto.workflowName !== undefined ? dto.workflowName : current.workflowName,
     workflowDescription: dto.workflowDescription !== undefined ? dto.workflowDescription : current.workflowDescription,
     taskDueDays: { ...dto.taskDueDays },
-    approvalStepKeys: dto.approvalStepKeys ? [...dto.approvalStepKeys] : current.approvalStepKeys,
+    // BR-10: derived from the PROPOSAL stage; a request that sends a different chain is refused by validateConfigRules.
+    approvalStepKeys: dto.approvalStepKeys ? [...dto.approvalStepKeys] : proposalChainOf(workflowStages),
     workflowApprovalSteps: dto.workflowApprovalSteps
       ? normalizeSteps(dto.workflowApprovalSteps, errors)
       : current.workflowApprovalSteps,
-    workflowStages: dto.workflowStages ? normalizeStages(dto.workflowStages) : current.workflowStages,
+    workflowStages,
     assignmentRules: dto.assignmentRules
       ? sortAssignmentRules(
           dto.assignmentRules.map((rule) => ({
@@ -259,7 +261,9 @@ export class BuildingConfigService {
           ...current,
           templateKey: template.templateKey,
           taskDueDays: template.taskDueDays,
+          // BR-10: a template resets the stages and the chain together, so they cannot drift apart.
           approvalStepKeys: template.approvalStepKeys,
+          workflowStages: template.workflowStages,
           emergencyLimitVnd: template.emergencyLimitVnd,
           emergencyDocHours: template.emergencyDocHours,
           recentRepairDays: template.recentRepairDays,

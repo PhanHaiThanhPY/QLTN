@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { CONFIG_DUE_KINDS, CONFIG_TEMPLATES } from '@/domain/building-config';
+import { CONFIG_DUE_KINDS, CONFIG_TEMPLATES, withProposalChain, workflowStagesOf } from '@/domain/building-config';
 import type { Building, BuildingConfig } from '@/domain/types';
 import { useCommand } from '@/hooks/useCommand';
 import { useReferenceData } from '@/hooks/useReferenceData';
@@ -38,7 +38,11 @@ export const ConfigCard = ({ building, buildings, config, canEdit }: ConfigCardP
       subjectId: building.id,
       expectedVersion: config.version,
       action: 'updateBuildingConfig',
-      payload: toConfigPayload(draft, config.templateKey, false),
+      // The chain edited here is the PROPOSAL stage (BR-10), so the stages travel with it.
+      payload: {
+        ...toConfigPayload(draft, config.templateKey, false),
+        workflowStages: withProposalChain(workflowStagesOf(config.workflowStages, config.approvalStepKeys), draft.approvalStepKeys),
+      },
     });
 
   return (

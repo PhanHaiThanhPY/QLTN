@@ -11,6 +11,7 @@ import { CodeCounterService } from '../../common/services/code-counter.service';
 import {
   APPROVAL_STEPS,
   approvalDefinitionsOf,
+  intakeStepKeyOf,
   type AssignmentRule,
   type TaskDueDays,
   type WorkflowApprovalStep,
@@ -293,6 +294,38 @@ const workflowApprovalStepsOf = (config: BuildingConfig): WorkflowApprovalStep[]
     .map((step) => ({ ...step }));
 };
 
+/**
+ * Confirmer step (BR-06): the INTAKE step of the stage snapshot, looked up in the given steps then the built-in
+ * ones; KT for records created before RM-S2. A custom INTAKE step outside the proposal chain is only known at
+ * creation, where the configuration library is passed in.
+ */
+const intakeStepOf = (
+  stageKeys: Partial<Record<string, readonly string[]>> | undefined,
+  steps: readonly WorkflowApprovalStep[] | undefined,
+): WorkflowApprovalStep => {
+  const key = intakeStepKeyOf(stageKeys);
+  const library = steps?.length ? [...steps, ...APPROVAL_STEPS] : APPROVAL_STEPS;
+  return library.find((step) => step.key === key) ?? APPROVAL_STEPS[0];
+};
+
+const BOARD_FALLBACK_REASON = 'Không có người xác nhận theo cấu hình, dùng BQT';
+
+/**
+ * BR-07: a confirmer is valid when eligible for the INTAKE step, or, when nobody is eligible for it, when active
+ * as BQT in the record's area (the fallback picked at creation).
+ */
+const isValidConfirmer = (
+  ctx: AssignmentContext,
+  userId: string | null,
+  intakeStep: WorkflowApprovalStep,
+  buildingId: string,
+  locationId: string | null,
+): boolean => {
+  if (isActiveUserForApprovalStep(ctx, userId, intakeStep, buildingId, locationId)) return true;
+  const nobodyEligible = !firstActiveForApprovalStep(ctx, intakeStep, buildingId, locationId);
+  return nobodyEligible && isActiveUserInRole(ctx, userId, 'OWNERS_BOARD', buildingId, locationId);
+};
+
 /** Snapshot used when the record leaves DRAFT; `taskDueDays` is the field name on the backend. */
 const workflowStageApprovalStepKeysOf = (config: BuildingConfig): Partial<Record<string, string[]>> =>
   Object.fromEntries(config.workflowStages.map((stage) => [stage.key, [...stage.approvalStepKeys]]));
@@ -316,9 +349,16 @@ export class RecordsService {
       this.validateManager(assignment, errors, actor.id, dto.buildingId, locationId);
 
       const steps = workflowApprovalStepsOf(config);
-      const defaultConfirmer = firstActiveInRole(assignment, 'TECH_CONFIRMER', dto.buildingId, locationId) ?? null;
+      const stageKeys = workflowStageApprovalStepKeysOf(config);
+      const intakeStep = intakeStepOf(stageKeys, approvalDefinitionsOf(config.workflowApprovalSteps));
+      // BR-07: the first eligible holder of the INTAKE step, else the BQT holder (audited), else nobody.
+      const configured = firstActiveForApprovalStep(assignment, intakeStep, dto.buildingId, locationId);
+      const boardFallback = configured
+        ? undefined
+        : firstActiveInRole(assignment, 'OWNERS_BOARD', dto.buildingId, locationId);
+      const defaultConfirmer = configured ?? boardFallback ?? null;
       const confirmationUserId = dto.confirmationUserId === undefined ? defaultConfirmer : dto.confirmationUserId;
-      this.validateConfirmer(assignment, errors, confirmationUserId, dto.buildingId, locationId);
+      this.validateConfirmer(assignment, errors, confirmationUserId, intakeStep, dto.buildingId, locationId);
       errors.throwIfAny();
 
       const repo = manager.getRepository(RepairRecord);
@@ -337,7 +377,7 @@ export class RecordsService {
         boardUserId: firstActiveInRole(assignment, 'OWNERS_BOARD', dto.buildingId, locationId) ?? null,
         approvalStepKeys: [...config.approvalStepKeys],
         workflowApprovalSteps: steps,
-        workflowStageApprovalStepKeys: workflowStageApprovalStepKeysOf(config),
+        workflowStageApprovalStepKeys: stageKeys,
         approvalAssigneeUserIds: defaultWorkflowApprovers(assignment, steps, dto.buildingId, locationId),
         taskDueDays: { ...config.taskDueDays },
         createdBy: actor.id,
@@ -352,6 +392,7 @@ export class RecordsService {
         actorId: actor.id,
         entityVersion: saved.version,
         toStatus: saved.status,
+        ...(boardFallback && confirmationUserId === boardFallback ? { reason: BOARD_FALLBACK_REASON } : {}),
       });
       return toRecordView(saved);
     });
@@ -634,7 +675,8 @@ export class RecordsService {
     const errors = new FieldErrors();
     await this.validateLocation(manager, errors, record.buildingId, locationId, record.locationId);
     this.validateManager(assignment, errors, record.managerUserId, record.buildingId, locationId);
-    this.validateConfirmer(assignment, errors, confirmationUserId, record.buildingId, locationId);
+    const intakeStep = intakeStepOf(record.workflowStageApprovalStepKeys, record.workflowApprovalSteps);
+    this.validateConfirmer(assignment, errors, confirmationUserId, intakeStep, record.buildingId, locationId);
     errors.when(
       Boolean(confirmationUserId) &&
         record.status !== DRAFT_STATUS &&
@@ -672,8 +714,9 @@ export class RecordsService {
       'managerUserId',
       'BQL quản lý không còn hoạt động hoặc không đúng khu vực.',
     );
+    const intakeStep = intakeStepOf(record.workflowStageApprovalStepKeys, record.workflowApprovalSteps);
     errors.when(
-      !isActiveUserInRole(ctx, record.confirmationUserId, 'TECH_CONFIRMER', record.buildingId, record.locationId),
+      !isValidConfirmer(ctx, record.confirmationUserId, intakeStep, record.buildingId, record.locationId),
       'confirmationUserId',
       'Người xác nhận đã ngừng hoạt động, sai khu vực hoặc không hợp lệ. Cần phân công lại.',
     );
@@ -819,12 +862,13 @@ export class RecordsService {
     ctx: AssignmentContext,
     errors: FieldErrors,
     userId: string | null,
+    intakeStep: WorkflowApprovalStep,
     buildingId: string,
     locationId: string | null,
   ): void {
     if (!userId) return;
     errors.when(
-      !isActiveUserInRole(ctx, userId, 'TECH_CONFIRMER', buildingId, locationId),
+      !isValidConfirmer(ctx, userId, intakeStep, buildingId, locationId),
       'confirmationUserId',
       'Người được chọn phải đúng vai trò, cùng tòa, đúng khu vực và còn hoạt động.',
     );

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { LIMITS, PRIORITY } from '@/domain/constants';
 import { RECORD_ITEM_REQUIRED_MESSAGE } from '@/domain/record-item-link';
+import { hasCapability } from '@/domain/permissions';
 import type { RepairRecord, User } from '@/domain/types';
 
 /** Select value standing for "Không thuộc thiết bị cụ thể" (payload `noMaintenanceItem: true`). */
@@ -36,7 +37,8 @@ export const recordSubmitSchema = recordDraftSchema.extend({
     .string()
     .refine((value) => value.trim().length >= LIMITS.DESCRIPTION_MIN, `Mô tả hư hỏng cần tối thiểu ${LIMITS.DESCRIPTION_MIN} ký tự khi gửi.`)
     .refine((value) => value.trim().length <= LIMITS.DESCRIPTION_MAX, `Mô tả tối đa ${LIMITS.DESCRIPTION_MAX} ký tự.`),
-  confirmationUserId: z.string().min(1, 'Chọn kỹ thuật xác nhận.'),
+  // Empty = "theo cấu hình tòa": the backend picks the INTAKE step's holder (RM-S2 BR-07).
+  confirmationUserId: z.string(),
 });
 
 /** Backward-compatible name for consumers that only need the draft shape. */
@@ -51,6 +53,10 @@ export type RecordFormIntent = 'draft' | 'submit';
 /** Active users of a building holding a role (candidate list for assignee selects). */
 export const activeUsersInRole = (users: User[], role: User['role'], buildingId: string): User[] =>
   users.filter((user) => user.active && user.role === role && user.buildingIds.includes(buildingId));
+
+/** Who may be chosen as confirmer: active users of the building who can confirm the site condition (KT, TVKT, BQT). */
+export const activeConfirmersIn = (users: User[], buildingId: string): User[] =>
+  users.filter((user) => user.buildingIds.includes(buildingId) && hasCapability(user, 'RECORD_CONFIRM'));
 
 /** Equipment a new record is reported for (from the equipment page's "Báo sự cố"). */
 export interface RecordItemPrefill {
@@ -87,7 +93,7 @@ export const defaultValuesFor = (
     title: '',
     description: '',
     priority: 'NORMAL',
-    confirmationUserId: firstIn('TECH_CONFIRMER'),
+    confirmationUserId: '',
     consultantUserId: firstIn('TECH_CONSULTANT'),
     boardUserId: firstIn('OWNERS_BOARD'),
   };
@@ -105,7 +111,8 @@ export const toRecordPayload = (values: RecordFormValues, includeAssignees: bool
     noMaintenanceItem: values.maintenanceItemId === NO_ITEM_VALUE,
   };
   if (includeAssignees) {
-    for (const field of ASSIGNEE_FIELDS) payload[field] = values[field];
+    // An empty choice is left out so the backend keeps the confirmer from the building configuration.
+    for (const field of ASSIGNEE_FIELDS) if (values[field]) payload[field] = values[field];
   }
   return payload;
 };

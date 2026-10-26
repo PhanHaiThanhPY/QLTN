@@ -156,8 +156,11 @@ export const APPROVAL_STEPS = [
   { key: 'BOARD', status: 'PENDING_BOARD_APPROVAL', role: 'OWNERS_BOARD', actor: 'BQT', label: 'BQT duyệt' },
 ] as const satisfies readonly ApprovalStepDefinition[];
 export type ApprovalStepKey = string;
-/** Minimal default for a new building; the administrator can add, remove, and reorder steps. */
-export const DEFAULT_APPROVAL_STEP_KEYS: readonly ApprovalStepKey[] = ['TECH'];
+/**
+ * Default PROPOSAL stage of a new building (DF-02: TVKT reviews, then BQT approves). The proposal approval chain is
+ * always this stage's steps (BR-10); the administrator can add, remove and reorder them.
+ */
+export const DEFAULT_PROPOSAL_STEP_KEYS: readonly ApprovalStepKey[] = ['TECH', 'BOARD'];
 export type ApprovalStatus = RepairStatus;
 export const APPROVAL_STATUSES: readonly RepairStatus[] = [
   ...APPROVAL_STEPS.map((step) => step.status),

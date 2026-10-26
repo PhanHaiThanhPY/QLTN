@@ -1,4 +1,4 @@
-import { APPROVAL_STEPS } from '@/domain/constants';
+import { APPROVAL_STEPS, DEFAULT_PROPOSAL_STEP_KEYS } from '@/domain/constants';
 import type { ApprovalStepKey, Priority } from '@/domain/constants';
 import { BUILDING_A, BUILDING_B, BUILDING_C, BUILDING_D, USER_ID } from './seed-reference';
 import { getDb } from '@/storage/db';
@@ -26,8 +26,8 @@ type Stage = (typeof STAGES)[number];
 
 /** Stage reached after each approval step of the chain, in order. */
 const APPROVAL_STAGES: Stage[] = ['TECH_REVIEWED', 'BOARD_APPROVED'];
-const DEMO_APPROVAL_STEP_KEYS: readonly ApprovalStepKey[] = ['TECH', 'BOARD'];
-const DEMO_APPROVAL_STEPS = APPROVAL_STEPS.filter((step) => DEMO_APPROVAL_STEP_KEYS.includes(step.key));
+/** Seeded records were created under the default proposal chain (TVKT → BQT). */
+const DEMO_APPROVAL_STEPS = APPROVAL_STEPS.filter((step) => DEFAULT_PROPOSAL_STEP_KEYS.includes(step.key));
 
 export const APPROVER_OF: Record<ApprovalStepKey, string> = {
   TECH_CONFIRM: USER_ID.KT_A,

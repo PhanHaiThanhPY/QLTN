@@ -101,7 +101,10 @@ export function assertRecordAction(actor: AuthenticatedUser, record: RepairRecor
     throw forbiddenWithReason('not_record_manager', 'Chỉ BQL quản lý được giao mới thực hiện được bước này.');
   }
   if (def.slot === 'confirmer' && actor.id !== record.confirmationUserId) {
-    throw forbiddenWithReason('not_step_assignee', 'Chỉ kỹ thuật xác nhận được giao mới thực hiện được bước này.');
+    throw forbiddenWithReason(
+      'not_step_assignee',
+      'Chỉ người xác nhận hiện trạng được giao mới thực hiện được bước này.',
+    );
   }
   if (!def.from.includes(record.status)) {
     throw conflictWithReason(

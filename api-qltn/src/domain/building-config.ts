@@ -73,7 +73,6 @@ export const APPROVAL_STEPS: readonly WorkflowApprovalStep[] = [
   { key: 'BOARD', status: 'PENDING_BOARD_APPROVAL', role: 'OWNERS_BOARD', actor: 'BQT', label: 'BQT duyệt' },
 ];
 export const CUSTOM_APPROVAL_STATUS = 'PENDING_CUSTOM_APPROVAL';
-export const DEFAULT_APPROVAL_STEP_KEYS: readonly string[] = ['TECH'];
 
 /** Lifecycle steps that can be enabled for each workflow stage. */
 export const BUSINESS_WORKFLOW_STEPS: readonly {
@@ -189,7 +188,8 @@ export const DEFAULT_WORKFLOW_STAGES: readonly Omit<WorkflowStageConfig, 'stepBi
     label: 'Duyệt phương án & tờ trình',
     description: 'Đánh giá phương án, chi phí dự kiến và quyết định thực hiện.',
     businessStepKeys: ['PREPARE_PROPOSAL'],
-    approvalStepKeys: ['TECH_CONFIRM', 'TECH', 'BOARD'],
+    // DF-02: TVKT reviews, then BQT approves. This stage is the only source of the proposal chain (BR-10).
+    approvalStepKeys: ['TECH', 'BOARD'],
     enabled: true,
   },
   {
@@ -256,21 +256,43 @@ const DEFAULT_DUE_DAYS: TaskDueDays = {
   REVIEW_MAINTENANCE: 2,
 };
 
-export const stepBindingsOf = (stage: Pick<WorkflowStageConfig, 'businessStepKeys'>): WorkflowStepBinding[] =>
+/**
+ * Default bindings of a stage's business steps. A step whose default approval step is not in the stage binds to the
+ * stage's first approval step instead, so a template like AQUA (INTAKE = [TECH]) stays valid.
+ */
+export const stepBindingsOf = (
+  stage: Pick<WorkflowStageConfig, 'businessStepKeys'> & Partial<Pick<WorkflowStageConfig, 'approvalStepKeys'>>,
+): WorkflowStepBinding[] =>
   stage.businessStepKeys.map((businessStepKey) => {
-    const approvalStepKey = BUSINESS_WORKFLOW_STEPS.find(
-      (step) => step.key === businessStepKey,
-    )?.defaultApprovalStepKey;
+    const preferred = BUSINESS_WORKFLOW_STEPS.find((step) => step.key === businessStepKey)?.defaultApprovalStepKey;
+    if (!preferred) return { businessStepKey };
+    const keys = stage.approvalStepKeys;
+    const approvalStepKey = !keys || keys.includes(preferred) ? preferred : keys[0];
     return approvalStepKey ? { businessStepKey, approvalStepKey } : { businessStepKey };
   });
 
-export const defaultWorkflowStages = (): WorkflowStageConfig[] =>
-  DEFAULT_WORKFLOW_STAGES.map((stage) => ({
-    ...stage,
-    approvalStepKeys: [...stage.approvalStepKeys],
-    businessStepKeys: [...stage.businessStepKeys],
-    stepBindings: stepBindingsOf(stage),
-  }));
+/** The proposal approval chain of a configuration: the PROPOSAL stage's steps (BR-10, single source). */
+export const proposalChainOf = (stages: readonly Pick<WorkflowStageConfig, 'key' | 'approvalStepKeys'>[]): string[] => [
+  ...(stages.find((stage) => stage.key === 'PROPOSAL')?.approvalStepKeys ?? []),
+];
+
+/** Approval step that confirms the site condition: the single INTAKE step of a record snapshot (BR-06). */
+export const intakeStepKeyOf = (stageKeys: Partial<Record<string, readonly string[]>> | undefined): string =>
+  stageKeys?.INTAKE?.[0] ?? 'TECH_CONFIRM';
+
+/** Default stages, optionally with other approval steps per stage (templates such as AQUA). */
+export const defaultWorkflowStages = (
+  overrides: Partial<Record<WorkflowStageKey, readonly string[]>> = {},
+): WorkflowStageConfig[] =>
+  DEFAULT_WORKFLOW_STAGES.map((stage) => {
+    const approvalStepKeys = [...(overrides[stage.key] ?? stage.approvalStepKeys)];
+    return {
+      ...stage,
+      approvalStepKeys,
+      businessStepKeys: [...stage.businessStepKeys],
+      stepBindings: stepBindingsOf({ businessStepKeys: stage.businessStepKeys, approvalStepKeys }),
+    };
+  });
 
 export interface TemplateDefinition {
   key: string;
@@ -282,6 +304,8 @@ export interface TemplateDefinition {
   recentRepairDays: number;
   repeatMinRecords: number;
   priceRatio: number;
+  /** Approval steps per stage when they differ from the defaults. */
+  stageSteps?: Partial<Record<WorkflowStageKey, readonly string[]>>;
 }
 
 /** Shared configuration templates a building can copy. */
@@ -319,20 +343,34 @@ export const CONFIG_TEMPLATES: readonly TemplateDefinition[] = [
     repeatMinRecords: 3,
     priceRatio: 1.3,
   },
+  {
+    key: 'AQUA',
+    name: 'Aqua – theo quy trình Ban quản trị',
+    description:
+      'TVKT xác nhận hiện trạng và thẩm định tờ trình, BQT phê duyệt; nghiệm thu gồm BQT và TVKT (D5-QT). Ngưỡng như mẫu Chung cư.',
+    taskDueDays: { CONFIRM_RECORD: 2, APPROVE_PROPOSAL: 2, REVIEW_ACCEPTANCE: 2, APPROVE_PAYMENT: 3 },
+    emergencyLimitVnd: '15000000',
+    emergencyDocHours: 24,
+    recentRepairDays: 90,
+    repeatMinRecords: 2,
+    priceRatio: 1.5,
+    stageSteps: { INTAKE: ['TECH'], PROPOSAL: ['TECH', 'BOARD'], ACCEPTANCE: ['BOARD', 'TECH'], PAYMENT: ['BOARD'] },
+  },
 ];
 
-/** Full configuration from a template (workflow parts reset to the defaults); undefined for an unknown key. */
+/** Full configuration from a template (workflow parts from the template); undefined for an unknown key. */
 export const templateValues = (key: string): ConfigValues | undefined => {
   const template = CONFIG_TEMPLATES.find((row) => row.key === key);
   if (!template) return undefined;
+  const stages = defaultWorkflowStages(template.stageSteps);
   return {
     templateKey: template.key,
     workflowName: null,
     workflowDescription: null,
     taskDueDays: { ...DEFAULT_DUE_DAYS, ...template.taskDueDays },
-    approvalStepKeys: [...DEFAULT_APPROVAL_STEP_KEYS],
+    approvalStepKeys: proposalChainOf(stages),
     workflowApprovalSteps: APPROVAL_STEPS.map((step) => ({ ...step })),
-    workflowStages: defaultWorkflowStages(),
+    workflowStages: stages,
     assignmentRules: [],
     emergencyLimitVnd: template.emergencyLimitVnd,
     emergencyDocHours: template.emergencyDocHours,
@@ -357,6 +395,7 @@ export const sortAssignmentRules = (rules: readonly AssignmentRule[]): Assignmen
 
 /** Capability an approval step needs, by the stage it is used in. */
 export const stageCapability = (stage: WorkflowStageKey): Capability => {
+  if (stage === 'INTAKE') return 'RECORD_CONFIRM';
   if (stage === 'PAYMENT') return 'PAYMENT_DECIDE';
   if (stage === 'ACCEPTANCE') return 'ACCEPTANCE_DECIDE';
   return 'PROPOSAL_DECIDE';
@@ -411,6 +450,11 @@ export function validateConfigRules(values: ConfigValues): FieldErrorDetail[] {
     'approvalStepKeys',
     'Chuỗi phê duyệt cần ít nhất một bước, không trùng bước và chỉ dùng vai trò đã cấu hình.',
   );
+  errors.when(
+    chain.join('|') !== proposalChainOf(values.workflowStages).join('|'),
+    'approvalStepKeys',
+    'Chuỗi phê duyệt phải trùng các bước của giai đoạn Tờ trình.',
+  );
 
   errors.when(
     !isUnique(values.workflowStages.map((s) => s.key)),
@@ -426,6 +470,16 @@ export function validateConfigRules(values: ConfigValues): FieldErrorDetail[] {
       `${path}.approvalStepKeys`,
       'Mỗi giai đoạn cần ít nhất một bước duyệt đã cấu hình và không được trùng bước.',
     );
+    if (stage.key === 'INTAKE') {
+      // BR-06: one confirmer step, whose role can confirm the site condition (a custom role is checked by the service).
+      const step = steps.find((row) => row.key === stage.approvalStepKeys[0]);
+      errors.when(
+        stage.approvalStepKeys.length !== 1 ||
+          (step !== undefined && !step.roleDefId && !roleCapabilities(step.role).includes('RECORD_CONFIRM')),
+        `${path}.approvalStepKeys`,
+        'Giai đoạn Tiếp nhận cần đúng 1 bước xác nhận hiện trạng, do vai trò có quyền xác nhận đảm nhận.',
+      );
+    }
     errors.when(
       !isUnique(stage.businessStepKeys) || stage.businessStepKeys.some((key) => !BUSINESS_STEP_KEYS.has(key)),
       `${path}.businessStepKeys`,

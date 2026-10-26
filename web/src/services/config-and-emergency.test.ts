@@ -7,6 +7,8 @@ import { hasCapability } from '@/domain/permissions';
 import { asUser, recordByCode, run, seedAt } from '@/test/helpers';
 import { uploadAttachment } from './file-service';
 import { getBuildingSettings, getLocationSettings } from './building-service';
+import { withProposalChain, workflowStagesOf } from '@/domain/building-config';
+import type { BuildingConfig } from '@/domain/types';
 
 const expectCode = async (promise: Promise<unknown>, code: string): Promise<AppError> => {
   try {
@@ -32,6 +34,10 @@ const newRecord = async (buildingId: string, locationId: string): Promise<string
   await run('saveRecordDraft', 'REPAIR_RECORD', id, { attachmentIds: [photo.id] });
   return id;
 };
+
+/** BR-10: a new approval chain travels with its PROPOSAL stage, as the settings screen sends it. */
+const chainStages = (config: BuildingConfig, chain: readonly string[]) =>
+  withProposalChain(workflowStagesOf(config.workflowStages, config.approvalStepKeys), chain);
 
 describe('building configuration, roles and emergency repairs', () => {
   beforeEach(async () => {
@@ -62,7 +68,7 @@ describe('building configuration, roles and emergency repairs', () => {
     asUser(USER_ID.ADMIN);
     const settings = await getBuildingSettings('bld-a');
     const approvalStepKeys = ['BOARD', 'TECH'] as const;
-    await run('updateBuildingConfig', 'BUILDING', 'bld-a', { ...settings.config, approvalStepKeys });
+    await run('updateBuildingConfig', 'BUILDING', 'bld-a', { ...settings.config, approvalStepKeys, workflowStages: chainStages(settings.config, approvalStepKeys) });
 
     asUser(USER_ID.BQL_A);
     const newId = await newRecord('bld-a', 'loc-a-5');
@@ -106,6 +112,7 @@ describe('building configuration, roles and emergency repairs', () => {
       ...settings.config,
       workflowApprovalSteps: [...(settings.config.workflowApprovalSteps ?? []), customStep],
       approvalStepKeys: [customStep.key],
+      workflowStages: chainStages(settings.config, [customStep.key]),
     });
 
     asUser(USER_ID.BQL_A);

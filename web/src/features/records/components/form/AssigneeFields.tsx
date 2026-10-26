@@ -8,7 +8,7 @@ import type { ApprovalStepKey, Role } from '@/domain/constants';
 import type { FieldErrors } from '@/domain/errors';
 import type { User } from '@/domain/types';
 import { useReferenceData } from '@/hooks/useReferenceData';
-import { activeUsersInRole } from './record-form-schema';
+import { activeConfirmersIn } from './record-form-schema';
 import type { AssigneeField, RecordFormValues } from './record-form-schema';
 import { ReadOnlyValue } from './ReadOnlyValue';
 
@@ -30,7 +30,7 @@ interface AssigneeFieldDef {
 }
 
 /** Technical confirmation is separate; approval assignees come from the workflow rules. */
-const FIELDS: readonly AssigneeFieldDef[] = [{ field: 'confirmationUserId', role: 'TECH_CONFIRMER', label: 'Kỹ thuật xác nhận', placeholder: 'Chọn kỹ thuật' }];
+const FIELDS: readonly AssigneeFieldDef[] = [{ field: 'confirmationUserId', role: 'TECH_CONFIRMER', label: 'Người xác nhận hiện trạng', placeholder: 'Theo cấu hình tòa (tự động)' }];
 
 const TECHNICAL_FIELD = FIELDS[0];
 
@@ -47,13 +47,13 @@ export const AssigneeFields = ({ form, users, managerUserId, editable, serverErr
   };
   const hint = editable ? 'Chỉ hiển thị người còn hoạt động, đúng vai trò và cùng tòa.' : 'Hồ sơ đã gửi: đổi người bằng chức năng “Giao lại” ở trang chi tiết.';
   const renderField = (def: AssigneeFieldDef) => {
-    const candidates = activeUsersInRole(users, def.role, buildingId);
+    const candidates = activeConfirmersIn(users, buildingId);
     const id = `rf-${def.field}`;
     return (
       <Field key={def.field} label={def.label} htmlFor={id} error={formState.errors[def.field]?.message ?? serverErrors[def.field]}>
         {editable ? (
           <NativeSelect id={id} {...bindSelect(form, def.field)}>
-            <option value="">{candidates.length === 0 ? 'Không có người cùng vai trò trong tòa' : def.placeholder}</option>
+            <option value="">{def.placeholder}</option>
             {withCurrent(candidates, watch(def.field)).map((user) => (
               <option key={user.id} value={user.id}>
                 {optionLabel(user)}
@@ -81,7 +81,7 @@ export const AssigneeFields = ({ form, users, managerUserId, editable, serverErr
         <div className="rounded-xl border border-line bg-surface-2/35 p-3.5 sm:p-4">
           <div className="mb-3 flex items-start gap-3">
             <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-good-soft text-good"><CheckCircle2 className="size-4.5" aria-hidden /></span>
-            <div className="min-w-0"><p className="text-sm font-semibold text-ink">Xác nhận kỹ thuật</p><p className="mt-0.5 text-xs text-ink-2">Kỹ thuật kiểm tra hiện trạng trước khi hồ sơ bước vào phê duyệt.</p></div>
+            <div className="min-w-0"><p className="text-sm font-semibold text-ink">Xác nhận kỹ thuật</p><p className="mt-0.5 text-xs text-ink-2">Người kiểm tra hiện trạng trước khi hồ sơ bước vào phê duyệt; mặc định theo cấu hình tòa.</p></div>
           </div>
           {renderField(TECHNICAL_FIELD)}
         </div>

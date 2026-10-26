@@ -1,6 +1,7 @@
 import { APPROVAL_STEP_SLOT, REPAIR_ACTIONS, approvalStepsFor, resolveSlots, workflowAcceptanceReason, workflowApprovalReason, workflowPaymentReason } from '@/domain/actions';
 import type { RepairAction } from '@/domain/actions';
-import { ATTACHMENT_PURPOSE_LABEL, REPAIR_FINAL_STATUSES, REPAIR_STATUS_LABEL } from '@/domain/constants';
+import { APPROVAL_STEPS, ATTACHMENT_PURPOSE_LABEL, REPAIR_FINAL_STATUSES, REPAIR_STATUS_LABEL } from '@/domain/constants';
+import { intakeStepKeyOf } from '@/domain/building-config';
 import type { AttachmentPurpose, SubjectType, TaskKind } from '@/domain/constants';
 import { forbidden, invalidTransition, validationError } from '@/domain/errors';
 import { SLOT_ROLE, canAccessLocation, denyReason, slotUserId } from '@/domain/permissions';
@@ -166,6 +167,41 @@ export const firstActiveForApprovalStep = (
       .at(0)?.id;
   }
   return firstActiveInRole(ctx, step.role, buildingId, locationId);
+};
+
+/** Confirmer step of a record (BR-06): its INTAKE step looked up in the snapshot, then the built-in steps. */
+export const intakeStepOf = (record: Pick<RepairRecord, 'workflowStageApprovalStepKeys' | 'workflowApprovalSteps'>): WorkflowApprovalStep => {
+  const key = intakeStepKeyOf(record.workflowStageApprovalStepKeys);
+  const library = [...(record.workflowApprovalSteps ?? []), ...APPROVAL_STEPS];
+  return library.find((step) => step.key === key) ?? APPROVAL_STEPS[0];
+};
+
+/** BR-07: eligible for the INTAKE step, or, when nobody is, active as BQT in the area (the creation fallback). */
+export const isValidConfirmer = (
+  ctx: CommandContext,
+  userId: string | undefined,
+  step: WorkflowApprovalStep,
+  buildingId: string,
+  locationId?: string,
+): boolean => {
+  if (isActiveUserForApprovalStep(ctx, userId, step, buildingId, locationId)) return true;
+  const nobodyEligible = !firstActiveForApprovalStep(ctx, step, buildingId, locationId);
+  return nobodyEligible && isActiveUserInRole(ctx, userId, 'OWNERS_BOARD', buildingId, locationId);
+};
+
+export const BOARD_FALLBACK_REASON = 'Không có người xác nhận theo cấu hình, dùng BQT';
+
+/** BR-07 default confirmer: first eligible for the INTAKE step, else the BQT holder (flagged), else nobody. */
+export const defaultConfirmerOf = (
+  ctx: CommandContext,
+  step: WorkflowApprovalStep,
+  buildingId: string,
+  locationId?: string,
+): { userId: string; boardFallback: boolean } => {
+  const configured = firstActiveForApprovalStep(ctx, step, buildingId, locationId);
+  if (configured) return { userId: configured, boardFallback: false };
+  const board = firstActiveInRole(ctx, 'OWNERS_BOARD', buildingId, locationId);
+  return { userId: board ?? '', boardFallback: Boolean(board) };
 };
 
 export const defaultWorkflowApprovers = (

@@ -14,7 +14,6 @@ import { RoleDefinition } from '../../modules/roles/entities/role-definition.ent
 import { CUSTOM_ROLE_PREFIX, RolesService } from '../../modules/roles/roles.service';
 import { User } from '../../modules/users/entities/user.entity';
 import {
-  DEMO_APPROVAL_STEP_KEYS,
   DEMO_ASSIGNMENT_RULES,
   DEMO_BUILDING_TEMPLATES,
   DEMO_BUILDINGS,
@@ -132,7 +131,6 @@ export class DatabaseSeedService {
         repo.create({
           buildingId: building.id,
           ...values,
-          approvalStepKeys: [...DEMO_APPROVAL_STEP_KEYS],
           assignmentRules,
           version: 1,
           updatedBy: null,
