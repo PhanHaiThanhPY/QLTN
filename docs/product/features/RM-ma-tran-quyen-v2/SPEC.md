@@ -27,7 +27,8 @@ Hệ thống phân quyền và giao người theo đúng quy trình thật của
 
 - **BR-01:** Ma trận vai trò → quyền đúng như ADR §3, **giống hệt** ở API và web.
 - **BR-02:** Vai trò hệ thống mới **Kế toán** (`ACCOUNTANT`, mã dòng `KTOAN`), có `VIEW`, `REPORT_VIEW`, `PAYMENT_CONFIRM`, `FUND_OPERATE`. Seed demo thêm tài khoản `KTOAN-A` cho tòa A, mật khẩu là `SEED_DEMO_PASSWORD`. Kế toán được dùng trong luật giao việc (PD-07 Q3).
-- **BR-03:** Chỉ ADMIN có `BUILDING_CONFIG`: cấu hình tòa, áp mẫu, Workflow Designer, xem lịch sử cấu hình. ADMIN và BQL có `LOCATION_MANAGE` để quản lý tầng, khu vực, vị trí (PD-07 Q7).
+- **BR-03:** Chỉ ADMIN có `BUILDING_CONFIG` để **sửa** cấu hình tòa, áp mẫu và dùng Workflow Designer. ADMIN và BQL có `LOCATION_MANAGE` để quản lý tầng, khu vực, vị trí (PD-07 Q7).
+- **BR-03a (PD-13):** **Xem** lịch sử tòa (`GET /buildings/:id/audit`, gồm cả cấu hình và vị trí) mở cho người có `BUILDING_CONFIG` **hoặc** `LOCATION_MANAGE`. BQL xem đúng màn lịch sử hiện có, giống ADMIN, ở chế độ chỉ đọc. **Không làm màn hình mới.**
 - **BR-04:** Vai trò tùy chỉnh **không** tự được quyền mới của vai trò gốc. Màn Phân quyền ghi "Có quyền mới chưa bật: …" trên vai trò tùy chỉnh có vai trò gốc vừa được thêm quyền (PD-07 Q5).
 - **BR-05:** Bảng ma trận trên web ghi đúng quyền thực tế. Dòng "lập đề nghị thanh toán" đổi sang `PAYMENT_RECORD`; thêm cột Kế toán và các dòng `PAYMENT_CONFIRM`, `FUND_OPERATE`, `LOCATION_MANAGE`.
 - **BR-06 (RM-S2):**
@@ -66,7 +67,8 @@ Hệ thống phân quyền và giao người theo đúng quy trình thật của
 |---|---|---|
 | AC-1.1 | unit | Ma trận ở API và web giống hệt ADR §3. Có một test so hai bản. |
 | AC-1.2 | e2e | `GET /roles` có dòng hệ thống `KTOAN` (Kế toán) với đúng 4 quyền. Seed có tài khoản `KTOAN-A`, đăng nhập được. Số tài khoản seed trong `auth.e2e` là 10. |
-| AC-1.3 | e2e | `bql-a` nhận 403 ở `PUT /buildings/:id/config`, `POST …/config/apply-template`, `PUT /building-configs/workflow`, `GET /building-configs`, `GET /buildings/:id/audit`. `admin-demo` gọi các route này trả 200. |
+| AC-1.3 | e2e | `bql-a` nhận 403 ở `PUT /buildings/:id/config`, `POST …/config/apply-template`, `PUT /building-configs/workflow`, `GET /building-configs`. `admin-demo` gọi các route này trả 200. **`GET /buildings/:id/audit`: `bql-a` và `admin-demo` đều nhận 200 cho tòa trong phạm vi, 404 cho tòa ngoài phạm vi; `kt-a` nhận 403** (PD-13). |
+| AC-1.3a | test web | BQL thấy khối lịch sử tòa và vị trí ở cùng chỗ và cùng nội dung như ADMIN, chỉ đọc. BQL không có nút sửa cấu hình (PD-13). |
 | AC-1.4 | e2e | `bql-a` tạo, sửa, ngừng dùng được vị trí của tòa A (200). `kt-a` gọi thì nhận 403. |
 | AC-1.5 | e2e | Tạo tài khoản vai trò Kế toán thành công. Tài khoản này xem được danh sách hồ sơ trong phạm vi, và nhận 403 khi tạo hồ sơ hoặc khi xác nhận. |
 | AC-1.6 | e2e | Vai trò tùy chỉnh dựa trên BQT, tạo trước khi đổi, **không** có `ACCEPTANCE_DECIDE`, `RECORD_CONFIRM`, `PAYMENT_CONFIRM` sau khi đổi. `VT-01` (dựa trên BQL) vẫn hoạt động và mất `BUILDING_CONFIG`. |
@@ -97,3 +99,10 @@ Chỉ chạy các test liên quan, không chạy toàn bộ suite.
 - [ ] Web: các test menu, ma trận và nghiệm thu bị ảnh hưởng (ADR §6).
 - [ ] Migration chạy hai lần không có thay đổi thêm, trên DB e2e riêng.
 - [ ] Không còn tham chiếu `DEFAULT_APPROVAL_STEP_KEYS` và `DEMO_APPROVAL_STEP_KEYS` (grep).
+
+## 6. Lịch sử
+
+| Ngày | Thay đổi |
+|---|---|
+| 26/10/2026 | Bản đầu (PD-05). Tạm dừng (PD-08), chủ dự án duyệt (PD-10). |
+| 26/10/2026 | PD-13: BQL được **xem** lịch sử tòa như ADMIN, dùng màn lịch sử hiện có (BR-03a, AC-1.3 sửa, thêm AC-1.3a). Thay đổi này đến khi RM-S1 đang review, nên đưa vào vòng sửa của RM-S1. |

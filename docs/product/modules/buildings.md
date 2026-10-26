@@ -56,6 +56,7 @@
 | BG-04 | Thu hẹp phạm vi bộ phận làm quy tắc giao việc mất hiệu lực mà không báo | organization OG-01 | Trung bình | Khi lưu cấu hình hoặc thu hẹp phạm vi bộ phận: báo các quy tắc không còn ai khớp. Đưa vào SPEC cấu hình (BU-S2) |
 | BG-05 | Không có phiên bản quy trình để xem và quay lại | BU-10; D2 nhóm 16 | Trung bình | BU-S2. Lịch sử audit đã có `changes`, có thể dựng phiên bản từ đó |
 | BG-06 | Ngưỡng cảnh báo B11 chỉ chạy ở web demo, API chưa dùng | `repair-alerts.ts` | Thấp (B11 chưa nối API) | Xử lý khi làm module B11 |
+| BG-08 | ~~BQL không còn xem được lịch sử vị trí sau RM-S1~~ **Chủ dự án quyết (PD-13):** BQL xem lịch sử tòa giống ADMIN, chỉ đọc, dùng màn hiện có. Làm trong vòng sửa RM-S1 | dev-build hỏi lúc 09:28Z | — | Không cần BU-S3 |
 | BG-07 | Ngừng dùng vị trí không cảnh báo nếu vị trí đó còn hồ sơ hoặc thiết bị đang mở | `locations.service.ts` | Thấp | Hiện số hồ sơ đang mở khi ngừng dùng; không chặn |
 
 **Đối chiếu D1/D2:** D1 tr. 30 minh họa "Thiết kế quy trình · Sửa chữa · Bước 3/6", khớp với mô hình giai đoạn và bước hiện có. Ngoài phần phiên bản quy trình (BG-05), không thấy chỗ lệch nghiệp vụ.

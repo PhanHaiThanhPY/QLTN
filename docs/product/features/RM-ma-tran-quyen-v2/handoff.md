@@ -60,7 +60,34 @@ Stacked on `feature/us-s1-reset-password` (`d77a6f8`). Review the range `d77a6f8
 
 ### Kết quả review (dev-review)
 
-_Chưa có._
+**FAILED — 26/10/2026.** Review range `d77a6f8..072df32`, bỏ qua `ca856c0` (docs-only); evidence `eb3934d`. PD-13 cập nhật SPEC trong lúc review.
+
+- API format/lint/typecheck đạt; unit `7 suites / 43 tests` đạt.
+- API focused e2e `auth`, `catalog-admin`, `record-confirmations`, `auth-change-password`, `users-reset-password`, `role-matrix-v2` đạt `6 suites / 57 tests` trên DB cô lập `qltn_review_rm_s1_e2e`.
+- Web full Vitest đạt `45 files / 339 tests`; `tsc -b` đạt.
+- `git diff --check` đạt. Migration v2 được chạy lại trong e2e AC-1.6 và không phát sinh lỗi; role matrix API/web parity, Kế toán, capability gates, custom-role snapshot và BQL location permissions đều được kiểm chứng.
+- **Finding F-RM-S1-01 (PD-13 / BR-03a / AC-1.3, AC-1.3a):** Candidate vẫn giữ `GET /buildings/:id/audit` ở `BUILDING_CONFIG` và `getLocationSettings` chỉ nạp `canSeeHistory` cho `BUILDING_CONFIG`, nên BQL (dù có `LOCATION_MANAGE`) nhận 403 và không thấy khối "Lịch sử thay đổi vị trí". Sửa API authorization để BQL đọc audit trong phạm vi (vẫn 403 ngoài phạm vi/cho KT), và sửa web để BQL thấy cùng khối lịch sử chỉ đọc như ADMIN, không mở quyền sửa cấu hình. Bổ sung e2e AC-1.3 và test web AC-1.3a.
+- Grep vẫn thấy `DEFAULT_APPROVAL_STEP_KEYS`/`DEMO_APPROVAL_STEP_KEYS`; việc loại bỏ hai hằng và hợp nhất approval-chain là BR/AC của RM-S2, ngoài review range RM-S1, nên không trả candidate về sửa ở slice này.
+- Không có browser AC trong RM-S1. Các kiểm tra khác đạt nhưng không bù được finding trên.
+
+Candidate RM-S1 cần trả về dev-build để sửa finding F-RM-S1-01 và chạy lại các kiểm tra liên quan.
+
+### Vòng sửa 1 (dev-build)
+
+**Candidate:** code fix `7c337e4` on `feature/rm-s1-role-matrix` (not pushed). Only finding F-RM-S1-01 is addressed.
+
+- API: `GET /buildings/:id/audit` checks `BUILDING_CONFIG` **or** `LOCATION_MANAGE` in the handler, because the capability guard requires every listed capability, then the building scope.
+  - Out of scope → **404**, as SPEC AC-1.3 states. The review note said "403 ngoài phạm vi"; the SPEC wins.
+  - No capability → 403.
+  - Configuration routes are unchanged (ADMIN only).
+- Web: `getLocationSettings` always loads the building history (its caller already needs `LOCATION_MANAGE`). The locations screen shows the same "Lịch sử thay đổi vị trí" card to BQL and ADMIN. `canSeeHistory` was removed.
+
+| AC | Evidence | Result |
+|---|---|---|
+| AC-1.3 (PD-13) | `role-matrix-v2.e2e-spec.ts` "AC-1.3 (PD-13)": `bql-a` and `admin-demo` get 200 for building A with **identical** rows; `bql-a` on building B → 404; `kt-a` → 403; `bql-a` config still → 403. The 403 on `GET …/audit` was removed from the first AC-1.3 test. | Pass |
+| AC-1.3a | `web/src/services/config-and-emergency.test.ts` "AC-1.3a (PD-13)" (mock): BQL and ADMIN get the same history ids from `getLocationSettings`, including the new `createLocation`; BQL is still refused `getBuildingSettings`; TVKT refused. `web/src/features/buildings/LocationsPage.history.test.tsx`: the card renders with the event and no configuration action. | Pass |
+
+**Checks rerun:** `api-qltn` format/lint/typecheck OK, unit 43/43, e2e `role-matrix-v2` + `catalog-admin` + `auth` 45/45 (isolated DB), build OK · `web` `vitest run src/services src/features/buildings src/features/admin src/app src/domain` 26 files, 238/238, `tsc -b` OK.
 
 ### Đóng (PM/BA)
 
