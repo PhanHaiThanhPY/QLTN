@@ -107,3 +107,29 @@ Slices S2-S4 and everything in SPEC section 2.2. Do not commit to main or push u
 - **Phần còn lại được chấp nhận:** reviewer không chạy lại được script trình duyệt vì seat review không có Chrome. Đây là giới hạn môi trường; lần chạy của dev-build và ảnh chụp được giữ làm bằng chứng.
 - **Thay đổi ngoài gói S1 nhưng khớp SPEC §4:** mọi thao tác ghi hồ sơ, gồm cả lưu nháp, gửi và rút đã có, nay trả 404 khi vị trí hồ sơ nằm ngoài `locationIds` (nếu có) của người thực hiện. GET chi tiết và danh sách vẫn chỉ xét phạm vi tòa. PM/BA chấp nhận vì SPEC §4 yêu cầu "phạm vi tòa và khu vực". Phạm vi khu vực cho các thao tác đọc là điểm mở, sẽ xử lý khi rà phân quyền (OD-03, OD-10).
 - **Việc tiếp theo:** chưa tạo. S2 chỉ giao khi chủ dự án yêu cầu. Việc merge `feature/b03-s1-confirmation` cũng do chủ dự án quyết định.
+
+---
+
+## v2: S2, S3, S4 (SPEC v2 đã duyệt, PD-12)
+
+**Thứ tự:**
+1. RM-S1, rồi RM-S2.
+2. S2: workflow riêng, giao 26/10/2026.
+3. S3, rồi S4: PM/BA giao sau khi slice trước đóng.
+
+Mỗi slice làm trên một nhánh mới xếp chồng lên nhánh trước. Không push nếu chủ dự án chưa yêu cầu. Chỉ chạy các test liên quan.
+
+### S2: Tờ trình và chuỗi duyệt
+
+#### Bằng chứng triển khai (dev-build)
+
+_Chưa có._
+
+#### Kết quả review (dev-review)
+
+_Chưa có._
+
+#### Đóng (PM/BA)
+
+_Chưa có._
+

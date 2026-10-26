@@ -1,246 +1,280 @@
-# SPEC — Luồng hồ sơ sửa chữa sau "Chờ xác nhận" (B03–B09, API)
+# SPEC — Luồng hồ sơ sửa chữa sau "Chờ xác nhận" (B03–B09), phiên bản 2
 
-**Chủ sở hữu:** PM/BA (`dev-pm-ba@qltn`) · **Cập nhật:** 26/10/2026 · **Trạng thái:** `Đã duyệt`  
-**Người duyệt:** chủ dự án (người dùng), 26/10/2026, dev-build chuyển lời lúc 07:13Z · **Quyết định nền:** [PD-03, PD-04](../../DECISIONS.md)
+**Chủ sở hữu:** PM/BA · **Cập nhật:** 26/10/2026 · **Trạng thái:** `Đã duyệt`, chủ dự án duyệt ngày 26/10/2026 (PD-12)
 
-## 1. Mục tiêu
+**Phiên bản**
+- v1 được duyệt 26/10/2026 (PD-04), lưu tại [supporting/SPEC-v1-2026-10-26.md](supporting/SPEC-v1-2026-10-26.md).
+- v2 thay toàn bộ S2–S4 của v1. S1 của v1 **đã triển khai**, xem [handoff.md](handoff.md).
 
-Hồ sơ sửa chữa trên API thật đi được từ `PENDING_CONFIRMATION` đến trạng thái cuối: xác nhận hiện trạng, tờ trình và chuỗi duyệt, thi công, nghiệm thu, thanh toán, đóng hồ sơ. Hành vi giống web demo đã qua UAT nội bộ ngày 20/10. Những chỗ D1 khác demo được làm theo **quy tắc tạm** (mục 3), mỗi quy tắc ghi OD sẽ thay nó.
+**Căn cứ**
+- [PRODUCT-DEFAULTS](../../PRODUCT-DEFAULTS.md), đã duyệt theo PD-09: DF-01 đến DF-08, DF-10.
+- [ADR-0001](../../../engineering/adr/ADR-0001-role-matrix-v2.md), mục R3 và R4.
+- Biểu mẫu khách D5: tờ trình (D5-TT), biên bản nghiệm thu (D5-NT), thư đề nghị thanh toán (D5-TDN), quy trình hồ sơ kỹ thuật (D5-QT).
 
-Hiện API đã có: tạo, lưu nháp, ảnh hiện trường, gửi (`DRAFT` → `PENDING_CONFIRMATION`), rút, danh sách, bộ đếm (`api-qltn/README.md`, "Đợt 2"). SPEC này không đổi các phần đó, trừ những chỗ ghi rõ.
+**Phụ thuộc:** RM-S1 và RM-S2 phải xong trước (ma trận quyền v2, người xác nhận theo cấu hình, một nguồn cho chuỗi duyệt). v2 dùng mẫu cấu hình `AQUA` làm ví dụ chuẩn.
+
+## 1. Thay đổi so với v1
+
+| Chủ đề | v1 (quy tắc tạm theo demo) | v2 | Căn cứ |
+|---|---|---|---|
+| Tờ trình | 1 số tiền, 1 nhà thầu | Bảng báo giá theo hạng mục, **mặc định 3 nhà thầu**, có thuế; BQL đề xuất một nhà thầu, **BQT được chọn nhà thầu khác** | DF-03, D5-TT, D5-QT bước 4 |
+| BQT duyệt | Bấm duyệt | Bắt buộc đính kèm **biên bản họp BQT**; BQT ký | DF-02, DF-07, PD-07 Q8 |
+| Thi công | Bắt đầu ngay | Khi bắt đầu, BQL phát **thông báo kế hoạch** cho BQT | DF-05, D5-QT bước 6 |
+| Nghiệm thu | KT và TVKT, song song khi đúng cặp | **Biên bản** gồm các thành phần cấu hình theo tòa (mẫu AQUA: BQL, BQT, TVKT), quyết định song song, mọi thành phần phải đạt, mỗi người ký | DF-06, D5-NT, ADR §4.4, PD-07 Q1 |
+| Thanh toán | Một lần, đúng đủ, BQL ghi nhận | **Nhiều đợt**: tạm ứng và quyết toán; mỗi đợt có đề nghị, BQT duyệt, rồi BQT hoặc Kế toán **xác nhận đã chuyển khoản**; quyết toán cần đủ hồ sơ | DF-08, D5-TDN, D5-QT bước 9–10, PD-07 Q4 |
+| Số lần trình | Tối đa 3 (quy tắc tạm) | Tối đa 3, **đã có căn cứ** | DF-04, D5-QT |
 
 ## 2. Phạm vi
 
-### 2.1 Trong phạm vi
+**Trong phạm vi.** Mỗi slice gồm API, nối web ở chế độ `api`, test e2e và cập nhật README.
 
-Mỗi slice gồm API, nối web ở chế độ `api` (giao diện giữ như demo), test e2e và cập nhật `api-qltn/README.md`.
-
-| Slice | Nội dung | Hành động (tên theo `web/src/domain/actions.ts`) |
+| Slice | Nội dung | Gồm phần ADR |
 |---|---|---|
-| S1 | KT xác nhận hiện trạng | `requestRecordUpdate`, `confirmRepair`, `closeNoRepair` |
-| S2 | Tờ trình và chuỗi duyệt từ snapshot cấu hình | `saveProposalDraft`, `submitProposal`, `resubmitProposal`, `approveProposal`, `requestProposalUpdate`, `rejectProposal` |
-| S3 | Thi công, nghiệm thu, khắc phục | `startConstruction`, `updateConstruction`, `submitAcceptance`, `passAcceptance`, `failAcceptance`, `saveRepairEvidence`, `resubmitAcceptance` |
-| S4 | Thanh toán và đóng hồ sơ | `savePaymentDraft`, `submitPaymentRequest`, `approvePayment`, `requestPaymentUpdate`, `recordPayment`, `completeRecord` |
+| **S2** | Tờ trình theo D5-TT, chuỗi duyệt theo snapshot, biên bản họp BQT, BQT chọn nhà thầu, ký, các vòng bổ sung, từ chối, tối đa 3 lần | R3: bản đồ người giữ bước thống nhất; `BOARD_MINUTES` |
+| **S3** | Bắt đầu thi công kèm thông báo kế hoạch, cập nhật tiến độ, biên bản nghiệm thu nhiều thành phần, khắc phục và nghiệm thu lại | R3: bước `MANAGER` |
+| **S4** | Thanh toán nhiều đợt (tạm ứng, quyết toán), xác nhận chuyển khoản, đóng hồ sơ | R4: `PAYMENT_CONFIRM` |
 
-Làm theo thứ tự S1 → S4. Mỗi slice đi qua review riêng ([PROCESS.md](../../../PROCESS.md) §2) trước khi bắt đầu slice sau.
+**Ngoài phạm vi.** Mỗi mục làm bằng SPEC riêng.
+- Xử lý khẩn cấp B06 (DF-09).
+- Phát hành thông báo "chưa xử lý" cho cư dân sau lần từ chối thứ 3 (DF-04). Ở đây hồ sơ chỉ chuyển sang `UNRESOLVED`.
+- Giao lại người xử lý và US-S2 (DF-12).
+- Xuất tờ trình, biên bản, đề nghị ra PDF hoặc bản in theo mẫu (DF-18). Ở đây chỉ có màn xem trên web.
+- Hạn xử lý, công việc cá nhân, thông báo ngoài hệ thống.
+- Khoản chi **vượt** số được duyệt: chặn lại. Muốn vượt thì làm hồ sơ bổ sung riêng.
 
-### 2.2 Ngoài phạm vi
+## 3. Người giữ bước
 
-| Nội dung | Ghi chú |
-|---|---|
-| Xử lý khẩn cấp B06 (`startEmergencyRepair`, trạng thái `EMERGENCY_IN_PROGRESS`, hạn bổ sung chứng từ, lý do trễ) | SPEC riêng. Ở SPEC này, mọi nguồn và nhánh `EMERGENCY_IN_PROGRESS` không được mở. |
-| Phát hành thông báo "chưa xử lý" (`saveUnresolvedNotice`, `issueUnresolvedNotice`) | SPEC riêng. Ở đây hồ sơ chỉ chuyển sang `UNRESOLVED` (BR-08). |
-| Giao lại người xử lý (`reassignRepair`), đồng bộ phân công khi thu hẹp vai trò hoặc khóa tài khoản, `replaceManager` (việc còn tồn của Đợt 1) | SPEC riêng. Ở đây chỉ chặn trình khi người duyệt không hợp lệ (BR-05). |
-| Hạn xử lý từng bước, danh sách công việc cá nhân (B02), lịch (B04), thông báo (B14) | Demo có tạo task kèm hạn; API chưa có module task. |
-| Dự toán theo hạng mục, nghiệm thu theo hạng mục kiểm tra, biên bản nghiệm thu do hệ thống tạo, thanh toán nhiều đợt, vai trò Kế toán | Theo D1, chờ OD-05, OD-10–OD-13 (xem DG-01–DG-04). |
-| Ký số, kết nối ngân hàng | Loại trừ theo D1 tr. 45, D2 mục 04. |
+Theo ADR §4.3, mỗi hồ sơ mới có bản đồ **khóa bước → người giữ** (`approvalAssigneeUserIds`), chụp lúc tạo, cho mọi bước kể cả `TECH`, `BOARD`, `MANAGER`. Hồ sơ cũ vẫn đọc theo cột cũ.
 
-## 3. Quy tắc tạm
-
-Các quy tắc dưới đây lấy theo demo. Khi OD tương ứng được chốt, SPEC này sẽ có phiên bản mới thay quy tắc đó. Thiết kế dữ liệu **không được** chặn đường thay thế đã ghi.
-
-| ID | Quy tắc tạm (theo demo) | Thay bởi | Ràng buộc thiết kế để thay về sau |
+| Bước | Vai trò | Dùng ở giai đoạn | Người giữ |
 |---|---|---|---|
-| TR-01 | Vai trò trong luồng chỉ gồm BQL, KT, TVKT, BQT và vai trò tùy chỉnh trong snapshot. BQL ghi nhận thanh toán. | OD-10 | Người giữ bước lấy từ snapshot theo khóa bước, không gắn cứng tên vai trò. |
-| TR-02 | Tờ trình có một số tiền `amountVnd` và một `contractorName`. | OD-11 | Lần trình lưu thành bản ghi riêng; có thể thêm bảng hạng mục mà không đổi ý nghĩa `amountVnd` (= tổng). |
-| TR-03 | Nghiệm thu: mỗi người duyệt chọn đạt hoặc không đạt, kèm ghi chú; KT phải đính kèm biên bản khi chọn đạt. | OD-12 | Mỗi lượt nghiệm thu lưu danh sách kết luận (`checks`) dạng mảng, không phải hai cột cố định. |
-| TR-04 | Người trình ký ảnh chữ ký (chuột hoặc cảm ứng) khi trình tờ trình. Không ký ở bước khác. | OD-13 | Chữ ký gắn với lần trình, người ký và thời điểm, lưu ở bảng chữ ký riêng có trường loại tài liệu. Chữ ký không phải tệp đính kèm (BR-04). |
-| TR-05 | Thanh toán một lần, đúng bằng số đã duyệt. Đóng hồ sơ khi tổng đã trả bằng số đã duyệt. | OD-05 | Khoản thanh toán là bảng nhiều dòng theo đề nghị. Điều kiện đóng tính bằng tổng, không bằng "có đúng 1 dòng". |
-| TR-06 | Mỗi hồ sơ được trình tối đa 3 lần. Lần thứ 3 không được "yêu cầu bổ sung"; từ chối lần thứ 3 thì hồ sơ thành `UNRESOLVED`. | OD-15 | Giới hạn là một hằng số, có thể chuyển vào cấu hình tòa. |
+| `TECH` | TVKT | INTAKE (AQUA), PROPOSAL, ACCEPTANCE | theo luật giao việc |
+| `BOARD` | BQT | PROPOSAL, ACCEPTANCE, PAYMENT; dự phòng cho INTAKE | theo luật giao việc |
+| `MANAGER` (mới) | BQL | chỉ ACCEPTANCE | `managerUserId` |
+| `TECH_CONFIRM` | KT | INTAKE (mẫu STANDARD) | theo luật giao việc |
+| bước tùy chỉnh | theo cấu hình | theo cấu hình | theo luật giao việc |
 
-## 4. Vai trò và người giữ bước
+**Xác nhận chuyển khoản không có người giữ cố định.** Bất kỳ ai có `PAYMENT_CONFIRM` (BQT, Kế toán) trong phạm vi tòa đều được làm (PD-07 Q4).
 
-Hồ sơ đã có snapshot cấu hình tòa, chụp khi tạo: `approvalStepKeys`, `workflowApprovalSteps`, `workflowStageApprovalStepKeys` (theo giai đoạn `PROPOSAL`, `ACCEPTANCE`, `PAYMENT`), `approvalAssigneeUserIds`, cùng các người được giao `managerUserId`, `confirmationUserId`, `consultantUserId`, `boardUserId`. Mọi kiểm tra người giữ bước đọc từ snapshot, **không** đọc cấu hình tòa hiện tại.
+**Thứ tự kiểm tra** giữ như v1 §4: với bước của người giữ, kiểm trạng thái (409) trước, rồi mới kiểm đúng người giữ (403).
 
-| Bước có sẵn | Khóa | Trạng thái chờ | Người giữ bước |
-|---|---|---|---|
-| Kỹ thuật duyệt | `TECH_CONFIRM` | `PENDING_TECH_APPROVAL` | `confirmationUserId` |
-| TVKT thẩm định | `TECH` | `PENDING_TECH_REVIEW` | `consultantUserId` |
-| BQT duyệt | `BOARD` | `PENDING_BOARD_APPROVAL` | `boardUserId` |
-| Bước tùy chỉnh | khóa trong `workflowApprovalSteps` | `PENDING_CUSTOM_APPROVAL` | `approvalAssigneeUserIds[khóa]`; vai trò phải khớp `role`, hoặc `roleDefId` nếu bước có trường này |
+## 4. Dữ liệu nghiệp vụ
 
-Thứ tự kiểm tra. Mỗi lần từ chối trả `details.reason` cố định (mục 7).
+### 4.1 Tờ trình (D5-TT)
 
-| Loại hành động | Thứ tự |
+| Trường | Bắt buộc khi trình | Ghi chú |
+|---|---|---|
+| Kính gửi | có | mặc định "Ban quản trị tòa «tên tòa»" |
+| Người trình | tự động | người quản lý hồ sơ (BQL) |
+| Người lập | có | mặc định người trình |
+| Thẩm định nội dung | tự động | người giữ bước TVKT đầu tiên trong chuỗi, nếu có |
+| Loại tờ trình | có | `SUA_CHUA` (Sửa chữa), `THAY_THE` (Thay thế thiết bị), `KHAC` (Khác). **Giả định**: D5-TT để trống |
+| Ngân sách | có | `KINH_PHI_BAO_TRI` (Kinh phí bảo trì phần sở hữu chung), `KINH_PHI_VAN_HANH`, `KHAC`. **Giả định**: D5-TT để trống; TT05 Điều 34 nói về hạng mục được dùng kinh phí bảo trì |
+| Nội dung xin phê duyệt | có | 10–2000 ký tự |
+| Đề xuất và đánh giá | có | 10–2000 ký tự |
+| Hạn mong muốn phê duyệt | không | ngày |
+| Lần trình | tự động | 1–3 |
+| Ngày trình | tự động | — |
+
+### 4.2 Bảng báo giá
+
+- **Hạng mục** là danh sách dùng chung cho mọi nhà thầu, 1–50 dòng: STT (tự động), tên hạng mục (≤ 200 ký tự), đơn vị (≤ 20 ký tự), số lượng (số > 0, tối đa 3 chữ số thập phân).
+- **Nhà thầu** từ 1 đến 5. Mỗi nhà thầu có:
+  - tên (≤ 200 ký tự);
+  - đơn giá cho **từng** hạng mục (số nguyên VND ≥ 0);
+  - chi phí khác (số nguyên VND ≥ 0, mặc định 0);
+  - thuế (số nguyên VND ≥ 0);
+  - ít nhất 1 tệp báo giá (mục đích `QUOTATION`).
+- **Thành tiền một dòng** = làm tròn nửa lên (số lượng × đơn giá) về đồng.
+  - **Tổng của nhà thầu** = Σ thành tiền + chi phí khác + thuế (đã gồm VAT).
+  - Hệ thống tự tính; client gửi giá trị khác thì bị bỏ qua.
+- **Số nhà thầu:** dưới 3 thì bắt buộc có "Lý do không đủ 3 báo giá" (10–1000 ký tự).
+- **Nhà thầu đề xuất:** BQL chọn đúng 1. **Số trình** = tổng của nhà thầu đề xuất.
+- **Tệp bắt buộc khi trình:** ít nhất 1 "Biên bản ghi nhận sự việc" (mục đích `INCIDENT_MINUTES`). Tệp tờ trình (`PROPOSAL`) không bắt buộc, vì hệ thống hiển thị tờ trình từ dữ liệu.
+- Tiền gửi và nhận dạng chuỗi số nguyên. Số lượng dạng chuỗi thập phân.
+
+### 4.3 Biên bản nghiệm thu (D5-NT)
+
+Mỗi lượt nghiệm thu là một biên bản gồm:
+- thời gian và địa điểm nghiệm thu (bắt buộc khi gửi nghiệm thu);
+- nội dung nghiệm thu: công việc và hạng mục (10–2000 ký tự);
+- thành phần bắt buộc: các bước `ACCEPTANCE` trong snapshot;
+- thành phần khác: chữ tự do, ví dụ "Đại diện cư dân: …";
+- ảnh kết quả;
+- với mỗi thành phần: kết luận ĐẠT hoặc KHÔNG ĐẠT, điểm cần lưu ý, chữ ký, thời điểm;
+- kết luận chung, do hệ thống tính.
+
+Khi mọi thành phần đã quyết định, biên bản bị khóa.
+
+### 4.4 Đợt thanh toán (D5-TDN)
+
+| Trường | Ghi chú |
 |---|---|
-| Người làm là `manager` hoặc `confirmer` | tài khoản còn hoạt động → hồ sơ trong phạm vi tòa và khu vực (ngoài phạm vi thì 404) → capability (403) → đúng người được giao (403) → trạng thái nguồn (409). Giữ thứ tự của `assertRecordAction` hiện có. |
-| Người làm là `APPROVAL_STEP`, `ACCEPTANCE_PENDING` hoặc `PAYMENT_APPROVAL` | tài khoản → phạm vi (404) → capability (403) → **trạng thái nguồn (409)** → đúng người giữ bước hiện tại (403). Lý do: ngoài các trạng thái chờ thì không có "bước hiện tại" để so. |
+| Loại | `TAM_UNG` (tạm ứng) hoặc `QUYET_TOAN` (quyết toán) |
+| Số tiền | số nguyên VND > 0; hệ thống hiện thêm số tiền bằng chữ |
+| Người hưởng: tên tài khoản, số tài khoản, ngân hàng | bắt buộc. Số tài khoản 6–20 chữ số, **giả định** |
+| Nội dung chuyển khoản | bắt buộc, ≤ 210 ký tự. Mặc định "BQT «mã tòa» THANH TOAN CHI PHI «mã hồ sơ»" |
+| Tệp | Tạm ứng: đề nghị tạm ứng của nhà thầu (`PAYMENT_REQUEST`). Quyết toán: công văn đề nghị thanh toán của nhà thầu (`PAYMENT_REQUEST`) **và** hóa đơn GTGT (`INVOICE`). Tờ trình, báo giá đã duyệt và biên bản nghiệm thu đạt được hệ thống tự liên kết |
+| Xác nhận chuyển khoản | ngày ≤ hôm nay, mã tham chiếu, ít nhất 1 chứng từ (`PAYMENT_PROOF`), người xác nhận |
 
 ## 5. Chuyển trạng thái
 
-"Người làm" dùng cột `slot` của demo: `manager` = `managerUserId`; `confirmer` = `confirmationUserId`; `APPROVAL_STEP` = người giữ bước duyệt hiện tại; `ACCEPTANCE_PENDING` = người giữ một bước nghiệm thu còn chờ; `PAYMENT_APPROVAL` = người giữ bước duyệt thanh toán hiện tại.
+Trạng thái hồ sơ dùng lại tập trạng thái của v1. Không thêm trạng thái mới; đợt tạm ứng có trạng thái riêng (mục 5.4).
 
-| # | Hành động | Từ trạng thái | Capability · Người làm | Sang trạng thái | Dữ liệu bắt buộc |
+### 5.1 S2: Tờ trình và chuỗi duyệt
+
+| # | Hành động | Từ trạng thái | Quyền · Người làm | Sang trạng thái | Điều kiện |
 |---|---|---|---|---|---|
-| T01 | `requestRecordUpdate` Trả bổ sung | `PENDING_CONFIRMATION` | `RECORD_CONFIRM` · confirmer | `NEEDS_RECORD_UPDATE` | `note` lý do, 5–1000 ký tự |
-| T02 | `confirmRepair` Xác nhận cần sửa | `PENDING_CONFIRMATION` | `RECORD_CONFIRM` · confirmer | `PENDING_PROPOSAL` | `note` kết luận hiện trạng, 5–1000 |
-| T03 | `closeNoRepair` Đóng không cần sửa | `PENDING_CONFIRMATION` | `RECORD_CONFIRM` · confirmer | `CLOSED_NO_REPAIR` (cuối) | `note` lý do, 5–1000 |
-| T04 | `saveProposalDraft` | `PENDING_PROPOSAL`, `NEEDS_SUBMISSION_UPDATE`, `REJECTED_RESUBMITTABLE` | `RECORD_EDIT` · manager | giữ nguyên | đều tùy chọn; nếu có `amountVnd` thì phải hợp lệ; `contractorName` ≤ 200 |
-| T05 | `submitProposal` Trình duyệt | `PENDING_PROPOSAL` | `RECORD_EDIT` · manager | trạng thái của bước đầu tiên trong `approvalStepKeys` | BR-03, BR-04, BR-05 |
-| T06 | `resubmitProposal` Trình lại | `NEEDS_SUBMISSION_UPDATE`, `REJECTED_RESUBMITTABLE` | `RECORD_EDIT` · manager | như T05 | như T05 |
-| T07 | `approveProposal` Duyệt | `PENDING_TECH_APPROVAL`, `PENDING_TECH_REVIEW`, `PENDING_BOARD_APPROVAL`, `PENDING_CUSTOM_APPROVAL` | `PROPOSAL_DECIDE` · APPROVAL_STEP | bước kế tiếp; sau bước cuối là `READY_FOR_CONSTRUCTION` | `submissionId` (tùy chọn, BR-06) |
-| T08 | `requestProposalUpdate` Yêu cầu bổ sung | như T07 | như T07 | `NEEDS_SUBMISSION_UPDATE` | `reason` 5–1000; không cho phép ở lần trình thứ 3 (TR-06) |
-| T09 | `rejectProposal` Từ chối | như T07 | như T07 | `REJECTED_RESUBMITTABLE`; ở lần trình thứ 3 là `UNRESOLVED` (cuối) | `reason` 5–1000 |
-| T10 | `startConstruction` | `READY_FOR_CONSTRUCTION` | `CONSTRUCTION` · manager | `IN_CONSTRUCTION` | `startDate`, `plannedEndDate` ≥ `startDate` |
-| T11 | `updateConstruction` | `IN_CONSTRUCTION` | `CONSTRUCTION` · manager | giữ nguyên | `progressPercent` là số nguyên 0–100; `note` 5–1000; `attachmentIds` (`CONSTRUCTION`) tùy chọn |
-| T12 | `submitAcceptance` | `IN_CONSTRUCTION` | `CONSTRUCTION` · manager | `PENDING_ACCEPTANCE` | tiến độ hiện tại = 100; `completedDate` trong khoảng [`startDate`, hôm nay]; `note` 5–1000; ít nhất 1 ảnh (`ACCEPTANCE`/`CONSTRUCTION`) |
-| T13 | `passAcceptance` | `PENDING_ACCEPTANCE` | `ACCEPTANCE_DECIDE` · ACCEPTANCE_PENDING | BR-09 | `note` 5–1000; nếu bước của người quyết định có `role = TECH_CONFIRMER` (bước có sẵn hay tùy chỉnh đều vậy) thì phải có `reportAttachmentIds` (`ACCEPTANCE`) ≥ 1 (TR-03) |
-| T14 | `failAcceptance` | `PENDING_ACCEPTANCE` | như T13 | `NEEDS_REPAIR` | `note` 5–1000 |
-| T15 | `saveRepairEvidence` | `NEEDS_REPAIR` | `CONSTRUCTION` · manager | giữ nguyên | `note`, `attachmentIds` đều tùy chọn |
-| T16 | `resubmitAcceptance` | `NEEDS_REPAIR` | `CONSTRUCTION` · manager | `PENDING_ACCEPTANCE` (lượt mới) | `note` 5–1000 (mặc định lấy từ bản lưu T15); ít nhất 1 ảnh |
-| T17 | `savePaymentDraft` | `PENDING_PAYMENT_REQUEST`, `NEEDS_PAYMENT_UPDATE` | `PAYMENT_RECORD` · manager | giữ nguyên | đều tùy chọn |
-| T18 | `submitPaymentRequest` | `PENDING_PAYMENT_REQUEST`, `NEEDS_PAYMENT_UPDATE` | `PAYMENT_RECORD` · manager | BR-11 | `amountVnd` = số đã duyệt (TR-05); ≥ 1 tệp `PAYMENT_REQUEST`; có ít nhất một lượt nghiệm thu đạt |
-| T19 | `approvePayment` | `PENDING_PAYMENT_APPROVAL`, `PENDING_CUSTOM_PAYMENT_APPROVAL` | `PAYMENT_DECIDE` · PAYMENT_APPROVAL | bước thanh toán kế tiếp; sau bước cuối là `PENDING_PAYMENT` | — |
-| T20 | `requestPaymentUpdate` | như T19 | như T19 | `NEEDS_PAYMENT_UPDATE` | `reason` 5–1000 |
-| T21 | `recordPayment` | `PENDING_PAYMENT` | `PAYMENT_RECORD` · manager | giữ nguyên | `amountVnd` = số của đề nghị đã duyệt (TR-05); `paidDate` ≤ hôm nay; `reference` bắt buộc; ≥ 1 tệp `PAYMENT_PROOF`; mỗi đề nghị chỉ được ghi nhận một lần |
-| T22 | `completeRecord` Đóng hoàn tất | `PENDING_PAYMENT` | `PAYMENT_RECORD` · manager | `COMPLETED` (cuối) | tổng đã trả = số đã duyệt; có ít nhất một lượt nghiệm thu đạt |
+| T04 | `saveProposalDraft` | `PENDING_PROPOSAL`, `NEEDS_SUBMISSION_UPDATE`, `REJECTED_RESUBMITTABLE` | `RECORD_EDIT` · manager | giữ nguyên | các trường đều tùy chọn; giá trị nào có thì phải hợp lệ |
+| T05 | `submitProposal` | `PENDING_PROPOSAL` | `RECORD_EDIT` · manager | trạng thái chờ của bước đầu tiên trong `record.approvalStepKeys` | BR-S2-01 đến 04 |
+| T06 | `resubmitProposal` | `NEEDS_SUBMISSION_UPDATE`, `REJECTED_RESUBMITTABLE` | như T05 | như T05 | như T05 |
+| T07 | `approveProposal` | các trạng thái chờ duyệt tờ trình | `PROPOSAL_DECIDE` · người giữ bước | bước kế tiếp; sau bước cuối là `READY_FOR_CONSTRUCTION` | BR-S2-05 đến 07 |
+| T08 | `requestProposalUpdate` | như T07 | như T07 | `NEEDS_SUBMISSION_UPDATE` | lý do 5–1000 ký tự; không được ở lần trình thứ 3 |
+| T09 | `rejectProposal` | như T07 | như T07 | `REJECTED_RESUBMITTABLE`; ở lần 3 là `UNRESOLVED` | lý do 5–1000 ký tự; ở bước BQT áp BR-S2-05 |
 
-`withdrawRecord` đã có sẵn và vẫn được phép ở `PENDING_PROPOSAL`, `NEEDS_SUBMISSION_UPDATE`, `REJECTED_RESUBMITTABLE`. Mọi kết hợp hành động và trạng thái không có trong bảng trả 409 `invalid_status_transition`.
+### 5.2 S3: Thi công và nghiệm thu
+
+| # | Hành động | Từ | Quyền · Người làm | Sang | Điều kiện |
+|---|---|---|---|---|---|
+| T10 | `startConstruction` | `READY_FOR_CONSTRUCTION` | `CONSTRUCTION` · manager | `IN_CONSTRUCTION` | ngày bắt đầu; ngày dự kiến xong ≥ ngày bắt đầu; ghi chú kế hoạch 5–1000 ký tự. Phát thông báo kế hoạch (BR-S3-01) |
+| T11 | `updateConstruction` | `IN_CONSTRUCTION` | như T10 | giữ nguyên | như v1 |
+| T12 | `submitAcceptance` | `IN_CONSTRUCTION` | như T10 | `PENDING_ACCEPTANCE` | tiến độ 100; ngày hoàn thành trong khoảng [ngày bắt đầu, hôm nay]; thời gian, địa điểm và nội dung nghiệm thu; ít nhất 1 ảnh. Tạo biên bản lượt mới |
+| T13 | `passAcceptance` | `PENDING_ACCEPTANCE` | `ACCEPTANCE_DECIDE` · người giữ một bước ACCEPTANCE chưa quyết định | `PENDING_PAYMENT_REQUEST` khi mọi bước đã đạt; nếu chưa thì giữ nguyên | điểm lưu ý tùy chọn (≤ 1000 ký tự); chữ ký (BR-S3-03) |
+| T14 | `failAcceptance` | `PENDING_ACCEPTANCE` | như T13 | `NEEDS_REPAIR`, ngay lập tức | điểm cần khắc phục 5–1000 ký tự; chữ ký |
+| T15 | `saveRepairEvidence` | `NEEDS_REPAIR` | `CONSTRUCTION` · manager | giữ nguyên | như v1 |
+| T16 | `resubmitAcceptance` | `NEEDS_REPAIR` | như T15 | `PENDING_ACCEPTANCE` | như T12; tạo biên bản lượt mới |
+
+### 5.3 S4: Quyết toán và đóng hồ sơ
+
+| # | Hành động | Từ | Quyền · Người làm | Sang | Điều kiện |
+|---|---|---|---|---|---|
+| T17 | `savePaymentDraft` | `PENDING_PAYMENT_REQUEST`, `NEEDS_PAYMENT_UPDATE` | `PAYMENT_RECORD` · manager | giữ nguyên | các trường tùy chọn |
+| T18 | `submitPaymentRequest` (quyết toán) | như T17 | như T17 | trạng thái chờ duyệt thanh toán theo chuỗi PAYMENT (như v1 BR-11) | BR-S4-01 đến 03; chữ ký BQL |
+| T19 | `approvePayment` | `PENDING_PAYMENT_APPROVAL`, `PENDING_CUSTOM_PAYMENT_APPROVAL` | `PAYMENT_DECIDE` · người giữ bước | bước kế tiếp; sau bước cuối là `PENDING_PAYMENT` | — |
+| T20 | `requestPaymentUpdate` | như T19 | như T19 | `NEEDS_PAYMENT_UPDATE` | lý do 5–1000 ký tự |
+| T21 | `confirmPaymentTransfer` (mới, thay `recordPayment`) | `PENDING_PAYMENT` | `PAYMENT_CONFIRM` · bất kỳ ai trong phạm vi tòa | giữ nguyên | ngày, mã tham chiếu, chứng từ; số tiền = số của đợt |
+| T22 | `completeRecord` | `PENDING_PAYMENT` | `PAYMENT_RECORD` · manager | `COMPLETED` | BR-S4-05 |
+
+### 5.4 S4: Đợt tạm ứng
+
+Tạm ứng không đổi trạng thái hồ sơ. Đợt tạm ứng có vòng đời riêng:
+
+`Nháp` → `Chờ duyệt` (theo chuỗi PAYMENT) → `Chờ chuyển khoản` → `Đã chuyển khoản`, hoặc → `Cần bổ sung` → (gửi lại) `Chờ duyệt`.
+
+| # | Hành động | Khi hồ sơ ở trạng thái | Quyền · Người làm | Điều kiện |
+|---|---|---|---|---|
+| A1 | `submitAdvanceRequest` | `READY_FOR_CONSTRUCTION`, `IN_CONSTRUCTION`, `PENDING_ACCEPTANCE`, `NEEDS_REPAIR` | `PAYMENT_RECORD` · manager | BR-S4-04; chữ ký BQL |
+| A2 | `approveAdvance` / `requestAdvanceUpdate` | như A1 | `PAYMENT_DECIDE` · người giữ bước PAYMENT | yêu cầu bổ sung thì cần lý do 5–1000 ký tự |
+| A3 | `confirmAdvanceTransfer` | như A1 | `PAYMENT_CONFIRM` · bất kỳ ai trong phạm vi tòa | như T21 |
 
 ## 6. Quy tắc nghiệp vụ
 
-- **BR-01 Chống ghi đè.** Mọi hành động nhận `version` hồ sơ mà client đã tải. Nếu lệch thì trả 409 `CONFLICT` và không ghi gì. Mỗi hành động ghi thành công tăng `version`, kể cả các hành động giữ nguyên trạng thái.
-- **BR-02 Kiểm toán.** Mọi hành động thành công ghi audit trong cùng transaction, gồm `action`, trạng thái trước và sau, `version`, người làm, thời điểm và lý do hoặc ghi chú nếu có. Một lệnh lỗi không để lại thay đổi nào.
-- **BR-03 Lần trình bất biến.** T05/T06 tạo một bản ghi lần trình mới từ bản nháp hiện tại, gồm `attemptNo`, phương án, nhà thầu, số tiền, tệp, người trình và thời điểm. Lần trình đã tạo không bao giờ bị sửa. Sửa bản nháp sau khi trình không ảnh hưởng tới lần trình đó.
-- **BR-04 Điều kiện trình.**
-  - `proposal`: 10–2000 ký tự.
-  - `contractorName`: bắt buộc, tối đa 200 ký tự.
-  - `amountVnd`: số nguyên VND > 0, gửi và trả dạng chuỗi.
-  - Tệp `PROPOSAL`: ít nhất 1.
-  - `signature`: bắt buộc (TR-04). Là chuỗi data URL `data:image/png;base64,…`, chỉ nhận PNG; SVG và mọi định dạng khác trả 400. Dung lượng sau giải mã từ 1 byte đến 200 KB, và nội dung phải đúng chữ ký tệp PNG. Lưu vào bảng chữ ký (một dòng gồm lần trình, loại `SUBMITTER`, người ký, thời điểm), không phải tệp đính kèm và không thuộc BR-12.
-- **BR-05 Người duyệt hợp lệ khi trình.** Với từng bước trong `approvalStepKeys`, người giữ bước phải còn hoạt động, đúng vai trò (hoặc đúng `roleDefId`) và có phạm vi trên tòa và khu vực của hồ sơ. Bước nào không đạt thì trả 400 kèm lỗi theo trường `approvalStepKeys.<index>`: "Người xử lý bước «…» đã ngừng hoạt động hoặc không hợp lệ. Cần kiểm tra lại phân công." Việc sửa phân công thuộc SPEC giao lại (mục 2.2).
-- **BR-06 Quyết định trên lần trình hiện hành.**
-  - Người đã trình lần trình hiện hành không được quyết định nó; nếu cố quyết định thì trả 409 `self_approval_denied`.
-  - Nếu client gửi `submissionId` khác lần trình hiện hành thì trả 409 `CONFLICT`.
-  - Mỗi quyết định ghi lại bước, người, kết quả (`APPROVED`, `NEEDS_UPDATE`, `REJECTED`), lý do và thời điểm.
-- **BR-07 Mỗi lần trình duyệt lại từ đầu.** T05/T06 luôn bắt đầu từ bước đầu tiên của `approvalStepKeys`. Kết quả của các lần trình trước được giữ làm lịch sử, không được tính cho lần trình mới.
-- **BR-08 Giới hạn lần trình.** Đã có 3 lần trình thì T05/T06 trả 409 `max_submission_attempts`. Ở lần trình thứ 3, T08 trả 409 `final_attempt_decide_only`, còn T09 chuyển hồ sơ sang `UNRESOLVED` (TR-06).
-- **BR-09 Chuỗi nghiệm thu.**
-  - Các bước nghiệm thu lấy từ `workflowStageApprovalStepKeys.ACCEPTANCE`; nếu snapshot không có thì mặc định `[TECH_CONFIRM, TECH]`.
-  - Nếu danh sách đúng bằng `[TECH_CONFIRM, TECH]`: hai người quyết định **song song**, không theo thứ tự. Các trường hợp khác đi **tuần tự** theo thứ tự cấu hình.
-  - Một kết luận "không đạt" làm lượt đó không đạt ngay và chuyển hồ sơ sang `NEEDS_REPAIR`. Lượt chỉ đạt khi mọi bước đều đạt; khi đó hồ sơ chuyển sang `PENDING_PAYMENT_REQUEST`.
-  - Mỗi người chỉ quyết định một lần trong một lượt.
-  - Mỗi lượt có `roundNo` tăng dần và lưu ghi chú, ảnh và danh sách kết luận. Lượt cũ được giữ nguyên.
-- **BR-10 Số đã duyệt.** Số đã duyệt là `amountVnd` của lần trình được bước duyệt cuối cùng duyệt. Khi duyệt bước cuối, hồ sơ lưu id của lần trình đó.
-- **BR-11 Chuỗi duyệt thanh toán.**
-  - Các bước lấy từ `workflowStageApprovalStepKeys.PAYMENT`; nếu snapshot không có thì mặc định `[BOARD]`.
-  - Trạng thái chờ là `PENDING_PAYMENT_APPROVAL` khi chuỗi chỉ có một bước `BOARD`, và `PENDING_CUSTOM_PAYMENT_APPROVAL` trong mọi trường hợp khác.
-  - Mỗi lần gửi tạo một đề nghị mới (`revisionNo` tăng dần) và chụp lại chuỗi bước đang áp dụng. Đề nghị cũ được giữ.
-  - Một đề nghị đã có quyết định cuối thì không nhận thêm quyết định nào (trả 409).
-- **BR-12 Tệp theo mục đích.** Mở thêm các mục đích tệp `PROPOSAL`, `CONSTRUCTION`, `ACCEPTANCE`, `PAYMENT_REQUEST`, `PAYMENT_PROOF` cho hồ sơ sửa chữa, cùng giới hạn loại và dung lượng với `SITE_PHOTO`. Ai được tải lên và khi nào (trường hợp khác trả 403 `attachment_step_denied`):
+### S2
 
-  | Mục đích | Người tải | Trạng thái hồ sơ |
-  |---|---|---|
-  | `SITE_PHOTO` | manager | `DRAFT`, `NEEDS_RECORD_UPDATE` (như hiện tại) |
-  | `PROPOSAL` | manager | nguồn của T04–T06 |
-  | `CONSTRUCTION` | manager | `IN_CONSTRUCTION`, `NEEDS_REPAIR` |
-  | `ACCEPTANCE` | manager (cho T12/T16); người giữ một bước nghiệm thu còn chờ (cho T13/T14) | manager: `IN_CONSTRUCTION`, `NEEDS_REPAIR`; người giữ bước: `PENDING_ACCEPTANCE` |
-  | `PAYMENT_REQUEST` | manager | `PENDING_PAYMENT_REQUEST`, `NEEDS_PAYMENT_UPDATE` |
-  | `PAYMENT_PROOF` | manager | `PENDING_PAYMENT` |
+- **BR-S2-01:** Trình (T05, T06) cần đủ các trường bắt buộc ở §4.1, bảng báo giá hợp lệ (§4.2), tệp `INCIDENT_MINUTES`, và **chữ ký** của người trình (PNG data URL, theo v1 BR-04).
+- **BR-S2-02:** Mỗi lần trình là một bản ghi **bất biến**, gồm toàn bộ tờ trình, bảng báo giá, nhà thầu đề xuất, tổng các nhà thầu, tệp và chữ ký. Tệp bị khóa theo v1 BR-14.
+- **BR-S2-03:** Mỗi lần trình duyệt lại từ bước đầu. Tối đa 3 lần (DF-04; mã lỗi `max_submission_attempts`, `final_attempt_decide_only` như v1).
+- **BR-S2-04:** Người giữ mọi bước trong chuỗi phải còn hợp lệ lúc trình (v1 BR-05). Không còn hợp lệ thì trả 400 theo từng bước.
+- **BR-S2-05:** Ở bước vai trò BQT, `approveProposal` và `rejectProposal` cần:
+  - ít nhất 1 tệp `BOARD_MINUTES` của **lần trình hiện hành**;
+  - chữ ký của người giữ bước BQT.
 
-  Mọi `attachmentIds` gửi kèm hành động phải thuộc đúng hồ sơ và đúng mục đích; nếu không thì trả 400.
-- **BR-14 Tệp bị khóa theo bản ghi.** Tệp đã gắn vào một lần trình, một quyết định, một lượt nghiệm thu, một đề nghị thanh toán hoặc một khoản thanh toán bị khóa cùng bản ghi đó. Về sau, sửa bản nháp, `PATCH attachmentIds` của hồ sơ, hay dùng lại tệp `CONSTRUCTION`/`ACCEPTANCE` ở lượt sau đều không được gỡ, xóa hay đổi tệp trong bản ghi cũ. `PATCH /records/:id` với `attachmentIds` chỉ tác động lên danh sách `SITE_PHOTO` của hồ sơ.
-- **BR-13 Ngày.** Ngày dạng `YYYY-MM-DD`. "Hôm nay" tính theo giờ Việt Nam (UTC+7).
+  Người giữ bước BQT được tải tệp `BOARD_MINUTES` lên khi hồ sơ đang chờ BQT. Thiếu tệp thì trả 400, lỗi trường `boardMinutesAttachmentIds`. `requestProposalUpdate` không cần biên bản.
+- **BR-S2-06:** Khi duyệt ở bước **cuối** của chuỗi, người giữ bước được chọn `selectedContractorIndex`, tức một nhà thầu khác trong bảng báo giá. Chọn khác nhà thầu đề xuất thì bắt buộc ghi lý do (5–1000 ký tự).
+  - **Số được duyệt** = tổng của nhà thầu được chọn. **Nhà thầu thực hiện** = nhà thầu được chọn.
+  - Không chọn thì lấy nhà thầu đề xuất.
+- **BR-S2-07:** Người trình không được tự quyết lần trình của mình (`self_approval_denied`). Gửi `submissionId` cũ thì trả 409 (như v1).
 
-## 7. Hợp đồng API
+### S3
 
-- **Endpoint:** mỗi hành động mới là `POST /api/records/:id/<action>`, với `<action>` viết kebab-case theo tên ở mục 5, ví dụ `POST /api/records/:id/confirm-repair`. Các route đã có (`/submit`, `/withdraw`) giữ nguyên tên.
-- **Body:** gồm `version` cùng các trường ở cột "Dữ liệu bắt buộc".
-- **Kết quả thành công:** trả `{ record }` sau khi đổi; T05/T06 trả thêm `submissionId` và `attemptNo`, T18 trả thêm `paymentRequestId`.
-- **Định dạng chung:** response, validation và tiền theo quy ước có sẵn trong `api-qltn/README.md`.
+- **BR-S3-01:** `startConstruction` tạo một **thông báo trong hệ thống** "Kế hoạch thi công «mã hồ sơ»" gửi người giữ bước BQT và TVKT của hồ sơ. Thông báo gồm nhà thầu thực hiện, ngày bắt đầu, ngày dự kiến xong và ghi chú. Thông báo cho cư dân không thuộc phạm vi này.
+- **BR-S3-02:** Thành phần nghiệm thu bắt buộc lấy theo `ACCEPTANCE.approvalStepKeys` trong snapshot.
+  - Mọi thành phần quyết định **song song**, không theo thứ tự.
+  - Lượt đạt khi **tất cả** đã đạt. Một người KHÔNG ĐẠT thì lượt không đạt ngay.
+  - Mỗi người chỉ quyết định một lần trong một lượt (`step_already_decided`).
+  - Người quản lý hồ sơ (bước `MANAGER`) được tự xác nhận (PD-07 Q1).
+  - Quy tắc này áp cho mọi mẫu cấu hình, và thay v1 BR-09.
+- **BR-S3-03:** Mỗi quyết định nghiệm thu cần chữ ký của người quyết định. Không còn yêu cầu tải tệp biên bản: biên bản do hệ thống tạo từ dữ liệu. Tệp đính kèm (`ACCEPTANCE`) là tùy chọn.
+- **BR-S3-04:** Có màn **xem biên bản** cho mỗi lượt (chỉ đọc), hiển thị đủ các trường của §4.3 và chữ ký từng thành phần. Lượt cũ được giữ nguyên.
 
-`GET /api/records/:id` trả thêm các phần sau, để web hiển thị đủ các tab như demo:
+### S4
 
-| Phần | Nội dung |
-|---|---|
-| `confirmations` | kết quả, ghi chú, người, thời điểm |
-| `proposalDraft` | bản nháp hiện tại (chỉ người quản lý thấy) |
-| `submissions` | mọi lần trình, mỗi lần kèm `decisions` và `signatures` |
-| `construction` | ngày, tiến độ, nhật ký, bản lưu khắc phục |
-| `acceptances` | mọi lượt kèm `checks` |
-| `paymentDraft`, `paymentRequests`, `payments` | bản nháp, các đề nghị và quyết định, khoản đã ghi nhận |
-
-Bộ `details.reason` dùng cố định:
-
-| Mã | Khi nào |
-|---|---|
-| `missing_capability` | 403 · vai trò không có quyền |
-| `not_record_manager` | 403 · không phải BQL quản lý hồ sơ |
-| `not_step_assignee` | 403 · không phải người giữ bước hiện tại |
-| `step_already_decided` | 409 · đã quyết định trong lượt nghiệm thu này |
-| `invalid_status_transition` | 409 · trạng thái nguồn không hợp lệ |
-| `self_approval_denied` | 409 · BR-06 |
-| `max_submission_attempts` | 409 · BR-08 |
-| `final_attempt_decide_only` | 409 · BR-08 |
-| `attachment_step_denied` | 403 · BR-12 |
-
-Câu thông báo tiếng Việt giống demo.
-
-## 8. Tiêu chí nghiệm thu
-
-Mỗi AC có ít nhất một test e2e trên API thật. Seed dùng tài khoản demo: `bql-a`, `kt-a`, `kt-a2`, `kt-a-cu` (đã khóa), `tvkt`, `bqt`, `bql-b`, `kt-b`.
-
-### S1 — Xác nhận hiện trạng
-
-- **AC-1.1** `kt-a` (người xác nhận được giao) chạy T01, T02, T03 trên ba hồ sơ `PENDING_CONFIRMATION`. Hồ sơ lần lượt sang `NEEDS_RECORD_UPDATE`, `PENDING_PROPOSAL`, `CLOSED_NO_REPAIR`; `confirmations` và audit có ghi chú.
-- **AC-1.2** `kt-a2` (cùng vai trò, không được giao), `bql-a` và `kt-b` (tòa khác) gọi T02 thì nhận lần lượt 403 `not_step_assignee`, 403 `missing_capability`, 404. Hồ sơ không đổi.
-- **AC-1.3** Hồ sơ `NEEDS_RECORD_UPDATE` được BQL sửa và gửi lại (hành động có sẵn), sau đó `kt-a` xác nhận được. Lịch sử giữ cả hai lần xác nhận.
-- **AC-1.4** Ghi chú 4 ký tự trả 400 lỗi trường `note`. `version` cũ trả 409 `CONFLICT`.
-
-### S2 — Tờ trình và chuỗi duyệt
-
-- **AC-2.1** Hồ sơ có snapshot `[TECH, BOARD]`: BQL lưu nháp, rồi trình kèm chữ ký. Hồ sơ sang `PENDING_TECH_REVIEW`; `tvkt` duyệt thì sang `PENDING_BOARD_APPROVAL`; `bqt` duyệt thì sang `READY_FOR_CONSTRUCTION`. Số đã duyệt bằng số của lần trình (BR-10).
-- **AC-2.2** Đổi cấu hình tòa sau khi hồ sơ đã tạo, ví dụ thêm `TECH_CONFIRM`. Chuỗi duyệt của hồ sơ vẫn theo snapshot.
-- **AC-2.3** Hồ sơ có bước tùy chỉnh trong snapshot: chỉ người trong `approvalAssigneeUserIds` có đúng vai trò mới duyệt được, ở trạng thái `PENDING_CUSTOM_APPROVAL`.
-- **AC-2.4** Trình thiếu từng điều kiện của BR-04 trả 400 với đúng trường lỗi. Khi người giữ một bước là `kt-a-cu` (đã khóa), trình trả 400 lỗi `approvalStepKeys.<index>` (BR-05).
-- **AC-2.5** Yêu cầu bổ sung ở bước 2 chuyển hồ sơ sang `NEEDS_SUBMISSION_UPDATE`. Trình lại thì bắt đầu lại từ bước 1, `attemptNo` = 2, và lần trình 1 giữ nguyên nội dung cùng các quyết định (BR-03, BR-07).
-- **AC-2.6** Từ chối ở lần 1 và lần 2 chuyển hồ sơ sang `REJECTED_RESUBMITTABLE`. Ở lần 3: yêu cầu bổ sung trả 409 `final_attempt_decide_only`, từ chối chuyển hồ sơ sang `UNRESOLVED`. Trình lần 4 trả 409 `max_submission_attempts`.
-- **AC-2.7** Người trình tự duyệt trả 409 `self_approval_denied`. Gửi `submissionId` cũ trả 409 `CONFLICT`. Người không giữ bước hiện tại trả 403 `not_step_assignee`.
-
-### S3 — Thi công và nghiệm thu
-
-- **AC-3.1** BQL bắt đầu thi công, cập nhật tiến độ 50 rồi 100, rồi gửi nghiệm thu kèm 1 ảnh. Hồ sơ sang `PENDING_ACCEPTANCE`, lượt 1 có trạng thái chờ.
-- **AC-3.2** Gửi nghiệm thu khi tiến độ dưới 100, khi `completedDate` ở tương lai hoặc trước `startDate`, hoặc khi không có ảnh: đều trả 400 với đúng trường lỗi.
-- **AC-3.3** Chuỗi mặc định `[TECH_CONFIRM, TECH]`: `tvkt` đạt trước rồi `kt-a` đạt sau thì hồ sơ sang `PENDING_PAYMENT_REQUEST`. `kt-a` chọn đạt mà không kèm biên bản thì trả 400 `reportAttachmentIds`.
-- **AC-3.4** Một người chọn không đạt: hồ sơ sang `NEEDS_REPAIR` ngay, kể cả khi người kia chưa quyết định. BQL lưu nội dung khắc phục rồi gửi nghiệm thu lại: hồ sơ có lượt 2, và lượt 1 giữ nguyên kết luận.
-- **AC-3.5** Chuỗi nghiệm thu khác mặc định, ví dụ `[TECH]` hoặc `[TECH, TECH_CONFIRM]`, đi tuần tự đúng thứ tự cấu hình. Người đã quyết định trong lượt mà quyết định lại thì trả 409 `step_already_decided`.
-
-### S4 — Thanh toán và đóng hồ sơ
-
-- **AC-4.1** BQL gửi đề nghị đúng số đã duyệt kèm tệp. Hồ sơ sang `PENDING_PAYMENT_APPROVAL`; `bqt` duyệt thì sang `PENDING_PAYMENT`; BQL ghi nhận thanh toán kèm chứng từ rồi đóng hồ sơ, và hồ sơ sang `COMPLETED`.
-- **AC-4.2** Gửi đề nghị khác số đã duyệt hoặc thiếu tệp trả 400. Ghi nhận thanh toán khác số đề nghị, với ngày ở tương lai, thiếu `reference` hoặc thiếu chứng từ trả 400. Ghi nhận lần thứ hai cho cùng một đề nghị trả 409.
-- **AC-4.3** BQT trả đề nghị: hồ sơ sang `NEEDS_PAYMENT_UPDATE`. BQL gửi lại thì có đề nghị `revisionNo` = 2, và đề nghị 1 giữ nguyên quyết định cùng lý do.
-- **AC-4.4** Chuỗi thanh toán trong snapshot gồm một bước tùy chỉnh rồi đến `BOARD`. Bước tùy chỉnh dùng `roleDefId` là vai trò tùy chỉnh có `PAYMENT_DECIDE`; vai trò này dựa trên `OWNERS_BOARD`, vì chỉ BQT có `PAYMENT_DECIDE` và cấu hình tòa từ chối mọi bước thanh toán thiếu quyền này. Kết quả: trạng thái là `PENDING_CUSTOM_PAYMENT_APPROVAL`, duyệt tuần tự theo đúng người giữ bước; người giữ bước 2 duyệt trước lượt mình thì trả 403 `not_step_assignee`.
-- **AC-4.5** Đóng hồ sơ khi chưa ghi nhận thanh toán đủ trả 400 lỗi trường `payment`. Hồ sơ `COMPLETED` không nhận thêm hành động nào: mọi hành động trả 409 `invalid_status_transition`.
+- **BR-S4-01:** Quyết toán chỉ gửi được khi có lượt nghiệm thu đạt. **Số quyết toán** ≤ số được duyệt; vượt thì trả 400 lỗi trường `amountVnd`: "Số quyết toán không được vượt số được duyệt."
+- **BR-S4-02:** Số tiền của đợt quyết toán = số quyết toán − Σ các đợt tạm ứng **đã chuyển khoản**. Hệ thống tự tính và hiện cách tính.
+  - Còn đợt tạm ứng chưa ở trạng thái "Đã chuyển khoản" thì không gửi quyết toán được (409 `open_advance_exists`).
+- **BR-S4-03:** Quyết toán bắt buộc có đủ tệp `PAYMENT_REQUEST` và `INVOICE` (§4.4). Tờ trình, báo giá được duyệt và biên bản nghiệm thu đạt được hệ thống liên kết, không cần tải lại.
+- **BR-S4-04:** Tạm ứng:
+  - Σ các đợt tạm ứng (mọi trạng thái trừ "Nháp") ≤ số được duyệt.
+  - Mỗi hồ sơ chỉ có **một** đợt tạm ứng đang mở tại một thời điểm.
+  - Không áp tỷ lệ tối đa (DF-08 không đặt trần).
+- **BR-S4-05:** `completeRecord` khi quyết toán đã chuyển khoản **và** Σ mọi đợt đã chuyển khoản = số quyết toán. Thiếu thì trả 400 lỗi trường `payment`.
+- **BR-S4-06:** Mỗi đợt chỉ được xác nhận chuyển khoản một lần. Người xác nhận và thời điểm được ghi audit (PD-07 Q4).
 
 ### Chung
 
-- **AC-0.1** Với mỗi hành động ở mục 5, người có capability gọi từ một trạng thái không có trong cột "Từ trạng thái" thì nhận 409 `invalid_status_transition` và không có audit nào được ghi. Với hành động mà người làm là `manager`/`confirmer`, người được giao gọi thì kết quả cũng vậy (thứ tự kiểm tra ở mục 4).
-- **AC-0.4** Chữ ký SVG, chữ ký không phải PNG, hoặc lớn hơn 200 KB trả 400 lỗi trường `signature`.
-- **AC-0.5** Sau khi trình lần 1, BQL gỡ một tệp `PROPOSAL` khỏi bản nháp rồi trình lần 2. Lần trình 1 vẫn còn tệp đó và tải về được (BR-14).
-- **AC-0.6** Trong `PENDING_ACCEPTANCE`, `kt-a` (người giữ bước) tải lên được tệp `ACCEPTANCE`; `kt-a2` không giữ bước nên nhận 403 `attachment_step_denied`. BQL tải `PROPOSAL` khi hồ sơ đang ở `IN_CONSTRUCTION` cũng nhận 403 (BR-12).
-- **AC-0.2** Sau mỗi slice, `GET /api/records/summary` và danh sách với `attention=needs_update` đếm đúng các trạng thái mới, dùng bộ nhóm có sẵn trong `record-status-groups.ts`.
-- **AC-0.3** Web ở chế độ `api` chạy được luồng của slice đó bằng tài khoản demo, giống demo ở chế độ mock.
+- **BR-C-01:** Mọi hành động dùng khóa phiên bản (`version`) và ghi audit trong cùng transaction, như v1 BR-01 và BR-02.
+- **BR-C-02:** Thêm các mục đích tệp `QUOTATION`, `INCIDENT_MINUTES`, `BOARD_MINUTES`, `INVOICE`.
 
-## 9. Phụ thuộc mở
+  | Mục đích | Người tải | Khi nào |
+  |---|---|---|
+  | `QUOTATION`, `INCIDENT_MINUTES` | manager | ở các nguồn của T04–T06 |
+  | `BOARD_MINUTES` | người giữ bước BQT | khi chờ BQT |
+  | `INVOICE` | manager | ở các nguồn của T17–T18 |
 
-| OD | Ảnh hưởng tới SPEC này |
-|---|---|
-| OD-05 | Thay TR-05: tạm ứng, nhiều đợt, số còn lại |
-| OD-10 | Thay TR-01: Kế toán, Người nghiệm thu, TVKT |
-| OD-11 | Thay TR-02: dự toán theo hạng mục, báo giá |
-| OD-12 | Thay TR-03: nghiệm thu theo hạng mục kiểm tra; thay luôn quy tắc song song/tuần tự ở BR-09 |
-| OD-13 | Thay TR-04: tài liệu nào được ký, ký lại khi đổi phiên bản |
-| OD-03 | Chuỗi duyệt mặc định và người ký của từng tòa |
-| OD-15 | Thay TR-06: giới hạn số lần trình tờ trình |
-| OD-14 | Điều kiện nghiệm thu hợp đồng của cả nhóm B |
+  Các mục đích của v1 giữ nguyên theo v1 BR-12, riêng `PAYMENT_PROOF` chuyển sang người có `PAYMENT_CONFIRM`.
+- **BR-C-03:** Ký là ký nhanh bằng chuột hoặc cảm ứng, theo v1 BR-04, ở 4 tài liệu: tờ trình (T05/T06), quyết định của BQT (BR-S2-05), quyết định nghiệm thu (T13/T14), đề nghị thanh toán (T18, A1).
 
-Nguồn hành vi: `web/src/domain/actions.ts`, `web/src/services/handlers/repair-record-handlers.ts`, `repair-proposal-handlers.ts`, `repair-execution-handlers.ts`, `repair-helpers.ts`; `api-qltn/src/domain/building-config.ts`, `permissions.ts`; `api-qltn/src/modules/records/record-actions.ts`. Nếu demo và SPEC khác nhau thì SPEC thắng. Nếu SPEC thiếu chỗ nào, dev-build hỏi PM/BA trước khi tự chọn.
+## 7. Tiêu chí nghiệm thu
 
-## 10. Lịch sử
+Seed dùng tòa A với mẫu `AQUA` và các tài khoản demo, cộng `KTOAN-A` (RM-S1). Mỗi AC có ít nhất một e2e trên API thật.
+
+### S2
+
+- **AC-2.1** BQL lập tờ trình có 3 hạng mục và 3 nhà thầu. Tổng từng nhà thầu khớp công thức §4.2, kể cả làm tròn: số lượng 1,5 × đơn giá 333.333 = 499.999,5, làm tròn thành 500.000. Trình kèm chữ ký và biên bản ghi nhận: hồ sơ sang trạng thái chờ TVKT.
+- **AC-2.2** Trình chỉ với 2 nhà thầu mà không ghi lý do: 400. Có lý do: trình được. Thiếu `INCIDENT_MINUTES`: 400.
+- **AC-2.3** TVKT duyệt, hồ sơ sang chờ BQT. BQT duyệt khi thiếu `BOARD_MINUTES`: 400. Có biên bản và chữ ký: hồ sơ sang `READY_FOR_CONSTRUCTION`; số được duyệt = tổng của nhà thầu đề xuất.
+- **AC-2.4** BQT duyệt và chọn nhà thầu 2 nhưng không ghi lý do: 400. Có lý do: số được duyệt = tổng nhà thầu 2, nhà thầu thực hiện là nhà thầu 2, có audit lý do.
+- **AC-2.5** BQT từ chối không kèm biên bản: 400. Có biên bản: `REJECTED_RESUBMITTABLE`. Trình lại thì quay về bước đầu, `attemptNo` = 2; lần 1 giữ nguyên toàn bộ bảng báo giá và quyết định.
+- **AC-2.6** Lần trình thứ 3 bị BQT từ chối: `UNRESOLVED`. Yêu cầu bổ sung ở lần 3: 409. Trình lần 4: 409.
+- **AC-2.7** Người giữ bước BQT tải được `BOARD_MINUTES` khi hồ sơ chờ BQT. TVKT tải loại tệp này thì nhận 403 `attachment_step_denied`.
+
+### S3
+
+- **AC-3.1** `startConstruction` thiếu ghi chú kế hoạch: 400. Đủ: `IN_CONSTRUCTION`, và người giữ bước BQT cùng TVKT nhận thông báo kế hoạch có đúng nhà thầu thực hiện.
+- **AC-3.2** Gửi nghiệm thu đủ dữ liệu: biên bản lượt 1 có 3 thành phần bắt buộc (BQL, BQT, TVKT) đều đang chờ.
+- **AC-3.3** BQL, BQT và TVKT lần lượt chọn ĐẠT, mỗi người ký. Sau người thứ hai hồ sơ vẫn `PENDING_ACCEPTANCE`; sau người thứ ba thì `PENDING_PAYMENT_REQUEST`. Biên bản bị khóa và màn xem hiện đủ chữ ký.
+- **AC-3.4** BQT chọn KHÔNG ĐẠT sau khi BQL đã chọn ĐẠT: hồ sơ sang `NEEDS_REPAIR` ngay. Gửi nghiệm thu lại thì có lượt 2 mới; lượt 1 giữ nguyên. BQL quyết định lần hai trong cùng lượt: 409 `step_already_decided`.
+- **AC-3.5** Tòa mẫu `STANDARD` (ACCEPTANCE `[TECH_CONFIRM, TECH]`) cũng quyết định song song và mọi thành phần phải đạt.
+
+### S4
+
+- **AC-4.1** Ở `IN_CONSTRUCTION`, BQL gửi đề nghị tạm ứng 4 triệu (số được duyệt 10 triệu). BQT duyệt. `ktoan-a` xác nhận chuyển khoản kèm chứng từ. Đợt tạm ứng thành "Đã chuyển khoản"; trạng thái hồ sơ không đổi.
+- **AC-4.2** Gửi đợt tạm ứng thứ hai khi đợt đầu chưa chuyển khoản: 409. Tổng tạm ứng vượt 10 triệu: 400.
+- **AC-4.3** Sau nghiệm thu đạt, quyết toán 10 triệu: số của đợt hiện 6 triệu (10 − 4). Thiếu hóa đơn `INVOICE`: 400. Đủ hồ sơ: đi qua chuỗi PAYMENT, sang `PENDING_PAYMENT`; `bqt` xác nhận chuyển khoản; BQL đóng hồ sơ, hồ sơ sang `COMPLETED`.
+- **AC-4.4** Quyết toán 11 triệu khi số được duyệt là 10 triệu: 400. Quyết toán 9 triệu: được; đóng hồ sơ khi Σ đã chuyển khoản = 9 triệu.
+- **AC-4.5** `kt-a` (không có `PAYMENT_CONFIRM`) xác nhận chuyển khoản: 403. Xác nhận lần hai cho cùng một đợt: 409.
+- **AC-4.6** Gửi quyết toán khi đang có đợt tạm ứng mở: 409 `open_advance_exists`.
+
+### Chung
+
+- **AC-0.1** Mọi hành động gọi từ trạng thái không hợp lệ: 409 `invalid_status_transition`, không có audit.
+- **AC-0.2** Hồ sơ tạo trước khi triển khai v2 (snapshot cũ) vẫn đi hết luồng theo snapshot của nó; test bằng một hồ sơ seed.
+- **AC-0.3** Mỗi slice chạy được trên web ở chế độ `api` bằng tài khoản demo, có ảnh chụp: S2 lập và duyệt tờ trình; S3 biên bản ba bên; S4 tạm ứng rồi quyết toán.
+
+## 8. Checklist test cho dev-review
+
+Chỉ chạy các test liên quan, không chạy toàn bộ suite.
+
+- [ ] e2e của slice; chạy lại `record-confirmations` và `records*`.
+- [ ] Unit test cho phép tính báo giá (làm tròn) và số quyết toán.
+- [ ] Hồ sơ snapshot cũ (AC-0.2).
+- [ ] Chữ ký và tệp không lộ trong log hoặc URL.
+- [ ] Ảnh chụp AC-0.3.
+
+## 9. Lịch sử
 
 | Ngày | Thay đổi |
 |---|---|
-| 26/10/2026 | Bản nháp đầu tiên (PD-03). |
-| 26/10/2026 | Sửa theo review kỹ thuật của dev-build: AC-4.4 dùng bước tùy chỉnh có `PAYMENT_DECIDE`; tách thứ tự kiểm tra theo loại người làm (mục 4); quy định cách gửi và lưu chữ ký (BR-04); thêm khóa tệp theo bản ghi (BR-14); quy định ai được tải tệp theo mục đích (BR-12); T13 xác định theo `role`; TR-06 chuyển sang OD-15; giữ tên các route có sẵn; thêm AC-0.4–AC-0.6. |
-| 26/10/2026 | **PD-06:** quy tắc tạm TR-01 đến TR-05 sẽ được thay bằng mặc định DF-01 đến DF-08 và DF-10 trong [PRODUCT-DEFAULTS.md](../../PRODUCT-DEFAULTS.md). TR-06 giữ nguyên (DF-04). S1 đã xong, không đổi. **S2–S4 không giao theo bản này**; PM/BA sẽ ra phiên bản 2 trước. |
+| 26/10/2026 | v1 (PD-03, PD-04). S1 triển khai và đóng. |
+| 26/10/2026 | v2 viết lại S2–S4 theo PRODUCT-DEFAULTS (PD-09) và ADR-0001 R3/R4. |
+| 26/10/2026 | Chủ dự án duyệt v2 (PD-12). |

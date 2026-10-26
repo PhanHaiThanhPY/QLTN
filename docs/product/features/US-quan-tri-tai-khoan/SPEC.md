@@ -1,7 +1,7 @@
 # SPEC — Đặt lại mật khẩu và lịch sử tài khoản trên web (module users, US-S1)
 
 **Chủ sở hữu:** PM/BA · **Cập nhật:** 26/10/2026 · **Trạng thái:** `Đã duyệt`
-**Người duyệt:** PM/BA theo PD-05, vì SPEC không có quyết định phạm vi còn mở hay OD chưa chốt
+**Người duyệt:** chủ dự án, duyệt bổ sung ngày 26/10/2026 (PD-11). Bản build ban đầu được giao theo PD-05 (PM/BA tự duyệt)
 **Nguồn:** [phân tích module users](../../modules/users.md): UG-01, UG-02, UG-07
 
 ## 1. Mục tiêu
