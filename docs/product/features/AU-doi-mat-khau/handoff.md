@@ -40,8 +40,23 @@ The branch starts from `feature/b03-s1-confirmation` (`641c8b5`) because the sha
 
 ## Kết quả review (dev-review)
 
-_Chưa có._
+**PASS WITH RESIDUE — 26/10/2026.** Candidate `9de70f3`; evidence `de3697c`.
+
+- API format/lint/typecheck đạt; unit `7 suites / 39 tests` đạt.
+- API focused e2e `auth`, `auth-change-password`, `catalog-admin` đạt `3 suites / 42 tests` trên DB cô lập `qltn_review_e2e`.
+- Web focused Vitest đạt `9 files / 140 tests`; `tsc -b` đạt. Không chạy `vite build` theo giới hạn RAM của packet.
+- `git diff --check` và `node --check` cho script AC-8 đạt. Code audit xác nhận mật khẩu chỉ nằm trong form/request body; failure log chỉ ghi error code/unknown error, không ghi giá trị mật khẩu, URL hay localStorage.
+- Đã xem 4 ảnh AC-8: mục Đổi mật khẩu ở sidebar, dialog ba trường, redirect `/login` với toast thành công, và đăng nhập lại thành công.
+- Rerun AC-8 bằng `au-s1-ui-check.mjs` trong seat này dừng trước flow vì Chrome không expose page target (`Chrome did not expose a page target`); không có mutation/cleanup nào xảy ra. Evidence run do builder cung cấp ghi nhận seed password đã được restore (`reset 200`, login `200`).
+- Lần chạy đầu trên DB mặc định `qltn_e2e` bị relation/seed contention (`buildings`, `refresh_tokens`, rồi `UQ_role_definitions_code`); không tái hiện trên DB cô lập sạch. Đây là residue môi trường, không phải finding của candidate.
+
+Không có finding cần trả về dev-build. Candidate chấp nhận được để chuyển sang bước PM/BA close.
 
 ## Đóng (PM/BA)
 
-_Chưa có._
+**Ngày:** 26/10/2026 · **Kết quả:** AU-S1 **đạt**, đóng. Code `9de70f3`, bằng chứng `de3697c`, chưa merge, chưa push.
+
+- AC-1 đến AC-8 đều có bằng chứng. Reviewer chạy lại độc lập: e2e 42/42 trên DB riêng, web 140/140. Reviewer đã xem 4 ảnh AC-8 và đọc code để xác nhận BR-05.
+- **Phần còn lại được chấp nhận:** seat review không chạy lại được script trình duyệt vì không có Chrome (giới hạn môi trường, giống S1). Khi chạy AC-8, `kt-a2` hai lần bị kẹt ở mật khẩu ngẫu nhiên vài phút; dev-build đã đặt lại thủ công.
+- **Cập nhật tài liệu:** [modules/auth.md](../../modules/auth.md) AG-01 và AG-08 đã xử lý xong. Các mục AG-02 đến AG-07 và AG-09 giữ nguyên trạng thái.
+- **Việc tiếp theo:** không tạo việc mới. Việc merge do chủ dự án quyết định.
