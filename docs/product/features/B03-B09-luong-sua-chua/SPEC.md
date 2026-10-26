@@ -1,6 +1,6 @@
 # SPEC — Luồng hồ sơ sửa chữa sau "Chờ xác nhận" (B03–B09), phiên bản 2
 
-**Chủ sở hữu:** PM/BA · **Cập nhật:** 26/10/2026 · **Trạng thái:** `Đã duyệt`, chủ dự án duyệt ngày 26/10/2026 (PD-12)
+**Chủ sở hữu:** PM/BA · **Cập nhật:** 26/10/2026 · **Trạng thái:** `Đã triển khai` (26/10/2026: S1–S4 đạt review, chưa merge, chưa nghiệm thu với khách). Chủ dự án duyệt v2 ngày 26/10/2026 (PD-12)
 
 **Phiên bản**
 - v1 được duyệt 26/10/2026 (PD-04), lưu tại [supporting/SPEC-v1-2026-10-26.md](supporting/SPEC-v1-2026-10-26.md).
@@ -290,3 +290,4 @@ Chỉ chạy các test liên quan, không chạy toàn bộ suite.
 | 26/10/2026 | Chủ dự án duyệt v2 (PD-12). |
 | 26/10/2026 | BR-S3-01a: phần thông báo tối thiểu cho S3, theo đề xuất của dev-build; nằm trong BR-S3-01 đã duyệt, không mở rộng phạm vi. |
 | 26/10/2026 | Làm rõ §5.4 và BR-S4-04 khi build S4, theo phát hiện của dev-build. Thêm A1b; A2, A3 được làm cả ở `PENDING_PAYMENT_REQUEST` và `NEEDS_PAYMENT_UPDATE`, để gỡ chỗ kẹt khi nghiệm thu đạt lúc còn tạm ứng mở. Bỏ trạng thái "Nháp" của tạm ứng. Không đổi ý định nghiệp vụ đã duyệt (PD-12). |
+| 26/10/2026 | S4 đóng. SPEC chuyển `Đã triển khai`. Việc tồn: VT-01 (nút lưu nháp quyết toán trên web), VT-02 (e2e `not_step_assignee` cho bước thanh toán). |

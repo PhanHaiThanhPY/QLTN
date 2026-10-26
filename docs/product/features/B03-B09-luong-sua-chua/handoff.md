@@ -367,9 +367,26 @@ Candidate chấp nhận được để chuyển sang bước PM/BA close.
 
 #### Kết quả review (dev-review)
 
-_Chưa có._
+**PASS WITH RESIDUE — 26/10/2026.** Candidate API `abecd80`, web `f18caf8`, evidence/docs `c3bf369`, trên nhánh `feature/b03-s4-payment`.
+
+- API unit đạt `8 suites / 54 tests`; focused S4 payment e2e đạt `1 suite / 5 tests` trên DB cô lập `qltn_review_b03_s4_payment_e2e`. Regression S3 `record-construction.e2e-spec.ts` đạt `1 suite / 8 tests` trên DB cô lập `qltn_review_b03_s4_s3_regression_e2e`.
+- API `format:check`, lint và typecheck đạt. Web full Vitest đạt `55 files / 390 tests`; `tsc -b` đạt. `s4-ui-check.mjs` qua `node --check`.
+- Đã kiểm tra 4 screenshot AC-0.3: form tạm ứng 4.000.000 ₫ có tệp và chữ ký; KTOAN-A xác nhận chuyển khoản, hồ sơ vẫn **Đang thi công**; form quyết toán có đủ công văn và hóa đơn; biên bản quyết toán hiển thị 6.000.000 ₫ = 10.000.000 ₫ − tạm ứng 4.000.000 ₫ và hồ sơ **Hoàn tất** sau khi chuyển đủ.
+- Rerun `s4-ui-check.mjs` trong seat review dừng trước khi mở page với `Chrome did not expose a page target`; không có mutation/cleanup nào xảy ra. Đây là giới hạn môi trường, không phải finding của candidate; ảnh và script evidence của dev-build đã được kiểm tra.
+- Không phát hiện finding chức năng trong scope S4. AC-4.1–AC-4.6 và AC-0.1 được bao phủ bởi payment e2e; các điều kiện amount, invoice, PAYMENT snapshot, open advance, A1b/A2/A3, quyền xác nhận, chống xác nhận trùng và điều kiện đóng hồ sơ đều đạt.
+- **Chưa chạy lại full 16-suite API E2E** vì checklist SPEC yêu cầu chỉ chạy test liên quan; kết quả full 16 suite/136 của dev-build được giữ là evidence triển khai, không tính là rerun độc lập của review này.
+- **Residue:** web chưa có nút “Lưu nháp” cho quyết toán dù API T17 có và đã được test; `not_step_assignee` cho bước PAYMENT chưa có e2e riêng do giới hạn seed. Browser rerun độc lập chưa thực hiện được do Chrome target của môi trường.
+
+Candidate chấp nhận được để chuyển sang bước PM/BA close.
 
 #### Đóng (PM/BA)
 
-_Chưa có._
+**Ngày:** 26/10/2026 · **Kết quả:** S4 **đạt**, đóng. API `abecd80`, web `f18caf8`, bằng chứng `c3bf369`, nhánh `feature/b03-s4-payment` (xếp trên S3, đã có trên origin). Chưa merge, chưa có PR. Bằng chứng và kết quả review đầy đủ nằm trong bản `handoff.md` trên nhánh đó.
 
+- **Bằng chứng:** AC-4.1 đến AC-4.6 và AC-0.1 đến AC-0.3 đều có, gồm e2e PM/BA yêu cầu thêm (AC-4.6): tạm ứng còn mở khi nghiệm thu đạt vẫn được trả (A2), gửi lại (A1b), duyệt và xác nhận (A3), sau đó quyết toán không còn bị chặn. Reviewer chạy lại: unit 54/54, e2e thanh toán 5/5, hồi quy S3 8/8, web 390. Theo bằng chứng build, toàn bộ e2e API 136/136.
+- **Phần còn lại được chấp nhận, ghi thành việc tồn:**
+  - **VT-01:** web chưa có nút "Lưu nháp" cho đề nghị quyết toán (T17). API đã có và có test; dialog điền sẵn người hưởng từ đợt trước.
+  - **VT-02:** chưa có e2e `not_step_assignee` cho bước thanh toán, vì seed chỉ có một BQT giữ `PAYMENT_DECIDE`. Bổ sung khi seed có hai BQT.
+  - Seat review không có Chrome nên không chạy lại được bước kiểm trên trình duyệt; reviewer đã xem 4 ảnh.
+- **SPEC B03–B09 v2:** S2, S3, S4 đều đã triển khai, nên SPEC chuyển `Đã triển khai` (PROCESS bước 5). Nghiệm thu với khách (giai đoạn 5) chưa làm.
+- **Việc tiếp theo:** không tạo việc mới. VT-01 và VT-02 chờ chủ dự án chọn. Merge do chủ dự án quyết định.
