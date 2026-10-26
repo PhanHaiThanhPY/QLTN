@@ -116,7 +116,17 @@ scope answers 404 to every write, like another building's record. Confirmer acti
 | POST | `/api/records/:id/save-repair-evidence` | CONSTRUCTION | S3 T15, `NEEDS_REPAIR`: optional `note` (≤ 1000) and `attachmentIds`, kept in `execution.repairDraft` |
 | POST | `/api/records/:id/resubmit-acceptance` | CONSTRUCTION | S3 T16: same body as submit, from `NEEDS_REPAIR`; new round, older rounds unchanged |
 
-`GET /api/records/:id` also returns `execution = { construction, acceptances[], repairDraft }`: the plan and progress
+| POST | `/api/records/:id/submit-advance-request` | PAYMENT_RECORD | S4 A1, `READY_FOR_CONSTRUCTION`…`NEEDS_REPAIR`: `amountVnd`, `payeeName`, `accountNo` (6–20 digits), `bankName`, optional `transferContent` (≤ 210, default "BQT «tòa» THANH TOAN CHI PHI «hồ sơ»"), `requestAttachmentIds` (≥ 1 `PAYMENT_REQUEST`), `signature`. One open advance at a time (409 `open_advance_exists`); Σ advances ≤ approved (400 `amountVnd`). The record status does not change |
+| POST | `/api/records/:id/resubmit-advance-request` | PAYMENT_RECORD | S4 A1b: same body; resubmits the advance sent back for update (next revision), also after acceptance (`PENDING_PAYMENT_REQUEST`, `NEEDS_PAYMENT_UPDATE`) |
+| POST | `/api/records/:id/approve-advance`, `/request-advance-update` | PAYMENT_DECIDE | S4 A2, holder of the advance's current PAYMENT step (403 `not_step_assignee`); `reason` (5–1000) to send it back |
+| POST | `/api/records/:id/confirm-advance-transfer` | PAYMENT_CONFIRM | S4 A3, anyone with the capability in scope: `amountVnd` (= the instalment), `transferDate` (≤ today), `reference`, `proofAttachmentIds` (≥ 1 `PAYMENT_PROOF`); once only (409 `payment_already_confirmed`) |
+| POST | `/api/records/:id/save-payment-draft` | PAYMENT_RECORD | S4 T17: settlement draft, any subset of the fields |
+| POST | `/api/records/:id/submit-payment-request` | PAYMENT_RECORD | S4 T18: `amountVnd` = settled total (≤ approved, > transferred advances), payee fields, `requestAttachmentIds` + `invoiceAttachmentIds` (`INVOICE`), `signature`; refused while an advance is open (409 `open_advance_exists`). The instalment pays settled total − transferred advances; → `PENDING_PAYMENT_APPROVAL` (chain `[BOARD]`) or `PENDING_CUSTOM_PAYMENT_APPROVAL` |
+| POST | `/api/records/:id/approve-payment`, `/request-payment-update` | PAYMENT_DECIDE | S4 T19/T20 on the settlement; after the last step → `PENDING_PAYMENT`, a send-back → `NEEDS_PAYMENT_UPDATE` (resubmit = next revision) |
+| POST | `/api/records/:id/confirm-payment-transfer` | PAYMENT_CONFIRM | S4 T21: as A3 for the settlement |
+| POST | `/api/records/:id/complete` | PAYMENT_RECORD | S4 T22: settlement transferred and Σ transferred = settled total, else 400 `payment` → `COMPLETED` |
+
+`GET /api/records/:id` also returns `execution = { construction, acceptances[], repairDraft }` and `payment = { approvedAmountVnd, transferredTotalVnd, draft, payments[] }`: the plan and progress
 updates, every acceptance round (minutes fields, members, outcome, decisions with signatures) oldest first.
 
 Proposal fields (SPEC B03–B09 v2 §4.1–§4.2): `recipient`, `preparedByName` (both default when blank), `proposalType`
@@ -140,6 +150,9 @@ Repair-record files only (`subjectType = REPAIR_RECORD`); another subject or pur
 | `BOARD_MINUTES` | holder of the current BQT-role approval step | while the proposal waits on that step |
 | `CONSTRUCTION` | the record's manager | `IN_CONSTRUCTION`, `NEEDS_REPAIR` |
 | `ACCEPTANCE` | the record's manager; an acceptance member | manager: `IN_CONSTRUCTION`, `NEEDS_REPAIR`; member: `PENDING_ACCEPTANCE` |
+| `PAYMENT_REQUEST` | the record's manager | advance and settlement statuses (`READY_FOR_CONSTRUCTION`…`NEEDS_PAYMENT_UPDATE`) |
+| `INVOICE` | the record's manager | `PENDING_PAYMENT_REQUEST`, `NEEDS_PAYMENT_UPDATE` |
+| `PAYMENT_PROOF` | anyone with `PAYMENT_CONFIRM` in scope | while an instalment can wait for its transfer (same statuses plus `PENDING_PAYMENT`) |
  Allowed files are the demo's:
 JPEG/PNG/WebP/PDF, at most 10 MB, non-empty, and the content must match the declared type (magic bytes).
 Content lives under `STORAGE_DIR` (default `storage/`), named by a random id rather than the uploaded name.

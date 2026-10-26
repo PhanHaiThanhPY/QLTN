@@ -4,6 +4,7 @@ import type { TaskDueDays, WorkflowApprovalStep, WorkflowStageConfig } from '../
 import { Building } from '../../buildings/entities/building.entity';
 import { Location } from '../../buildings/entities/location.entity';
 import { User } from '../../users/entities/user.entity';
+import type { PaymentFields } from '../payment.types';
 import type { ProposalDraft } from '../proposal.types';
 
 @Entity('repair_records')
@@ -112,6 +113,10 @@ export class RepairRecord extends BaseEntity {
 
   @Column({ name: 'executing_contractor_name', type: 'varchar', length: 200, nullable: true })
   executingContractorName: string | null;
+
+  /** Settlement request being prepared (S4, T17); every field optional. */
+  @Column({ name: 'payment_draft', type: 'jsonb', nullable: true })
+  paymentDraft: PaymentFields | null;
 
   /** Acceptance round in progress or last closed (S3). */
   @Column({ name: 'current_acceptance_id', type: 'uuid', nullable: true })

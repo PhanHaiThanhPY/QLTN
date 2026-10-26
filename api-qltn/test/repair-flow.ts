@@ -76,11 +76,15 @@ export const confirmedRecord = async (
   );
 };
 
-/** One item, one contractor ("Công ty Thủy Tín", 1 000 000 ₫), approved by the whole chain: READY_FOR_CONSTRUCTION. */
+/**
+ * Two units of one item from one contractor ("Công ty Thủy Tín"), approved by the whole chain: READY_FOR_CONSTRUCTION.
+ * The approved amount is 2 × `unitPriceVnd` (1 000 000 ₫ by default).
+ */
 export const readyForConstruction = async (
   sessions: FlowSessions,
   buildingId: string,
   title: string,
+  unitPriceVnd = '500000',
 ): Promise<FlowRecord> => {
   let record = await confirmedRecord(sessions, buildingId, title);
   const incident = await upload(sessions.manager, record.id, 'INCIDENT_MINUTES');
@@ -97,7 +101,7 @@ export const readyForConstruction = async (
         contractors: [
           {
             name: 'Công ty Thủy Tín',
-            unitPricesVnd: ['500000'],
+            unitPricesVnd: [unitPriceVnd],
             otherCostVnd: '0',
             taxVnd: '0',
             quotationAttachmentIds: [quotation],

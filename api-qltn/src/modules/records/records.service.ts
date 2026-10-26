@@ -34,6 +34,7 @@ import { RepairConfirmation, type ConfirmationOutcome } from './entities/repair-
 import { RepairRecord } from './entities/repair-record.entity';
 import { toRecordView, type RepairRecordView } from './record-view';
 import { ConstructionService, type ExecutionHistoryView } from './construction.service';
+import { PaymentsService, type PaymentHistoryView } from './payments.service';
 import { ProposalsService, type ProposalHistoryView } from './proposals.service';
 
 export { toRecordView, type RepairRecordView } from './record-view';
@@ -60,6 +61,9 @@ const PROPOSAL_FILE_PURPOSES = [
   'BOARD_MINUTES',
   'CONSTRUCTION',
   'ACCEPTANCE',
+  'PAYMENT_REQUEST',
+  'INVOICE',
+  'PAYMENT_PROOF',
 ] as const;
 
 /** The three confirmer actions of S1 (SPEC B03–B09 T01–T03): outcome stored, target status, label of `note`. */
@@ -125,6 +129,8 @@ export interface RecordDetailView {
   proposalAttachments: AttachmentView[];
   /** Construction, acceptance rounds (minutes, decisions, signatures) and saved repair work (S3). */
   execution: ExecutionHistoryView;
+  /** Payment instalments, approved amount and transferred total (S4). */
+  payment: PaymentHistoryView;
   audit: AuditEventView[];
 }
 
@@ -202,6 +208,7 @@ export class RecordsService {
     private readonly codes: CodeCounterService,
     private readonly proposals: ProposalsService,
     private readonly construction: ConstructionService,
+    private readonly payments: PaymentsService,
   ) {}
 
   async create(actor: AuthenticatedUser, dto: CreateRecordDto): Promise<RepairRecordView> {
@@ -485,7 +492,7 @@ export class RecordsService {
   async getDetail(actor: AuthenticatedUser, id: string): Promise<RecordDetailView> {
     const record = await this.dataSource.getRepository(RepairRecord).findOneBy({ id });
     if (!record || !actor.buildingIds.includes(record.buildingId)) throw notFound('Không tìm thấy hồ sơ.');
-    const [confirmations, attachments, proposal, proposalAttachments, execution, audit] = await Promise.all([
+    const [confirmations, attachments, proposal, proposalAttachments, execution, payment, audit] = await Promise.all([
       this.dataSource
         .getRepository(RepairConfirmation)
         .find({ where: { recordId: id }, order: { createdAt: 'ASC', id: 'ASC' } }),
@@ -496,6 +503,7 @@ export class RecordsService {
         order: { createdAt: 'ASC', id: 'ASC' },
       }),
       this.construction.historyOf(record),
+      this.payments.historyOf(record),
       this.audit.listForSubject(SUBJECT_TYPE.REPAIR_RECORD, id, { page: 1, limit: 100 }),
     ]);
     return {
@@ -505,6 +513,7 @@ export class RecordsService {
       proposal,
       proposalAttachments: proposalAttachments.map(toAttachmentView),
       execution,
+      payment,
       audit: audit.data,
     };
   }

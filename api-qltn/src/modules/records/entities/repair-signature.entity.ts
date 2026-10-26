@@ -2,13 +2,16 @@ import { Check, Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, 
 import { User } from '../../users/entities/user.entity';
 import { RepairRecord } from './repair-record.entity';
 
-export const SIGNED_DOCUMENT_TYPES = ['PROPOSAL', 'BOARD_DECISION', 'ACCEPTANCE_DECISION'] as const;
+export const SIGNED_DOCUMENT_TYPES = ['PROPOSAL', 'BOARD_DECISION', 'ACCEPTANCE_DECISION', 'PAYMENT_REQUEST'] as const;
 export type SignedDocumentType = (typeof SIGNED_DOCUMENT_TYPES)[number];
 
 /** Quick hand-drawn signature (PNG only, not a digital signature) bound to one document (BR-C-03). */
 @Entity('repair_signatures')
 @Index('IDX_repair_signatures_document', ['documentType', 'documentId'])
-@Check('CHK_repair_signatures_document_type', `document_type IN ('PROPOSAL', 'BOARD_DECISION', 'ACCEPTANCE_DECISION')`)
+@Check(
+  'CHK_repair_signatures_document_type',
+  `document_type IN ('PROPOSAL', 'BOARD_DECISION', 'ACCEPTANCE_DECISION', 'PAYMENT_REQUEST')`,
+)
 export class RepairSignature {
   @PrimaryGeneratedColumn('uuid')
   id: string;

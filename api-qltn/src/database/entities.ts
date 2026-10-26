@@ -12,6 +12,8 @@ import { RepairAcceptance } from '../modules/records/entities/repair-acceptance.
 import { RepairConfirmation } from '../modules/records/entities/repair-confirmation.entity';
 import { RepairConstructionUpdate } from '../modules/records/entities/repair-construction-update.entity';
 import { RepairConstruction } from '../modules/records/entities/repair-construction.entity';
+import { RepairPaymentDecision } from '../modules/records/entities/repair-payment-decision.entity';
+import { RepairPayment } from '../modules/records/entities/repair-payment.entity';
 import { RepairProposalDecision } from '../modules/records/entities/repair-proposal-decision.entity';
 import { RepairProposalSubmission } from '../modules/records/entities/repair-proposal-submission.entity';
 import { RepairRecord } from '../modules/records/entities/repair-record.entity';
@@ -39,4 +41,6 @@ export const ALL_ENTITIES = [
   RepairAcceptance,
   RepairAcceptanceDecision,
   Notification,
+  RepairPayment,
+  RepairPaymentDecision,
 ];

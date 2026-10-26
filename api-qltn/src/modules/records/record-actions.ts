@@ -5,6 +5,21 @@ import type { Capability } from '../../domain/permissions';
 import type { RepairRecord } from './entities/repair-record.entity';
 import { acceptanceStepsHeldBy, currentStepKeyOf, PROPOSAL_APPROVAL_STATUSES, stepHolderOf } from './record-steps';
 
+/** Record statuses where a new advance may be requested (SPEC v2 §5.4 A1). */
+export const ADVANCE_REQUEST_STATUSES: readonly string[] = [
+  'READY_FOR_CONSTRUCTION',
+  'IN_CONSTRUCTION',
+  'PENDING_ACCEPTANCE',
+  'NEEDS_REPAIR',
+];
+/** Statuses where the settlement is prepared (T17, T18). */
+export const SETTLEMENT_REQUEST_STATUSES: readonly string[] = ['PENDING_PAYMENT_REQUEST', 'NEEDS_PAYMENT_UPDATE'];
+/** An open advance can still be resubmitted, decided and confirmed after acceptance (A1b, A2, A3; PM/BA 26/10). */
+export const ADVANCE_FOLLOW_UP_STATUSES: readonly string[] = [
+  ...ADVANCE_REQUEST_STATUSES,
+  ...SETTLEMENT_REQUEST_STATUSES,
+];
+
 /** Statuses where the manager prepares or reworks a proposal (T04–T06). */
 export const PROPOSAL_EDIT_STATUSES: readonly string[] = [
   'PENDING_PROPOSAL',
@@ -52,9 +67,11 @@ export interface RecordActionDef {
    * confirmer; both check capability → assignee → source status. `approvalStep` = holder of the step the proposal
    * waits on, checked capability → source status → holder, since outside those statuses there is no current step
    * (SPEC B03–B09 §4). `acceptanceMember` = holder of an ACCEPTANCE step of the snapshot, checked the same way; the
-   * service then refuses a member who already decided in the round (409 `step_already_decided`).
+   * service then refuses a member who already decided in the round (409 `step_already_decided`). `paymentStep` =
+   * holder of the instalment's current PAYMENT step, checked by the service after the status. `building` = anyone
+   * holding the capability in the record's building scope (transfer confirmation, ADR-0001 Q4).
    */
-  slot: 'manager' | 'confirmer' | 'approvalStep' | 'acceptanceMember';
+  slot: 'manager' | 'confirmer' | 'approvalStep' | 'acceptanceMember' | 'paymentStep' | 'building';
 }
 
 /**
@@ -175,6 +192,72 @@ export const RECORD_ACTIONS = {
     from: ['NEEDS_REPAIR'],
     capability: 'CONSTRUCTION',
     slot: 'manager',
+  },
+  savePaymentDraft: {
+    label: 'Lưu nháp đề nghị thanh toán',
+    from: SETTLEMENT_REQUEST_STATUSES,
+    capability: 'PAYMENT_RECORD',
+    slot: 'manager',
+  },
+  submitPaymentRequest: {
+    label: 'Gửi đề nghị quyết toán',
+    from: SETTLEMENT_REQUEST_STATUSES,
+    capability: 'PAYMENT_RECORD',
+    slot: 'manager',
+  },
+  approvePayment: {
+    label: 'Duyệt thanh toán',
+    from: ['PENDING_PAYMENT_APPROVAL', 'PENDING_CUSTOM_PAYMENT_APPROVAL'],
+    capability: 'PAYMENT_DECIDE',
+    slot: 'paymentStep',
+  },
+  requestPaymentUpdate: {
+    label: 'Trả đề nghị thanh toán',
+    from: ['PENDING_PAYMENT_APPROVAL', 'PENDING_CUSTOM_PAYMENT_APPROVAL'],
+    capability: 'PAYMENT_DECIDE',
+    slot: 'paymentStep',
+  },
+  confirmPaymentTransfer: {
+    label: 'Xác nhận đã chuyển khoản',
+    from: ['PENDING_PAYMENT'],
+    capability: 'PAYMENT_CONFIRM',
+    slot: 'building',
+  },
+  completeRecord: {
+    label: 'Đóng hồ sơ hoàn tất',
+    from: ['PENDING_PAYMENT'],
+    capability: 'PAYMENT_RECORD',
+    slot: 'manager',
+  },
+  submitAdvanceRequest: {
+    label: 'Gửi đề nghị tạm ứng',
+    from: ADVANCE_REQUEST_STATUSES,
+    capability: 'PAYMENT_RECORD',
+    slot: 'manager',
+  },
+  resubmitAdvanceRequest: {
+    label: 'Gửi lại đề nghị tạm ứng',
+    from: ADVANCE_FOLLOW_UP_STATUSES,
+    capability: 'PAYMENT_RECORD',
+    slot: 'manager',
+  },
+  approveAdvance: {
+    label: 'Duyệt tạm ứng',
+    from: ADVANCE_FOLLOW_UP_STATUSES,
+    capability: 'PAYMENT_DECIDE',
+    slot: 'paymentStep',
+  },
+  requestAdvanceUpdate: {
+    label: 'Trả đề nghị tạm ứng',
+    from: ADVANCE_FOLLOW_UP_STATUSES,
+    capability: 'PAYMENT_DECIDE',
+    slot: 'paymentStep',
+  },
+  confirmAdvanceTransfer: {
+    label: 'Xác nhận đã chuyển khoản tạm ứng',
+    from: ADVANCE_FOLLOW_UP_STATUSES,
+    capability: 'PAYMENT_CONFIRM',
+    slot: 'building',
   },
 } as const satisfies Record<string, RecordActionDef>;
 

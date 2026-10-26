@@ -38,6 +38,18 @@ export const AUDIT_ACTION_LABEL: Readonly<Record<string, string>> = {
   failAcceptance: 'Nghiệm thu không đạt',
   saveRepairEvidence: 'Lưu nội dung khắc phục',
   resubmitAcceptance: 'Gửi nghiệm thu lại',
+  // Thanh toán (B03–B09 v2 S4)
+  savePaymentDraft: 'Lưu nháp đề nghị thanh toán',
+  submitPaymentRequest: 'Gửi đề nghị quyết toán',
+  approvePayment: 'Duyệt thanh toán',
+  requestPaymentUpdate: 'Trả đề nghị thanh toán',
+  confirmPaymentTransfer: 'Xác nhận chuyển khoản quyết toán',
+  completeRecord: 'Đóng hồ sơ hoàn tất',
+  submitAdvanceRequest: 'Gửi đề nghị tạm ứng',
+  resubmitAdvanceRequest: 'Gửi lại đề nghị tạm ứng',
+  approveAdvance: 'Duyệt tạm ứng',
+  requestAdvanceUpdate: 'Trả đề nghị tạm ứng',
+  confirmAdvanceTransfer: 'Xác nhận chuyển khoản tạm ứng',
   // Tệp
   uploadAttachment: 'Tải tệp lên',
   // Tòa và vị trí

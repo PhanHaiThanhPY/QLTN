@@ -9,7 +9,11 @@ import { FieldErrors, fieldError } from '../../common/validation/field-errors';
 import { SUBJECT_TYPE } from '../audit/entities/audit-event.entity';
 import { AuditService } from '../audit/audit.service';
 import { RepairRecord } from '../records/entities/repair-record.entity';
-import { PROPOSAL_EDIT_STATUSES } from '../records/record-actions';
+import {
+  ADVANCE_FOLLOW_UP_STATUSES,
+  PROPOSAL_EDIT_STATUSES,
+  SETTLEMENT_REQUEST_STATUSES,
+} from '../records/record-actions';
 import { acceptanceStepsHeldBy, approvalStepOf, currentStepKeyOf, stepHolderOf } from '../records/record-steps';
 import { toAttachmentView, type AttachmentView } from './attachment-view';
 import type { UploadAttachmentDto } from './dto/upload-attachment.dto';
@@ -40,6 +44,9 @@ const isManagerAt = (actor: AuthenticatedUser, record: RepairRecord, statuses: r
 /** Statuses where the manager reports construction or repair work (T11, T12, T15, T16; v1 BR-12). */
 const EXECUTION_STATUSES: readonly string[] = ['IN_CONSTRUCTION', 'NEEDS_REPAIR'];
 
+const isPaymentManager = (actor: AuthenticatedUser, record: RepairRecord, statuses: readonly string[]): boolean =>
+  record.managerUserId === actor.id && hasCapability(actor, 'PAYMENT_RECORD') && statuses.includes(record.status);
+
 /** The holder of the current BQT-role step while the proposal waits on it (BR-S2-05). */
 const isWaitingBoardHolder = (actor: AuthenticatedUser, record: RepairRecord): boolean => {
   const key = currentStepKeyOf(record);
@@ -54,6 +61,12 @@ const PURPOSE_RULES: Readonly<Record<string, (actor: AuthenticatedUser, record: 
   INCIDENT_MINUTES: (actor, record) => isManagerAt(actor, record, PROPOSAL_EDIT_STATUSES),
   BOARD_MINUTES: isWaitingBoardHolder,
   CONSTRUCTION: (actor, record) => isManagerAt(actor, record, EXECUTION_STATUSES),
+  PAYMENT_REQUEST: (actor, record) => isPaymentManager(actor, record, ADVANCE_FOLLOW_UP_STATUSES),
+  INVOICE: (actor, record) => isPaymentManager(actor, record, SETTLEMENT_REQUEST_STATUSES),
+  // ADR-0001 R4: any PAYMENT_CONFIRM holder in scope, while an instalment can wait for its transfer.
+  PAYMENT_PROOF: (actor, record) =>
+    hasCapability(actor, 'PAYMENT_CONFIRM') &&
+    [...ADVANCE_FOLLOW_UP_STATUSES, 'PENDING_PAYMENT'].includes(record.status),
   ACCEPTANCE: (actor, record) =>
     isManagerAt(actor, record, EXECUTION_STATUSES) ||
     (record.status === 'PENDING_ACCEPTANCE' && acceptanceStepsHeldBy(record, actor.id).length > 0),
@@ -67,6 +80,9 @@ export const PURPOSE_LABEL: Readonly<Record<string, string>> = {
   BOARD_MINUTES: 'Biên bản họp BQT',
   CONSTRUCTION: 'Thi công',
   ACCEPTANCE: 'Nghiệm thu',
+  PAYMENT_REQUEST: 'Đề nghị thanh toán',
+  INVOICE: 'Hóa đơn GTGT',
+  PAYMENT_PROOF: 'Chứng từ chuyển khoản',
 };
 
 const STEP_DENIED = 'Bước hiện tại không cho bạn tải loại tệp này.';
