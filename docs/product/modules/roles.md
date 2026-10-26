@@ -67,7 +67,7 @@
 | RG-03 | **Đã xử lý ở RM-S1 (26/10, `072df32`, chưa merge).** Bảng ma trận trên web ghi "Cập nhật thi công, **lập đề nghị thanh toán**" dưới quyền `CONSTRUCTION`. Code thực tế: `savePaymentDraft` và `submitPaymentRequest` cần `PAYMENT_RECORD`. Bảng đang mô tả sai người dùng | `permission-rows.ts` so với `web/src/domain/actions.ts` dòng 178–189 | Thấp (chỉ sai chữ, quyền thực tế vẫn đúng) | Sửa nhãn; gom vào slice nhỏ kế tiếp |
 | RG-04 | Dòng ma trận "Ghi nhận nghiệm thu… (cần cả KT và TVKT đạt)" mô tả quy tắc demo, trong khi D1 có thể khác (OD-12) | `permission-rows.ts`; DG-02 | Thấp | Cập nhật khi OD-12 chốt |
 | RG-05 | Không xóa hoặc ngừng dùng được vai trò tùy chỉnh; vai trò thừa cứ tích tụ trong danh sách | RO-06 | Thấp | Chờ khách chốt (RQ-02) |
-| RG-06 | Không xem được lịch sử thay đổi vai trò. Audit của vai trò ghi chung loại `ACCOUNT` với tài khoản | `roles.service.ts` `SUBJECT_TYPE.ACCOUNT` | Thấp | Thêm endpoint và màn hình lịch sử vai trò; xem cách phân loại audit khi làm module `audit` |
+| RG-06 | **Đã xử lý ở AD-S1 (26/10, chưa merge).** Không xem được lịch sử thay đổi vai trò. Audit của vai trò ghi chung loại `ACCOUNT` với tài khoản | `roles.service.ts` `SUBJECT_TYPE.ACCOUNT` | Thấp | Thêm endpoint và màn hình lịch sử vai trò; xem cách phân loại audit khi làm module `audit` |
 | RG-07 | `GET /api/roles` mở cho mọi người đã đăng nhập, gồm danh sách capability và số người giữ | `roles.controller.ts` (không có `RequireCapabilities`) | Thấp (thông tin nội bộ) | Cần dev-build xác nhận màn hình nào ngoài admin đang cần endpoint này rồi mới thu hẹp |
 | RG-08 | Bớt quyền của vai trò thì các bước đang mở của người giữ không được đánh giá lại | RO-08 | Cao, đi cùng users UG-03 | US-S2 |
 

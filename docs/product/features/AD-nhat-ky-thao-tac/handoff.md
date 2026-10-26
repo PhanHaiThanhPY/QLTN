@@ -76,6 +76,16 @@
 
 Candidate cần trả về `dev-build` để sửa F-AD-S1-01 và rerun `npm run format:check`.
 
+### Vòng sửa 1 (dev-review)
+
+**PASS WITH RESIDUE — 26/10/2026.** Fix `a6b9b9b` xử lý F-AD-S1-01 bằng cách format `test/audit-log.e2e-spec.ts`; không thay đổi hành vi ứng dụng.
+
+- `api-qltn` `npm run format:check`, `npm run lint`, `npm run typecheck`: đạt.
+- Audit e2e trên DB cô lập `qltn_review_ad_s1_fix_e2e`: `1 suite / 7 tests` đạt.
+- Residue môi trường giữ nguyên: rerun browser AC-11 không khởi động được vì Chrome không expose page target; screenshot và CSV evidence đã được kiểm tra ở vòng trước.
+
+Candidate chấp nhận được để chuyển sang bước PM/BA close.
+
 ### Sửa F-AD-S1-01 (dev-build, 26/10/2026)
 
 - `api-qltn/test/audit-log.e2e-spec.ts` đã chạy lại Prettier. Lỗi do một lần sửa bằng `sed` sau bước format.
@@ -84,4 +94,12 @@ Candidate cần trả về `dev-build` để sửa F-AD-S1-01 và rerun `npm run
 
 ## Đóng (PM/BA)
 
-_Chưa có._
+**Ngày:** 26/10/2026 · **Kết quả:** AD-S1 **đạt**, đóng. API `3cb3b76`, web `052b0a9`, bản sửa `a6b9b9b`, nhánh `feature/ad-s1-audit-log` (xếp trên S2). Chưa merge, chưa push.
+
+- **Bằng chứng:** AC-1 đến AC-11 đều có. Vòng 1 review không đạt với một phát hiện, F-AD-S1-01: định dạng file test, không đổi hành vi. Vòng sửa đã xử lý.
+  - Reviewer chạy lại e2e audit 7/7.
+  - Toàn bộ e2e API 123/123 theo bằng chứng build.
+  - BR-02 đạt: BQL và BQT không thấy dòng toàn hệ thống; Kỹ thuật và Kế toán nhận 403.
+- **Phần còn lại được chấp nhận:** seat review không có Chrome nên không chạy lại AC-11; reviewer đã xem ảnh chụp và file CSV.
+- **Cập nhật tài liệu:** [platform-reference-audit-health.md](../../modules/platform-reference-audit-health.md) AD-G1, AD-G2, AD-G5, HE-G1; [roles.md](../../modules/roles.md) RG-06; [organization.md](../../modules/organization.md) OG-03. Tất cả ghi đã xử lý.
+- **Việc tiếp theo:** không tạo việc mới. S3 đang được build. Merge do chủ dự án quyết định.

@@ -40,7 +40,7 @@ Bộ phận có hai việc:
 |---|---|---|---|---|
 | OG-01 | Thu hẹp phạm vi bộ phận chỉ kiểm tra nhân viên, **không kiểm tra quy tắc giao việc**. Quy tắc của tòa vừa bị bỏ vẫn còn trong cấu hình, nhưng không còn ai khớp. Hồ sơ mới ở tòa đó vì vậy không được tự giao việc, và hệ thống không báo vì sao | `departments.service.ts` `update` chỉ truy vấn `users`; cấu hình chỉ kiểm khi lưu | Trung bình | Khi thu hẹp phạm vi: chặn nếu còn quy tắc tham chiếu, hoặc liệt kê các quy tắc sẽ mất hiệu lực để người dùng xác nhận. Gom vào SPEC cấu hình tòa (module `buildings`) |
 | OG-02 | Không ngừng dùng được bộ phận | OR-04 | Thấp | DF-14 áp tương tự: chỉ ngừng dùng khi không còn nhân viên **và** không còn quy tắc tham chiếu; không xóa |
-| OG-03 | Không xem được lịch sử bộ phận; audit ghi chung loại `ACCOUNT` | OR-05 | Thấp | Xử lý chung khi phân tích module `audit` |
+| OG-03 | **Đã xử lý ở AD-S1 (26/10, chưa merge).** Không xem được lịch sử bộ phận; audit ghi chung loại `ACCOUNT` | OR-05 | Thấp | Xử lý chung khi phân tích module `audit` |
 | OG-04 | `GET /api/departments` mở cho mọi người đã đăng nhập | controller | Thấp | Giống roles RG-07: cần biết màn hình nào cần endpoint này rồi mới thu hẹp |
 
 **Không có câu hỏi mới cho khách.** D5-QT không nhắc tới bộ phận. Mặc định: bộ phận chỉ là nhóm quản trị nội bộ.

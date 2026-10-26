@@ -37,11 +37,11 @@
 
 | ID | Khoảng trống | Căn cứ | Mức | Hướng xử lý |
 |---|---|---|---|---|
-| AD-G1 | **Chưa có màn "Nhật ký thao tác" chung** để tra theo tòa, người làm, loại đối tượng, khoảng thời gian, và xuất ra file. Hiện chỉ xem được lịch sử của từng đối tượng | D2 nhóm 18 "nhật ký thao tác"; D1 tr. 39 | **Trung bình–Cao** với yêu cầu minh bạch, nhất là hai quỹ | Slice **AD-S1** |
-| AD-G2 | Vai trò và bộ phận được ghi audit dưới loại `ACCOUNT`, lẫn với tài khoản, và **không có chỗ đọc** lịch sử của chúng | `roles.service.ts`, `departments.service.ts` | Thấp | Thêm loại `ROLE`, `DEPARTMENT` cùng route đọc (roles RG-06, organization OG-03); gộp vào AD-S1 |
+| AD-G1 | **Đã xử lý ở AD-S1 (26/10, chưa merge).** **Chưa có màn "Nhật ký thao tác" chung** để tra theo tòa, người làm, loại đối tượng, khoảng thời gian, và xuất ra file. Hiện chỉ xem được lịch sử của từng đối tượng | D2 nhóm 18 "nhật ký thao tác"; D1 tr. 39 | **Trung bình–Cao** với yêu cầu minh bạch, nhất là hai quỹ | Slice **AD-S1** |
+| AD-G2 | **Đã xử lý ở AD-S1 (26/10, chưa merge).** Vai trò và bộ phận được ghi audit dưới loại `ACCOUNT`, lẫn với tài khoản, và **không có chỗ đọc** lịch sử của chúng | `roles.service.ts`, `departments.service.ts` | Thấp | Thêm loại `ROLE`, `DEPARTMENT` cùng route đọc (roles RG-06, organization OG-03); gộp vào AD-S1 |
 | AD-G3 | Bảng audit "chỉ ghi thêm" mới là quy ước trong code; **không có ràng buộc ở DB** chặn sửa hoặc xóa (không trigger, không thu hồi quyền UPDATE/DELETE) | migration `2026-10-21b` | Thấp–Trung bình | Quyết định kỹ thuật: dev-build đề xuất bằng ADR (ví dụ trigger chặn UPDATE/DELETE) |
 | AD-G4 | Chưa ghi sự kiện đăng nhập (thành công hoặc thất bại) | auth AG-09; DF-15 (5) | Trung bình | Làm cùng AU-S2 (DF-15) |
-| AD-G5 | Chưa có quy định thời gian lưu nhật ký | review M08 | Thấp | Mặc định: **giữ vô thời hạn**, không xóa. **Giả định**, ghi khi viết AD-S1 |
+| AD-G5 | **Đã xử lý ở AD-S1 (26/10, chưa merge).** Chưa có quy định thời gian lưu nhật ký | review M08 | Thấp | Mặc định: **giữ vô thời hạn**, không xóa. **Giả định**, ghi khi viết AD-S1 |
 
 ## 3. `health`: Kiểm tra sống
 
@@ -49,7 +49,7 @@
 
 | ID | Khoảng trống | Mức | Hướng xử lý |
 |---|---|---|---|
-| HE-G1 | Khi DB lỗi, API **vẫn trả HTTP 200** với `status: 'ok'` (chỉ trường `database` là `down`). Công cụ giám sát chỉ kiểm mã HTTP sẽ không phát hiện được sự cố | Thấp–Trung bình (vận hành) | Việc kỹ thuật: trả 503 khi `database: 'down'`. Không cần SPEC nghiệp vụ, nhưng vẫn cần chủ dự án duyệt trước khi giao (PD-08). Có thể gộp vào AD-S1 dưới dạng một AC nhỏ |
+| HE-G1 | **Đã xử lý ở AD-S1 (26/10, chưa merge).** Khi DB lỗi, API **vẫn trả HTTP 200** với `status: 'ok'` (chỉ trường `database` là `down`). Công cụ giám sát chỉ kiểm mã HTTP sẽ không phát hiện được sự cố | Thấp–Trung bình (vận hành) | Việc kỹ thuật: trả 503 khi `database: 'down'`. Không cần SPEC nghiệp vụ, nhưng vẫn cần chủ dự án duyệt trước khi giao (PD-08). Có thể gộp vào AD-S1 dưới dạng một AC nhỏ |
 
 ## 4. Đề xuất slice (chưa viết SPEC, chờ chủ dự án chọn)
 
