@@ -87,13 +87,6 @@ const FOLD_TO = FOLD_BASES.map(([base, marks]) => base.repeat(1 + marks.length *
 /** Escapes LIKE wildcards so a literal `%` or `_` in the search box stays literal. */
 const escapeLike = (value: string): string => value.replace(/[\\%_]/g, (char) => `\\${char}`);
 
-/** Legacy approval steps that resolve their assignee from a record column; custom steps use the snapshot map. */
-const APPROVAL_STEP_SLOT: Partial<Record<string, 'confirmationUserId' | 'consultantUserId' | 'boardUserId'>> = {
-  TECH_CONFIRM: 'confirmationUserId',
-  TECH: 'consultantUserId',
-  BOARD: 'boardUserId',
-};
-
 export interface RepairRecordView {
   id: string;
   code: string;
@@ -720,16 +713,7 @@ export class RecordsService {
       'confirmationUserId',
       'Người xác nhận đã ngừng hoạt động, sai khu vực hoặc không hợp lệ. Cần phân công lại.',
     );
-    for (const [index, step] of this.approvalStepsOf(record).entries()) {
-      const slot = APPROVAL_STEP_SLOT[step.key];
-      const userId = slot ? record[slot] : (record.approvalAssigneeUserIds?.[step.key] ?? null);
-      if (!isActiveUserForApprovalStep(ctx, userId, step, record.buildingId, record.locationId)) {
-        errors.add(
-          `approvalStepKeys.${index}`,
-          `Người xử lý bước ${step.label} đã ngừng hoạt động hoặc không hợp lệ. Cần kiểm tra lại phân công.`,
-        );
-      }
-    }
+    // BR-07a: only the INTAKE holder matters here; proposal-chain holders are checked when the proposal is submitted.
     errors.when(
       record.noMaintenanceItem !== true,
       'maintenanceItemId',
@@ -744,14 +728,6 @@ export class RecordsService {
       errors.add('attachmentIds', 'Cần ít nhất 1 ảnh hiện trường.');
     }
     errors.throwIfAny();
-  }
-
-  /** Approval steps in the record's snapshot order (custom steps fall back to the built-in library). */
-  private approvalStepsOf(record: RepairRecord): WorkflowApprovalStep[] {
-    const available = record.workflowApprovalSteps?.length ? record.workflowApprovalSteps : APPROVAL_STEPS;
-    return record.approvalStepKeys
-      .map((key) => available.find((step) => step.key === key))
-      .filter((step): step is WorkflowApprovalStep => Boolean(step));
   }
 
   private async hasSitePhoto(manager: EntityManager, record: RepairRecord): Promise<boolean> {

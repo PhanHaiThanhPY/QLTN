@@ -107,7 +107,11 @@ const applyDraftFields = async (
 };
 
 /** Full validation before leaving draft (spec 5.4); also guards emergency start. Equipment or "none" is mandatory. */
-export const assertSubmittable = async (ctx: CommandContext, record: RepairRecord): Promise<void> => {
+export const assertSubmittable = async (
+  ctx: CommandContext,
+  record: RepairRecord,
+  { checkApprovers = true }: { checkApprovers?: boolean } = {},
+): Promise<void> => {
   const errors = new FieldErrorCollector()
     .title('title', 'Tên hồ sơ', record.title)
     .text('description', 'Mô tả hư hỏng', record.description, LIMITS.DESCRIPTION_MIN, LIMITS.DESCRIPTION_MAX);
@@ -115,7 +119,9 @@ export const assertSubmittable = async (ctx: CommandContext, record: RepairRecor
   errors.when(!location || location.buildingId !== record.buildingId, 'locationId', 'Vị trí phải thuộc tòa nhà của hồ sơ.');
   errors.when(!isActiveUserInRole(ctx, record.managerUserId, 'BQL', record.buildingId, record.locationId), 'managerUserId', 'BQL quản lý không còn hoạt động hoặc không đúng khu vực.');
   errors.when(!isValidConfirmer(ctx, record.confirmationUserId, intakeStepOf(record), record.buildingId, record.locationId), 'confirmationUserId', 'Người xác nhận đã ngừng hoạt động, sai khu vực hoặc không hợp lệ. Cần phân công lại.');
-  for (const [field, message] of Object.entries(approverErrors(ctx, record))) errors.add(field, message);
+  // BR-07a: submitting for confirmation needs only the INTAKE holder; an emergency start goes straight to the
+  // proposal chain, so it keeps checking the approvers.
+  if (checkApprovers) for (const [field, message] of Object.entries(approverErrors(ctx, record))) errors.add(field, message);
   const item = record.maintenanceItemId ? await ctx.db.maintenanceItems.get(record.maintenanceItemId) : undefined;
   errors.when(recordItemLink(record) === RECORD_ITEM_LINK.UNLINKED, 'maintenanceItemId', RECORD_ITEM_REQUIRED_MESSAGE);
   errors.when(Boolean(record.maintenanceItemId) && item?.buildingId !== record.buildingId, 'maintenanceItemId', 'Hạng mục phải thuộc cùng tòa nhà.');
@@ -193,7 +199,7 @@ const saveRecordDraft: CommandHandler = async (ctx, command) => {
 const submitRecord: CommandHandler = async (ctx, command) => {
   const record = await loadRecordFor(ctx, command, 'submitRecord');
   const next = await applyDraftFields(ctx, record, asRecord(command.payload));
-  await assertSubmittable(ctx, next);
+  await assertSubmittable(ctx, next, { checkApprovers: false });
   const saved = await commitRecord(ctx, record, { ...next, status: 'PENDING_CONFIRMATION' }, 'submitRecord');
   return { ok: true, subjectId: saved.id };
 };

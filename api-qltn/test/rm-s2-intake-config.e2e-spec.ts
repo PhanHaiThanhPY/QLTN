@@ -358,15 +358,9 @@ describe('Confirmer from configuration and single proposal chain, RM-S2 (e2e)', 
       version: profile.version,
     });
     expect(deactivated.status).toBe(200);
+    // Unchanged AQUA (PROPOSAL [TECH, BOARD]); BR-07a: submit needs only the INTAKE holder, here the BQT fallback.
     const aqua = await applyTemplate(building('A').id, 'AQUA');
-    // Submitting checks every proposal-chain holder (existing S1 rule), and the AQUA chain starts with TVKT; with no
-    // TVKT the building runs a BQT-only chain while INTAKE stays [TECH] as in AQUA (question logged in handoff.md).
-    await admin
-      .put(
-        `/api/buildings/${building('A').id}/config`,
-        configBody(aqua, { workflowStages: withStage(aqua.workflowStages, 'PROPOSAL', ['BOARD']) }),
-      )
-      .expect(200);
+    expect(aqua.approvalStepKeys).toEqual(['TECH', 'BOARD']);
 
     const record = await pendingRecord(bqlA, building('A').id);
     expect(record.confirmationUserId).toBe(user('BQT').id);
