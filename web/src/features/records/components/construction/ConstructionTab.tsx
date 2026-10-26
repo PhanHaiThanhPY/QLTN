@@ -7,6 +7,7 @@ import { useRecordContext } from '../../record-context';
 import { withPrecondition } from '../../record-utils';
 import { DialogActionButton } from '../shared/DialogActionButton';
 import { ProgressBar } from '../shared/ProgressBar';
+import { ExecConstructionTab } from '../execution/ExecConstructionTab';
 import { ConstructionLogList } from './ConstructionLogList';
 import { ProgressDialog } from './ProgressDialog';
 import { StartConstructionDialog } from './StartConstructionDialog';
@@ -17,6 +18,7 @@ export const ConstructionTab = () => {
   const { detail } = useRecordContext();
   const { construction, record } = detail;
   const submit = useRepairAction('submitAcceptance');
+  if (detail.execution) return <ExecConstructionTab execution={detail.execution} />;
 
   if (!construction) {
     if (record.status === 'READY_FOR_CONSTRUCTION') {

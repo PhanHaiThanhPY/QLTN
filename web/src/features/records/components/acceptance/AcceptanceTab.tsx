@@ -3,6 +3,7 @@ import { approvalStepsFor } from '@/domain/actions';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { useRecordContext } from '../../record-context';
 import { DialogActionButton } from '../shared/DialogActionButton';
+import { ExecAcceptanceTab } from '../execution/ExecAcceptanceTab';
 import { AcceptanceDecisionDialog } from './AcceptanceDecisionDialog';
 import { AcceptanceRoundCard } from './AcceptanceRoundCard';
 import { RepairEvidenceForm } from './RepairEvidenceForm';
@@ -11,6 +12,7 @@ import { REVIEWER_LABEL } from './acceptance-labels';
 /** Nghiệm thu: rounds (failed ones kept), KT and TVKT decisions, repair evidence + resubmit. */
 export const AcceptanceTab = () => {
   const { detail } = useRecordContext();
+  if (detail.execution) return <ExecAcceptanceTab execution={detail.execution} />;
   const rounds = detail.acceptances;
   if (rounds.length === 0) {
     return <EmptyState title="Chưa có lượt nghiệm thu" description="BQL gửi nghiệm thu khi tiến độ thi công đạt 100% và có ảnh kết quả." />;

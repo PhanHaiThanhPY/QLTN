@@ -61,7 +61,7 @@ export const ALL_NAV_ITEMS: NavItem[] = [
 /** Modules that already talk to api-qltn (plan decision D2): entering them in api mode is allowed. */
 const API_READY_GROUPS = new Set(['Hệ thống', 'Quản trị']);
 /** Single entries ready before the rest of their group (record list in T4; the schedule is still mock-only). */
-const API_READY_PATHS = new Set(['/records', '/audit']);
+const API_READY_PATHS = new Set(['/records', '/audit', '/notifications']);
 
 /**
  * In api mode only modules backed by the real backend stay in the menu; the rest stay in the code

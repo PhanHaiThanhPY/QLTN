@@ -67,7 +67,7 @@ export const router = createBrowserRouter([
       { path: 'maintenance/occurrences/:occurrenceId', element: connected(page(<OccurrenceDetailPage />)) },
       { path: 'reports', element: connected(page(<ReportsPage />)) },
       { path: 'audit', element: apiConnected(page(<AuditLogPage />)) },
-      { path: 'notifications', element: connected(page(<NotificationsPage />)) },
+      { path: 'notifications', element: page(<NotificationsPage />) },
       { path: 'admin', element: <Navigate to="/admin/employees" replace /> },
       { path: 'admin/employees', element: page(<AdminEmployeesPage />) },
       { path: 'admin/departments', element: page(<AdminDepartmentsPage />) },

@@ -24,6 +24,8 @@ import type {
 } from '@/domain/types';
 import { asNumber, asOptionalString, asRecord, asString, asStringArray, requireVndAmount } from '@/domain/validation';
 import type { RecordDetail } from '../records-service';
+import type { ExecutionHistory } from '@/domain/execution';
+import { mapExecution } from './execution-mappers';
 import { mapProposalHistory, type ApiProposalHistory } from './proposal-mappers';
 import { MISSING_VERSION_MESSAGE } from './version';
 
@@ -1082,6 +1084,8 @@ export interface ApiRecordDetail {
   /** S2: proposal draft and submissions, and the quotation / minutes files they reference. */
   proposal?: ApiProposalHistory;
   proposalAttachments?: readonly ApiAttachment[];
+  /** S3: construction, acceptance rounds and saved repair work. */
+  execution?: ExecutionHistory;
   audit?: readonly ApiAuditEvent[];
 }
 
@@ -1095,6 +1099,7 @@ export const mapRecordDetail = (row: ApiRecordDetail): RecordDetail => ({
   confirmations: (row.confirmations ?? []).map(mapRepairConfirmation),
   submissions: [],
   quoteProposal: mapProposalHistory(row.proposal, row.record),
+  execution: mapExecution(row.execution),
   signatures: [],
   acceptances: [],
   paymentRequests: [],

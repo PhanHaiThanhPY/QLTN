@@ -1,6 +1,8 @@
+import { IS_API_MODE } from '@/config/data-source';
 import { TASK_KIND_TAB } from '@/domain/constants';
 import type { Notification, Task } from '@/domain/types';
 import { getDb } from '@/storage/db';
+import { countApiUnreadNotifications, listApiNotifications } from './http/notifications-api';
 import { now } from './runtime';
 import { requireViewer } from './viewer';
 
@@ -59,6 +61,7 @@ export interface NotificationView {
 
 export const getNotifications = async (): Promise<NotificationView[]> => {
   const viewer = await requireViewer();
+  if (IS_API_MODE) return listApiNotifications(viewer.id);
   const rows = await getDb()
     .notifications.where('recipientId')
     .equals(viewer.id)
@@ -71,6 +74,7 @@ export const getNotifications = async (): Promise<NotificationView[]> => {
 };
 
 export const countUnreadNotifications = async (): Promise<number> => {
+  if (IS_API_MODE) return countApiUnreadNotifications();
   const viewer = await requireViewer();
   return getDb()
     .notifications.where('recipientId')

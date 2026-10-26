@@ -1,4 +1,4 @@
-import { asRecord, asString } from '@/domain/validation';
+import { asRecord, asString, asStringArray } from '@/domain/validation';
 import { AppError, ERROR_CODE } from '@/domain/errors';
 import { broadcastChange } from '../change-channel';
 import type { Command, CommandResult } from '../command-engine';
@@ -30,6 +30,8 @@ import {
   toUpdateUserBody,
   toWithdrawRecordBody,
 } from './mappers';
+import { toExecutionBody, type ExecutionAction } from './execution-mappers';
+import { markApiNotificationsRead } from './notifications-api';
 import { toProposalBody, toProposalDecisionBody } from './proposal-mappers';
 import type {
   ApiBuilding,
@@ -312,9 +314,40 @@ const proposalCommand =
     return { ok: true, subjectId: updated.id };
   };
 
+/** S3 construction and acceptance actions T10–T16: `POST /records/:id/<route>`. */
+const EXECUTION_ROUTES: Readonly<Record<ExecutionAction, string>> = {
+  startConstruction: 'start-construction',
+  updateConstruction: 'update-construction',
+  submitAcceptance: 'submit-acceptance',
+  passAcceptance: 'pass-acceptance',
+  failAcceptance: 'fail-acceptance',
+  saveRepairEvidence: 'save-repair-evidence',
+  resubmitAcceptance: 'resubmit-acceptance',
+};
+
+const executionCommand =
+  (action: ExecutionAction): ApiCommandHandler =>
+  async (command) => {
+    const id = command.subjectId?.trim() ?? '';
+    if (!id) throw new AppError(ERROR_CODE.NOT_FOUND, 'Không tìm thấy hồ sơ.');
+    const body = toExecutionBody(action, command.payload, command.expectedVersion);
+    const route = EXECUTION_ROUTES[action];
+    const updated = await apiRequest<ApiRepairRecord>('POST', `/records/${encodeURIComponent(id)}/${route}`, { body });
+    broadcastChange();
+    return { ok: true, subjectId: updated.id };
+  };
+
+/** `POST /notifications/:id/read` for each id (BR-S3-01a minimum: no bulk route). */
+const markNotificationRead: ApiCommandHandler = async (command) => {
+  await markApiNotificationsRead(asStringArray(asRecord(command.payload).notificationIds));
+  broadcastChange();
+  return { ok: true };
+};
+
 /**
  * Actions wired to api-qltn. T2a accounts; T2b departments and roles; T2c buildings and locations; T2d configuration;
- * Đợt 2 repair records (draft, submit, withdraw); B03–B09 slice S1 confirmation; v2 slice S2 proposal and approval.
+ * Đợt 2 repair records (draft, submit, withdraw); B03–B09 slice S1 confirmation; v2 slice S2 proposal and approval;
+ * v2 slice S3 construction and acceptance.
  */
 const API_COMMANDS: Readonly<Record<string, ApiCommandHandler>> = {
   createUser,
@@ -344,6 +377,10 @@ const API_COMMANDS: Readonly<Record<string, ApiCommandHandler>> = {
   approveProposal: proposalCommand('approveProposal'),
   requestProposalUpdate: proposalCommand('requestProposalUpdate'),
   rejectProposal: proposalCommand('rejectProposal'),
+  markNotificationRead,
+  ...(Object.fromEntries(
+    (Object.keys(EXECUTION_ROUTES) as ExecutionAction[]).map((action) => [action, executionCommand(action)]),
+  ) as Record<ExecutionAction, ApiCommandHandler>),
 };
 
 export const API_UNSUPPORTED_MESSAGE = 'Thao tác này chưa nối API.';

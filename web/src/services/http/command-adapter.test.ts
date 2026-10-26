@@ -1100,6 +1100,27 @@ describe('api command adapter — configuration and workflow', () => {
     });
   });
 
+  it.each([
+    ['startConstruction', 'start-construction', { startDate: '2026-10-27', plannedEndDate: '2026-10-30', planNote: ' Kế hoạch. ', extra: 1 }, { startDate: '2026-10-27', plannedEndDate: '2026-10-30', planNote: 'Kế hoạch.' }],
+    ['updateConstruction', 'update-construction', { progressPercent: 100, note: 'Xong', attachmentIds: ['att-c'] }, { progressPercent: 100, note: 'Xong', attachmentIds: ['att-c'] }],
+    ['passAcceptance', 'pass-acceptance', { acceptanceId: 'acc-1', note: '', signature: 'data:image/png;base64,AA' }, { acceptanceId: 'acc-1', note: '', signature: 'data:image/png;base64,AA' }],
+    ['resubmitAcceptance', 'resubmit-acceptance', { completedDate: '2026-10-30', inspectedAt: '2026-10-30T02:00:00.000Z', inspectionLocation: 'Tầng 3', content: 'Nội dung', photoAttachmentIds: ['att-p'] }, { completedDate: '2026-10-30', inspectedAt: '2026-10-30T02:00:00.000Z', inspectionLocation: 'Tầng 3', content: 'Nội dung', photoAttachmentIds: ['att-p'] }],
+  ])('should POST S3 %s to /records/:id/%s with only its own fields', async (action, route, payload, expected) => {
+    const mock = mockFetch(() => jsonResponse(200, successBody({ ...RECORD_VIEW, version: 8 })));
+    await executeApiCommand(createCommand(payload, { subjectType: 'REPAIR_RECORD', action, subjectId: 'rec-1', expectedVersion: 7 }));
+    const [url, init] = mock.mock.calls[0];
+    expect(String(url)).toBe(`/api/records/rec-1/${route}`);
+    expect(bodyOf(init)).toEqual({ version: 7, ...expected });
+  });
+
+  it('should mark each notification read through POST /notifications/:id/read', async () => {
+    const mock = mockFetch(() => jsonResponse(200, successBody({ id: 'n', readAt: '2026-10-26T00:00:00.000Z' })));
+    await executeApiCommand(
+      createCommand({ notificationIds: ['n-1', 'n-2'] }, { subjectType: 'REPAIR_RECORD', action: 'markNotificationRead' }),
+    );
+    expect(mock.mock.calls.map(([url]) => String(url))).toEqual(['/api/notifications/n-1/read', '/api/notifications/n-2/read']);
+  });
+
   it('should refuse a confirmation without the loaded version instead of sending it', async () => {
     const mock = mockFetch(() => jsonResponse(200, successBody(RECORD_VIEW)));
 

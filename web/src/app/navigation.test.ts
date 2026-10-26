@@ -54,4 +54,10 @@ describe('visibleNavItems', () => {
       expect(labelsOf('ADMIN', false)).not.toContain(AUDIT);
     });
   });
+
+  it('shows Thông báo in api mode (SPEC B03–B09 v2 BR-S3-01a)', () => {
+    for (const role of ['BQL', 'OWNERS_BOARD', 'TECH_CONSULTANT'] as const) {
+      expect(visibleNavItems(userOf(role), true).map((item) => item.to)).toContain('/notifications');
+    }
+  });
 });
