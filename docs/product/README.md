@@ -11,7 +11,7 @@ Thư mục này là nơi duy nhất giữ yêu cầu, luồng nghiệp vụ, ti�
 |---|---|---|
 | 1 | Quyết định đã ghi trong [DECISIONS.md](DECISIONS.md) với trạng thái `Đã chốt` | Chuẩn cao nhất trong repo. Chỉ thay bằng một quyết định mới ghi rõ nó thay thế quyết định nào. |
 | 2 | `SPEC.md` của từng tính năng trong `features/` | Hợp đồng yêu cầu duy nhất của tính năng đó. Dev-build triển khai và dev-review đối chiếu theo file này. |
-| 3 | D1 aqua-proposal (23/10/2026) và D2 Báo giá (20/10/2026) trong [sources/customer/](../sources/INDEX.md) | Đầu vào phạm vi chính. Hai bản còn khác nhau, xem [review 23/10](../reviews/2026-10-23/review-tai-lieu-nghiep-vu.md). |
+| 3 | D1 aqua-proposal (23/10/2026) và D2 Báo giá (20/10/2026) trong [sources/customer/](../sources/INDEX.md) | Đầu vào phạm vi chính. D1 tự ghi là bổ sung gói đầy đủ của D2 (D1 tr. 42, 45). Chỗ còn khác nhau và các sửa đổi so với [review 23/10](../reviews/2026-10-23/review-tai-lieu-nghiep-vu.md) xem [DECISIONS.md](DECISIONS.md) mục "Đối chiếu nguồn gốc". |
 | 4 | D5 biểu mẫu trong [sources/customer/D5-bieu-mau/](../sources/customer/D5-bieu-mau/); D3 đặc tả demo và D4 đề xuất giải pháp trong [archive/2026-10/specs/](../archive/2026-10/specs/) | Tham khảo trường dữ liệu và bối cảnh cũ. Không tự coi là phạm vi hiện hành. |
 | 5 | Phân tích và UAT mock nội bộ trong [archive/2026-10/](../archive/README.md); review trong [reviews/](../reviews/) | Không phải bằng chứng khách hàng đã nghiệm thu. |
 
@@ -40,7 +40,13 @@ Mục này chỉ là ảnh chụp từ git log và cấu trúc thư mục. Chưa
 - **Web (`web/`):** bản demo đủ nhiều nhóm màn hình (records, workflow, maintenance, dashboard, reports, space, assistant…), chạy được ở chế độ mock. UAT nội bộ ngày 20/10 ghi nhận 34/34 kịch bản sửa chữa đạt trên demo.
 - **API (`api-qltn/`, NestJS):** các module auth, users, roles, organization, buildings, reference, attachments, audit, records. Riêng hồ sơ sửa chữa (B03) đã có tạo hồ sơ, lưu nháp, xem chi tiết, ảnh hiện trường, gửi/rút hồ sơ, danh sách phân trang có lọc và bộ đếm.
 - **Web chế độ `api`:** đang nối dần từng phần của B03 với API thật.
-- Commit có mã task `D2-T2`, `D2-T3`, nhưng kế hoạch gốc của các mã này chưa có trong repo. Cần dev-build xác nhận nguồn (OD-09).
+- Mã task `D2-T*` trong commit không có kế hoạch gốc (OD-09 đã trả lời).
+
+### Chuẩn so sánh cho luồng B03–B09
+
+- **Chuẩn hành vi hiện có:** web demo (`web/src/domain/actions.ts`, `web/src/services/handlers/repair-*.ts`). API đang port theo chuẩn này. UAT 20/10 đo trên demo.
+- **So với D1 tr. 17–23:** demo khác ở dự toán theo hạng mục, nghiệm thu theo hạng mục kiểm tra, ký biên bản nghiệm thu, thanh toán nhiều đợt và vai trò Kế toán (DG-01–DG-04 trong [DECISIONS.md](DECISIONS.md)). Port nguyên demo sang API vì thế chưa chắc đạt nghiệm thu theo D1. Các câu hỏi cần chốt là OD-05, OD-10–OD-13.
+- **Tiêu chí nghiệm thu hợp đồng cho nhóm B** chưa có nguồn nào nêu (OD-14).
 
 ## 4. Kế hoạch tài liệu theo phase
 
