@@ -71,7 +71,11 @@ export const APPROVAL_STEPS: readonly WorkflowApprovalStep[] = [
   },
   { key: 'TECH', status: 'PENDING_TECH_REVIEW', role: 'TECH_CONSULTANT', actor: 'TVKT', label: 'TVKT thẩm định' },
   { key: 'BOARD', status: 'PENDING_BOARD_APPROVAL', role: 'OWNERS_BOARD', actor: 'BQT', label: 'BQT duyệt' },
+  // ADR-0001 R3: the record's own manager as an acceptance member; its holder is always `managerUserId`.
+  { key: 'MANAGER', status: 'PENDING_ACCEPTANCE', role: 'BQL', actor: 'BQL', label: 'BQL nghiệm thu' },
 ];
+/** Built-in steps valid only in the ACCEPTANCE stage. */
+export const ACCEPTANCE_ONLY_STEP_KEYS: readonly string[] = ['MANAGER'];
 export const CUSTOM_APPROVAL_STATUS = 'PENDING_CUSTOM_APPROVAL';
 
 /** Lifecycle steps that can be enabled for each workflow stage. */
@@ -347,14 +351,19 @@ export const CONFIG_TEMPLATES: readonly TemplateDefinition[] = [
     key: 'AQUA',
     name: 'Aqua – theo quy trình Ban quản trị',
     description:
-      'TVKT xác nhận hiện trạng và thẩm định tờ trình, BQT phê duyệt; nghiệm thu gồm BQT và TVKT (D5-QT). Ngưỡng như mẫu Chung cư.',
+      'TVKT xác nhận hiện trạng và thẩm định tờ trình, BQT phê duyệt; nghiệm thu gồm BQL, BQT và TVKT (D5-QT). Ngưỡng như mẫu Chung cư.',
     taskDueDays: { CONFIRM_RECORD: 2, APPROVE_PROPOSAL: 2, REVIEW_ACCEPTANCE: 2, APPROVE_PAYMENT: 3 },
     emergencyLimitVnd: '15000000',
     emergencyDocHours: 24,
     recentRepairDays: 90,
     repeatMinRecords: 2,
     priceRatio: 1.5,
-    stageSteps: { INTAKE: ['TECH'], PROPOSAL: ['TECH', 'BOARD'], ACCEPTANCE: ['BOARD', 'TECH'], PAYMENT: ['BOARD'] },
+    stageSteps: {
+      INTAKE: ['TECH'],
+      PROPOSAL: ['TECH', 'BOARD'],
+      ACCEPTANCE: ['MANAGER', 'BOARD', 'TECH'],
+      PAYMENT: ['BOARD'],
+    },
   },
 ];
 
@@ -405,7 +414,8 @@ export const stageCapability = (stage: WorkflowStageKey): Capability => {
 export const requiredStepCapabilities = (stages: readonly WorkflowStageConfig[], stepKey: string): Capability[] => {
   const needed = new Set<Capability>();
   for (const stage of stages) if (stage.approvalStepKeys.includes(stepKey)) needed.add(stageCapability(stage.key));
-  return needed.size > 0 ? [...needed] : ['PROPOSAL_DECIDE'];
+  if (needed.size > 0) return [...needed];
+  return ACCEPTANCE_ONLY_STEP_KEYS.includes(stepKey) ? ['ACCEPTANCE_DECIDE'] : ['PROPOSAL_DECIDE'];
 };
 
 const isUnique = (values: readonly string[]) => new Set(values).size === values.length;
@@ -469,6 +479,11 @@ export function validateConfigRules(values: ConfigValues): FieldErrorDetail[] {
         stage.approvalStepKeys.some((key) => !stepKeys.has(key)),
       `${path}.approvalStepKeys`,
       'Mỗi giai đoạn cần ít nhất một bước duyệt đã cấu hình và không được trùng bước.',
+    );
+    errors.when(
+      stage.key !== 'ACCEPTANCE' && stage.approvalStepKeys.some((key) => ACCEPTANCE_ONLY_STEP_KEYS.includes(key)),
+      `${path}.approvalStepKeys`,
+      'Bước «BQL nghiệm thu» chỉ dùng trong giai đoạn Nghiệm thu.',
     );
     if (stage.key === 'INTAKE') {
       // BR-06: one confirmer step, whose role can confirm the site condition (a custom role is checked by the service).

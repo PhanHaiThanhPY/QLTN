@@ -100,6 +100,8 @@ export const defaultWorkflowApprovers = (
 ): Record<string, string> =>
   Object.fromEntries(
     steps
+      // The MANAGER step always follows the record's manager, so it is never snapshotted.
+      .filter((step) => step.key !== 'MANAGER')
       .map((step) => [step.key, firstActiveForApprovalStep(ctx, step, buildingId, locationId)] as const)
       .filter((entry): entry is readonly [string, string] => Boolean(entry[1])),
   );

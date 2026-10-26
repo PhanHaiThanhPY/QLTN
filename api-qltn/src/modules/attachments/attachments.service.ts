@@ -10,7 +10,7 @@ import { SUBJECT_TYPE } from '../audit/entities/audit-event.entity';
 import { AuditService } from '../audit/audit.service';
 import { RepairRecord } from '../records/entities/repair-record.entity';
 import { PROPOSAL_EDIT_STATUSES } from '../records/record-actions';
-import { approvalStepOf, currentStepKeyOf, stepHolderOf } from '../records/record-steps';
+import { acceptanceStepsHeldBy, approvalStepOf, currentStepKeyOf, stepHolderOf } from '../records/record-steps';
 import { toAttachmentView, type AttachmentView } from './attachment-view';
 import type { UploadAttachmentDto } from './dto/upload-attachment.dto';
 import { Attachment } from './entities/attachment.entity';
@@ -37,6 +37,9 @@ const SUPPORTED_SUBJECT_TYPES = [SUBJECT_TYPE.REPAIR_RECORD] as const;
 const isManagerAt = (actor: AuthenticatedUser, record: RepairRecord, statuses: readonly string[]): boolean =>
   record.managerUserId === actor.id && hasCapability(actor, 'RECORD_EDIT') && statuses.includes(record.status);
 
+/** Statuses where the manager reports construction or repair work (T11, T12, T15, T16; v1 BR-12). */
+const EXECUTION_STATUSES: readonly string[] = ['IN_CONSTRUCTION', 'NEEDS_REPAIR'];
+
 /** The holder of the current BQT-role step while the proposal waits on it (BR-S2-05). */
 const isWaitingBoardHolder = (actor: AuthenticatedUser, record: RepairRecord): boolean => {
   const key = currentStepKeyOf(record);
@@ -50,6 +53,10 @@ const PURPOSE_RULES: Readonly<Record<string, (actor: AuthenticatedUser, record: 
   QUOTATION: (actor, record) => isManagerAt(actor, record, PROPOSAL_EDIT_STATUSES),
   INCIDENT_MINUTES: (actor, record) => isManagerAt(actor, record, PROPOSAL_EDIT_STATUSES),
   BOARD_MINUTES: isWaitingBoardHolder,
+  CONSTRUCTION: (actor, record) => isManagerAt(actor, record, EXECUTION_STATUSES),
+  ACCEPTANCE: (actor, record) =>
+    isManagerAt(actor, record, EXECUTION_STATUSES) ||
+    (record.status === 'PENDING_ACCEPTANCE' && acceptanceStepsHeldBy(record, actor.id).length > 0),
 };
 const SUPPORTED_PURPOSES = Object.keys(PURPOSE_RULES);
 
@@ -58,6 +65,8 @@ export const PURPOSE_LABEL: Readonly<Record<string, string>> = {
   QUOTATION: 'Báo giá nhà thầu',
   INCIDENT_MINUTES: 'Biên bản ghi nhận sự việc',
   BOARD_MINUTES: 'Biên bản họp BQT',
+  CONSTRUCTION: 'Thi công',
+  ACCEPTANCE: 'Nghiệm thu',
 };
 
 const STEP_DENIED = 'Bước hiện tại không cho bạn tải loại tệp này.';

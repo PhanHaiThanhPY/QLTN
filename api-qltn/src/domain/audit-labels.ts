@@ -30,6 +30,14 @@ export const AUDIT_ACTION_LABEL: Readonly<Record<string, string>> = {
   approveProposal: 'Duyệt tờ trình',
   requestProposalUpdate: 'Yêu cầu bổ sung tờ trình',
   rejectProposal: 'Từ chối tờ trình',
+  // Thi công và nghiệm thu (B03–B09 v2 S3)
+  startConstruction: 'Bắt đầu thi công',
+  updateConstruction: 'Cập nhật thi công',
+  submitAcceptance: 'Gửi nghiệm thu',
+  passAcceptance: 'Nghiệm thu đạt',
+  failAcceptance: 'Nghiệm thu không đạt',
+  saveRepairEvidence: 'Lưu nội dung khắc phục',
+  resubmitAcceptance: 'Gửi nghiệm thu lại',
   // Tệp
   uploadAttachment: 'Tải tệp lên',
   // Tòa và vị trí

@@ -75,7 +75,7 @@ describe('building-config', () => {
       const stage = (key: string) => aqua.workflowStages.find((s) => s.key === key);
       expect(stage('INTAKE')?.approvalStepKeys).toEqual(['TECH']);
       expect(stage('PROPOSAL')?.approvalStepKeys).toEqual(['TECH', 'BOARD']);
-      expect(stage('ACCEPTANCE')?.approvalStepKeys).toEqual(['BOARD', 'TECH']);
+      expect(stage('ACCEPTANCE')?.approvalStepKeys).toEqual(['MANAGER', 'BOARD', 'TECH']);
       expect(stage('PAYMENT')?.approvalStepKeys).toEqual(['BOARD']);
       expect(
         stage('INTAKE')?.stepBindings.find((b) => b.businessStepKey === 'CONFIRM_CONDITION')?.approvalStepKey,
@@ -108,7 +108,7 @@ describe('building-config', () => {
       { key: 'TECH', label: 'Giả', actor: 'X', role: 'BQL', status: 'PENDING_CUSTOM_APPROVAL' },
       { key: 'LEGAL', label: 'Pháp chế', actor: 'PC', role: 'OWNERS_BOARD', status: 'PENDING_CUSTOM_APPROVAL' },
     ]);
-    expect(steps.map((s) => s.key)).toEqual(['TECH_CONFIRM', 'TECH', 'BOARD', 'LEGAL']);
+    expect(steps.map((s) => s.key)).toEqual(['TECH_CONFIRM', 'TECH', 'BOARD', 'MANAGER', 'LEGAL']);
     expect(steps.find((s) => s.key === 'TECH')?.role).toBe('TECH_CONSULTANT');
   });
 
@@ -129,7 +129,17 @@ describe('building-config', () => {
     });
     values.workflowStages[1].approvalStepKeys.push('BQL_SIGN');
     expect(requiredStepCapabilities(values.workflowStages, 'BQL_SIGN')).toEqual(['PROPOSAL_DECIDE']);
-    expect(fields(values)).toContain('workflowApprovalSteps.3.role');
+    expect(fields(values)).toContain(`workflowApprovalSteps.${values.workflowApprovalSteps.length - 1}.role`);
+  });
+
+  it('accepts the MANAGER step only in the ACCEPTANCE stage (ADR-0001 R3)', () => {
+    const values = base();
+    expect(fields(values)).toEqual([]);
+    const proposal = values.workflowStages.findIndex((stage) => stage.key === 'PROPOSAL');
+    values.workflowStages[proposal].approvalStepKeys.push('MANAGER');
+    values.approvalStepKeys = [...values.workflowStages[proposal].approvalStepKeys];
+    expect(fields(values)).toContain(`workflowStages.${proposal}.approvalStepKeys`);
+    expect(requiredStepCapabilities(base().workflowStages, 'MANAGER')).toEqual(['ACCEPTANCE_DECIDE']);
   });
 
   it('rejects a business step bound to an approval step outside its stage', () => {

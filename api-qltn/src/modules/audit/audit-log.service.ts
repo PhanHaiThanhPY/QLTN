@@ -5,13 +5,14 @@ import type { AuthenticatedUser } from '../../common/auth/authenticated-user';
 import { fieldError } from '../../common/validation/field-errors';
 import type { PaginatedResult } from '../../common/interfaces/paginated.interface';
 import { pageWindow, toPaginated } from '../../common/utils/pagination';
+import { VN_TIME_ZONE, vnDate } from '../../common/utils/vn-date';
 import { auditActionLabel, auditSubjectLabel } from '../../domain/audit-labels';
 import { recordStatusLabel } from '../records/record-actions';
 import { AuditService } from './audit.service';
 import type { AuditLogExportQueryDto, AuditLogQueryDto } from './dto/audit-log-query.dto';
 import { AuditEvent, SUBJECT_TYPE, type SubjectType } from './entities/audit-event.entity';
 
-const TIME_ZONE = 'Asia/Ho_Chi_Minh';
+const TIME_ZONE = VN_TIME_ZONE;
 const DEFAULT_DAYS = 7;
 const MAX_RANGE_DAYS = 366;
 const MAX_EXPORT_ROWS = 10_000;
@@ -74,12 +75,6 @@ END`;
 
 const escapeLike = (value: string): string => value.replace(/[\\%_]/g, (char) => `\\${char}`);
 
-const dateFormatter = new Intl.DateTimeFormat('en-CA', {
-  timeZone: TIME_ZONE,
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-});
 const dateTimeFormatter = new Intl.DateTimeFormat('en-GB', {
   timeZone: TIME_ZONE,
   year: 'numeric',
@@ -91,8 +86,6 @@ const dateTimeFormatter = new Intl.DateTimeFormat('en-GB', {
   hour12: false,
 });
 
-/** "2026-10-26" in Vietnam time. */
-const vnDate = (at: Date): string => dateFormatter.format(at);
 const shiftDays = (isoDate: string, days: number): string =>
   new Date(Date.parse(`${isoDate}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
 

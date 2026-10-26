@@ -3,7 +3,7 @@ import { hasCapability } from '../../common/auth/scope';
 import { conflictWithReason, forbiddenWithReason } from '../../common/errors';
 import type { Capability } from '../../domain/permissions';
 import type { RepairRecord } from './entities/repair-record.entity';
-import { currentStepKeyOf, PROPOSAL_APPROVAL_STATUSES, stepHolderOf } from './record-steps';
+import { acceptanceStepsHeldBy, currentStepKeyOf, PROPOSAL_APPROVAL_STATUSES, stepHolderOf } from './record-steps';
 
 /** Statuses where the manager prepares or reworks a proposal (T04–T06). */
 export const PROPOSAL_EDIT_STATUSES: readonly string[] = [
@@ -51,9 +51,10 @@ export interface RecordActionDef {
    * Who may act, as the demo's `slot`: `manager` = the record's managing BQL, `confirmer` = the assigned
    * confirmer; both check capability → assignee → source status. `approvalStep` = holder of the step the proposal
    * waits on, checked capability → source status → holder, since outside those statuses there is no current step
-   * (SPEC B03–B09 §4).
+   * (SPEC B03–B09 §4). `acceptanceMember` = holder of an ACCEPTANCE step of the snapshot, checked the same way; the
+   * service then refuses a member who already decided in the round (409 `step_already_decided`).
    */
-  slot: 'manager' | 'confirmer' | 'approvalStep';
+  slot: 'manager' | 'confirmer' | 'approvalStep' | 'acceptanceMember';
 }
 
 /**
@@ -133,6 +134,48 @@ export const RECORD_ACTIONS = {
     capability: 'PROPOSAL_DECIDE',
     slot: 'approvalStep',
   },
+  startConstruction: {
+    label: 'Bắt đầu thi công',
+    from: ['READY_FOR_CONSTRUCTION'],
+    capability: 'CONSTRUCTION',
+    slot: 'manager',
+  },
+  updateConstruction: {
+    label: 'Cập nhật thi công',
+    from: ['IN_CONSTRUCTION'],
+    capability: 'CONSTRUCTION',
+    slot: 'manager',
+  },
+  submitAcceptance: {
+    label: 'Gửi nghiệm thu',
+    from: ['IN_CONSTRUCTION'],
+    capability: 'CONSTRUCTION',
+    slot: 'manager',
+  },
+  passAcceptance: {
+    label: 'Nghiệm thu đạt',
+    from: ['PENDING_ACCEPTANCE'],
+    capability: 'ACCEPTANCE_DECIDE',
+    slot: 'acceptanceMember',
+  },
+  failAcceptance: {
+    label: 'Nghiệm thu không đạt',
+    from: ['PENDING_ACCEPTANCE'],
+    capability: 'ACCEPTANCE_DECIDE',
+    slot: 'acceptanceMember',
+  },
+  saveRepairEvidence: {
+    label: 'Lưu nội dung khắc phục',
+    from: ['NEEDS_REPAIR'],
+    capability: 'CONSTRUCTION',
+    slot: 'manager',
+  },
+  resubmitAcceptance: {
+    label: 'Gửi nghiệm thu lại',
+    from: ['NEEDS_REPAIR'],
+    capability: 'CONSTRUCTION',
+    slot: 'manager',
+  },
 } as const satisfies Record<string, RecordActionDef>;
 
 export type RecordAction = keyof typeof RECORD_ACTIONS;
@@ -157,6 +200,9 @@ export function assertRecordAction(actor: AuthenticatedUser, record: RepairRecor
       'invalid_status_transition',
       `Hồ sơ đang ở trạng thái «${recordStatusLabel(record.status)}», không thực hiện được «${def.label}». Vui lòng tải lại.`,
     );
+  }
+  if (def.slot === 'acceptanceMember' && acceptanceStepsHeldBy(record, actor.id).length === 0) {
+    throw forbiddenWithReason('not_step_assignee', 'Bạn không phải thành phần nghiệm thu của hồ sơ này.');
   }
   if (def.slot === 'approvalStep') {
     const key = currentStepKeyOf(record);

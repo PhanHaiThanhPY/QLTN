@@ -1,9 +1,14 @@
-import { APPROVAL_STEPS, CUSTOM_APPROVAL_STATUS, type WorkflowApprovalStep } from '../../domain/building-config';
+import {
+  ACCEPTANCE_ONLY_STEP_KEYS,
+  APPROVAL_STEPS,
+  CUSTOM_APPROVAL_STATUS,
+  type WorkflowApprovalStep,
+} from '../../domain/building-config';
 import type { RepairRecord } from './entities/repair-record.entity';
 
-/** Statuses where a proposal waits on an approval step (built-in steps plus the shared custom status). */
+/** Statuses where a proposal waits on an approval step (built-in proposal steps plus the shared custom status). */
 export const PROPOSAL_APPROVAL_STATUSES: readonly string[] = [
-  ...APPROVAL_STEPS.map((step) => step.status),
+  ...APPROVAL_STEPS.filter((step) => !ACCEPTANCE_ONLY_STEP_KEYS.includes(step.key)).map((step) => step.status),
   CUSTOM_APPROVAL_STATUS,
 ];
 
@@ -26,6 +31,7 @@ export const proposalChainStepsOf = (record: RepairRecord): WorkflowApprovalStep
 
 /** Holder of a step: the unified map first (records since RM-S2/S2), the legacy column for older records. */
 export const stepHolderOf = (record: RepairRecord, key: string): string | null => {
+  if (key === 'MANAGER') return record.managerUserId;
   const mapped = record.approvalAssigneeUserIds?.[key];
   if (mapped) return mapped;
   const column = LEGACY_HOLDER_COLUMN[key];
@@ -45,3 +51,12 @@ export const currentStepKeyOf = (record: RepairRecord): string | null => {
   if (record.currentApprovalStepKey) return record.currentApprovalStepKey;
   return proposalChainStepsOf(record).find((step) => waitingStatusOf(step) === record.status)?.key ?? null;
 };
+
+/** Acceptance members of the snapshot (BR-S3-02): the ACCEPTANCE stage steps. */
+export const acceptanceStepKeysOf = (record: RepairRecord): string[] => [
+  ...(record.workflowStageApprovalStepKeys?.ACCEPTANCE ?? []),
+];
+
+/** Acceptance steps the user holds on this record (the manager holds MANAGER). */
+export const acceptanceStepsHeldBy = (record: RepairRecord, userId: string): string[] =>
+  acceptanceStepKeysOf(record).filter((key) => stepHolderOf(record, key) === userId);

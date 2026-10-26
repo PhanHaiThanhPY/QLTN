@@ -194,7 +194,9 @@ describe('Confirmer from configuration and single proposal chain, RM-S2 (e2e)', 
     const aqua = await applyTemplate(building('A').id, 'AQUA');
     expect(aqua.workflowStages.find((stage) => stage.key === 'INTAKE')?.approvalStepKeys).toEqual(['TECH']);
     expect(aqua.approvalStepKeys).toEqual(['TECH', 'BOARD']);
+    // B03–B09 v2 S3: the manager joins the AQUA acceptance (ADR-0001 R3).
     expect(aqua.workflowStages.find((stage) => stage.key === 'ACCEPTANCE')?.approvalStepKeys).toEqual([
+      'MANAGER',
       'BOARD',
       'TECH',
     ]);

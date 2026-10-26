@@ -113,6 +113,14 @@ export class RepairRecord extends BaseEntity {
   @Column({ name: 'executing_contractor_name', type: 'varchar', length: 200, nullable: true })
   executingContractorName: string | null;
 
+  /** Acceptance round in progress or last closed (S3). */
+  @Column({ name: 'current_acceptance_id', type: 'uuid', nullable: true })
+  currentAcceptanceId: string | null;
+
+  /** Repair work saved by T15 and offered again by T16. */
+  @Column({ name: 'repair_draft', type: 'jsonb', nullable: true })
+  repairDraft: { note?: string; attachmentIds?: string[] } | null;
+
   @Column({ name: 'created_by', type: 'uuid' })
   createdBy: string;
 

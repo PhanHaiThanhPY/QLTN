@@ -6,7 +6,12 @@ import { Building } from '../modules/buildings/entities/building.entity';
 import { Location } from '../modules/buildings/entities/location.entity';
 import { Department } from '../modules/organization/entities/department.entity';
 import { RoleDefinition } from '../modules/roles/entities/role-definition.entity';
+import { Notification } from '../modules/notifications/entities/notification.entity';
+import { RepairAcceptanceDecision } from '../modules/records/entities/repair-acceptance-decision.entity';
+import { RepairAcceptance } from '../modules/records/entities/repair-acceptance.entity';
 import { RepairConfirmation } from '../modules/records/entities/repair-confirmation.entity';
+import { RepairConstructionUpdate } from '../modules/records/entities/repair-construction-update.entity';
+import { RepairConstruction } from '../modules/records/entities/repair-construction.entity';
 import { RepairProposalDecision } from '../modules/records/entities/repair-proposal-decision.entity';
 import { RepairProposalSubmission } from '../modules/records/entities/repair-proposal-submission.entity';
 import { RepairRecord } from '../modules/records/entities/repair-record.entity';
@@ -29,4 +34,9 @@ export const ALL_ENTITIES = [
   RepairProposalSubmission,
   RepairProposalDecision,
   RepairSignature,
+  RepairConstruction,
+  RepairConstructionUpdate,
+  RepairAcceptance,
+  RepairAcceptanceDecision,
+  Notification,
 ];

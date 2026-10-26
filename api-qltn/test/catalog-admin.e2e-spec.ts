@@ -428,7 +428,8 @@ describe('Catalog & administration (e2e)', () => {
           }),
         )
         .expect(400);
-      expect(errorFields(res)).toEqual(['workflowApprovalSteps.3.role']);
+      // System steps TECH_CONFIRM, TECH, BOARD, MANAGER come first; the custom step is the fifth.
+      expect(errorFields(res)).toEqual(['workflowApprovalSteps.4.role']);
 
       const ok = await admin
         .put(
@@ -441,7 +442,13 @@ describe('Catalog & administration (e2e)', () => {
         )
         .expect(200);
       const saved = dataOf<{ config: Config }>(ok).config;
-      expect(saved.workflowApprovalSteps.map((s) => s.key)).toEqual(['TECH_CONFIRM', 'TECH', 'BOARD', 'LEGAL']);
+      expect(saved.workflowApprovalSteps.map((s) => s.key)).toEqual([
+        'TECH_CONFIRM',
+        'TECH',
+        'BOARD',
+        'MANAGER',
+        'LEGAL',
+      ]);
     });
 
     it('requires assignment-rule departments to cover the building', async () => {

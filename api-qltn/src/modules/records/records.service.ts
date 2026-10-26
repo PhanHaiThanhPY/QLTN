@@ -33,6 +33,7 @@ import type {
 import { RepairConfirmation, type ConfirmationOutcome } from './entities/repair-confirmation.entity';
 import { RepairRecord } from './entities/repair-record.entity';
 import { toRecordView, type RepairRecordView } from './record-view';
+import { ConstructionService, type ExecutionHistoryView } from './construction.service';
 import { ProposalsService, type ProposalHistoryView } from './proposals.service';
 
 export { toRecordView, type RepairRecordView } from './record-view';
@@ -53,7 +54,13 @@ const CODE_WIDTH = 3;
 const DRAFT_STATUS = 'DRAFT';
 const PENDING_CONFIRMATION = 'PENDING_CONFIRMATION';
 const CLOSED_WITHDRAWN = 'CLOSED_WITHDRAWN';
-const PROPOSAL_FILE_PURPOSES = ['QUOTATION', 'INCIDENT_MINUTES', 'BOARD_MINUTES'] as const;
+const PROPOSAL_FILE_PURPOSES = [
+  'QUOTATION',
+  'INCIDENT_MINUTES',
+  'BOARD_MINUTES',
+  'CONSTRUCTION',
+  'ACCEPTANCE',
+] as const;
 
 /** The three confirmer actions of S1 (SPEC B03–B09 T01–T03): outcome stored, target status, label of `note`. */
 type ConfirmationAction = 'requestRecordUpdate' | 'confirmRepair' | 'closeNoRepair';
@@ -114,8 +121,10 @@ export interface RecordDetailView {
   attachments: AttachmentView[];
   /** Proposal draft and every submission with decisions and signatures (S2). */
   proposal: ProposalHistoryView;
-  /** Quotations, incident minutes and board minutes of the record, oldest first (S2). */
+  /** Proposal (S2) and construction/acceptance (S3) files of the record, oldest first. */
   proposalAttachments: AttachmentView[];
+  /** Construction, acceptance rounds (minutes, decisions, signatures) and saved repair work (S3). */
+  execution: ExecutionHistoryView;
   audit: AuditEventView[];
 }
 
@@ -192,6 +201,7 @@ export class RecordsService {
     private readonly audit: AuditService,
     private readonly codes: CodeCounterService,
     private readonly proposals: ProposalsService,
+    private readonly construction: ConstructionService,
   ) {}
 
   async create(actor: AuthenticatedUser, dto: CreateRecordDto): Promise<RepairRecordView> {
@@ -475,7 +485,7 @@ export class RecordsService {
   async getDetail(actor: AuthenticatedUser, id: string): Promise<RecordDetailView> {
     const record = await this.dataSource.getRepository(RepairRecord).findOneBy({ id });
     if (!record || !actor.buildingIds.includes(record.buildingId)) throw notFound('Không tìm thấy hồ sơ.');
-    const [confirmations, attachments, proposal, proposalAttachments, audit] = await Promise.all([
+    const [confirmations, attachments, proposal, proposalAttachments, execution, audit] = await Promise.all([
       this.dataSource
         .getRepository(RepairConfirmation)
         .find({ where: { recordId: id }, order: { createdAt: 'ASC', id: 'ASC' } }),
@@ -485,6 +495,7 @@ export class RecordsService {
         where: { subjectId: id, purpose: In([...PROPOSAL_FILE_PURPOSES]) },
         order: { createdAt: 'ASC', id: 'ASC' },
       }),
+      this.construction.historyOf(record),
       this.audit.listForSubject(SUBJECT_TYPE.REPAIR_RECORD, id, { page: 1, limit: 100 }),
     ]);
     return {
@@ -493,6 +504,7 @@ export class RecordsService {
       attachments,
       proposal,
       proposalAttachments: proposalAttachments.map(toAttachmentView),
+      execution,
       audit: audit.data,
     };
   }

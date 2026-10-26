@@ -108,6 +108,17 @@ scope answers 404 to every write, like another building's record. Confirmer acti
 | POST | `/api/records/:id/reject-proposal` | PROPOSAL_DECIDE | S2 T09, `reason` (5–1000), BQT step needs minutes + signature as for approve; → `REJECTED_RESUBMITTABLE`, or `UNRESOLVED` on attempt 3 |
 | GET | `/api/records/:id` | any | `{ record, confirmations, attachments, proposal, proposalAttachments, audit }`; `confirmations` lists every confirmer conclusion (`CONFIRMED`, `NEEDS_UPDATE`, `NO_REPAIR`) oldest first; `proposal` is `{ draft, submissions[] }`, each submission immutable with its content, server totals, decisions and signatures (PNG data URLs); parts not built yet are left empty |
 
+| POST | `/api/records/:id/start-construction` | CONSTRUCTION | S3 T10, from `READY_FOR_CONSTRUCTION`: `startDate`, `plannedEndDate` (≥ start), `planNote` (5–1000) → `IN_CONSTRUCTION`. Writes one notification "Kế hoạch thi công «code»" (contractor, dates, note) per holder of the record's BQT- and TVKT-role steps (BR-S3-01a) |
+| POST | `/api/records/:id/update-construction` | CONSTRUCTION | S3 T11: `progressPercent` 0–100, `note` (5–1000), optional `attachmentIds` (`CONSTRUCTION`) |
+| POST | `/api/records/:id/submit-acceptance` | CONSTRUCTION | S3 T12: progress must be 100; `completedDate` in [start, today VN], `inspectedAt`, `inspectionLocation` (≤ 200), `content` (10–2000), optional `otherMembers`, `photoAttachmentIds` (≥ 1, `ACCEPTANCE`/`CONSTRUCTION`). Creates minutes round N whose members are the snapshot's ACCEPTANCE steps → `PENDING_ACCEPTANCE` |
+| POST | `/api/records/:id/pass-acceptance` | ACCEPTANCE_DECIDE | S3 T13, a member whose step is still open in the round (others 403 `not_step_assignee`, a second decision 409 `step_already_decided`; the manager holds `MANAGER`). Optional `note` (≤ 1000), `signature` required, optional `attachmentIds` (`ACCEPTANCE`). Members decide in parallel; when all passed → `PENDING_PAYMENT_REQUEST` and the round locks |
+| POST | `/api/records/:id/fail-acceptance` | ACCEPTANCE_DECIDE | S3 T14: as pass, `note` (5–1000) required → `NEEDS_REPAIR` at once, round locked as failed |
+| POST | `/api/records/:id/save-repair-evidence` | CONSTRUCTION | S3 T15, `NEEDS_REPAIR`: optional `note` (≤ 1000) and `attachmentIds`, kept in `execution.repairDraft` |
+| POST | `/api/records/:id/resubmit-acceptance` | CONSTRUCTION | S3 T16: same body as submit, from `NEEDS_REPAIR`; new round, older rounds unchanged |
+
+`GET /api/records/:id` also returns `execution = { construction, acceptances[], repairDraft }`: the plan and progress
+updates, every acceptance round (minutes fields, members, outcome, decisions with signatures) oldest first.
+
 Proposal fields (SPEC B03–B09 v2 §4.1–§4.2): `recipient`, `preparedByName` (both default when blank), `proposalType`
 (`SUA_CHUA` · `THAY_THE` · `KHAC`), `budgetSource` (`KINH_PHI_BAO_TRI` · `KINH_PHI_VAN_HANH` · `KHAC`),
 `requestContent` and `assessment` (10–2000), `desiredApprovalDate` (`YYYY-MM-DD`, optional), `items`
@@ -127,6 +138,8 @@ Repair-record files only (`subjectType = REPAIR_RECORD`); another subject or pur
 | `SITE_PHOTO` | the record's manager | `DRAFT`, `NEEDS_RECORD_UPDATE` |
 | `QUOTATION`, `INCIDENT_MINUTES` | the record's manager | `PENDING_PROPOSAL`, `NEEDS_SUBMISSION_UPDATE`, `REJECTED_RESUBMITTABLE` |
 | `BOARD_MINUTES` | holder of the current BQT-role approval step | while the proposal waits on that step |
+| `CONSTRUCTION` | the record's manager | `IN_CONSTRUCTION`, `NEEDS_REPAIR` |
+| `ACCEPTANCE` | the record's manager; an acceptance member | manager: `IN_CONSTRUCTION`, `NEEDS_REPAIR`; member: `PENDING_ACCEPTANCE` |
  Allowed files are the demo's:
 JPEG/PNG/WebP/PDF, at most 10 MB, non-empty, and the content must match the declared type (magic bytes).
 Content lives under `STORAGE_DIR` (default `storage/`), named by a random id rather than the uploaded name.
@@ -135,6 +148,16 @@ Content lives under `STORAGE_DIR` (default `storage/`), named by a random id rat
 | --- | --- | --- | --- |
 | POST | `/api/attachments` | VIEW | Multipart `file`, `subjectType`, `subjectId`, `purpose` → 201 metadata; the purpose rule above decides who and when |
 | GET | `/api/attachments/:id/content` | any | Bytes with the stored `Content-Type`, `Content-Disposition: inline`; another building answers 404 |
+
+## Notifications (minimum of SPEC B03–B09 v2 BR-S3-01a)
+
+Only the caller's own notifications; the full module (kinds, e-mail, preferences) is B14.
+
+| Method | Path | Capability | Notes |
+| --- | --- | --- | --- |
+| GET | `/api/notifications` | any | `?page=&limit=`, newest first |
+| GET | `/api/notifications/unread-count` | any | `{ unread }` |
+| POST | `/api/notifications/:id/read` | any | Marks it read (first time kept); another user's id answers 404 |
 
 ## Operation log (SPEC AD-S1)
 
