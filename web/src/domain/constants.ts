@@ -263,6 +263,9 @@ export const PRIORITY_LABEL: Record<Priority, string> = {
 export const ATTACHMENT_PURPOSE = {
   SITE_PHOTO: 'SITE_PHOTO',
   PROPOSAL: 'PROPOSAL',
+  QUOTATION: 'QUOTATION',
+  INCIDENT_MINUTES: 'INCIDENT_MINUTES',
+  BOARD_MINUTES: 'BOARD_MINUTES',
   CONSTRUCTION: 'CONSTRUCTION',
   ACCEPTANCE: 'ACCEPTANCE',
   PAYMENT_REQUEST: 'PAYMENT_REQUEST',
@@ -275,6 +278,9 @@ export type AttachmentPurpose = (typeof ATTACHMENT_PURPOSE)[keyof typeof ATTACHM
 export const ATTACHMENT_PURPOSE_LABEL: Record<AttachmentPurpose, string> = {
   SITE_PHOTO: 'Ảnh hiện trường',
   PROPOSAL: 'Tờ trình',
+  QUOTATION: 'Báo giá nhà thầu',
+  INCIDENT_MINUTES: 'Biên bản ghi nhận sự việc',
+  BOARD_MINUTES: 'Biên bản họp BQT',
   CONSTRUCTION: 'Thi công',
   ACCEPTANCE: 'Nghiệm thu',
   PAYMENT_REQUEST: 'Đề nghị thanh toán',

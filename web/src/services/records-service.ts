@@ -29,6 +29,7 @@ import { IS_API_MODE } from '@/config/data-source';
 import { getDb } from '@/storage/db';
 import { toVnDate } from '@/utils/date';
 import { apiList, apiRequest } from './http/client';
+import type { QuoteProposalHistory } from '@/domain/quote-proposal';
 import { mapRecordDetail, mapRepairRecord } from './http/mappers';
 import type { ApiRecordDetail, ApiRepairRecord } from './http/mappers';
 import { now } from './runtime';
@@ -249,6 +250,8 @@ export interface RecordDetail {
   confirmations: RepairConfirmation[];
   proposalDraft?: ProposalDraft;
   submissions: SubmissionView[];
+  /** S2 proposal with a quotation table; present only when the detail comes from api-qltn. */
+  quoteProposal?: QuoteProposalHistory;
   signatures: ProposalSignature[];
   notice?: UnresolvedNotice;
   alerts: RepairAlert[];

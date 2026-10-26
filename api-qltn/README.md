@@ -99,18 +99,40 @@ scope answers 404 to every write, like another building's record. Confirmer acti
 | POST | `/api/records/:id/request-record-update` | RECORD_CONFIRM | `note` (5–1000 chars) + `version`; `PENDING_CONFIRMATION` → `NEEDS_RECORD_UPDATE`, the manager supplements and submits again |
 | POST | `/api/records/:id/confirm-repair` | RECORD_CONFIRM | `note` (site conclusion, 5–1000) + `version`; `PENDING_CONFIRMATION` → `PENDING_PROPOSAL` |
 | POST | `/api/records/:id/close-no-repair` | RECORD_CONFIRM | `note` (5–1000) + `version`; `PENDING_CONFIRMATION` → `CLOSED_NO_REPAIR` (final) |
-| GET | `/api/records/:id` | any | `{ record, confirmations, attachments, audit }`; `confirmations` lists every confirmer conclusion (`CONFIRMED`, `NEEDS_UPDATE`, `NO_REPAIR`) oldest first; parts not built yet are left empty |
+| POST | `/api/records/:id/save-proposal-draft` | RECORD_EDIT | S2 T04. Any subset of the proposal fields below + `version`; keeps the status (`PENDING_PROPOSAL`, `NEEDS_SUBMISSION_UPDATE`, `REJECTED_RESUBMITTABLE`); a value that is sent must be well formed |
+| POST | `/api/records/:id/submit-proposal` | RECORD_EDIT | S2 T05, from `PENDING_PROPOSAL`. Optional last edits + `signature` (PNG data URL ≤ 200 KB) + `version`. Needs every field, 1–50 items, 1–5 contractors each with a price per item and ≥ 1 `QUOTATION` file, a shortfall reason under 3 contractors, ≥ 1 `INCIDENT_MINUTES` file and a valid holder for every chain step (400 `approvalStepKeys.<i>`). Freezes attempt N and moves to the first step's waiting status. A 4th attempt answers 409 `max_submission_attempts` |
+| POST | `/api/records/:id/resubmit-proposal` | RECORD_EDIT | S2 T06, same as submit from `NEEDS_SUBMISSION_UPDATE` / `REJECTED_RESUBMITTABLE`; restarts at step 1 |
+| POST | `/api/records/:id/approve-proposal` | PROPOSAL_DECIDE | S2 T07, holder of the current step (409 on another status first, then 403 `not_step_assignee`); optional `submissionId` (stale → 409). The submitter answers 409 `self_approval_denied`. A BQT-role step needs `boardMinutesAttachmentIds` (≥ 1 `BOARD_MINUTES` uploaded for this attempt) and `signature`. The last step may send `selectedContractorIndex`, with `selectionReason` (5–1000) when it differs from the proposed one; then `READY_FOR_CONSTRUCTION` with `approvedAmountVnd` and `executingContractorName` |
+| POST | `/api/records/:id/request-proposal-update` | PROPOSAL_DECIDE | S2 T08, `reason` (5–1000); → `NEEDS_SUBMISSION_UPDATE`. On attempt 3 answers 409 `final_attempt_decide_only` |
+| POST | `/api/records/:id/reject-proposal` | PROPOSAL_DECIDE | S2 T09, `reason` (5–1000), BQT step needs minutes + signature as for approve; → `REJECTED_RESUBMITTABLE`, or `UNRESOLVED` on attempt 3 |
+| GET | `/api/records/:id` | any | `{ record, confirmations, attachments, proposal, proposalAttachments, audit }`; `confirmations` lists every confirmer conclusion (`CONFIRMED`, `NEEDS_UPDATE`, `NO_REPAIR`) oldest first; `proposal` is `{ draft, submissions[] }`, each submission immutable with its content, server totals, decisions and signatures (PNG data URLs); parts not built yet are left empty |
+
+Proposal fields (SPEC B03–B09 v2 §4.1–§4.2): `recipient`, `preparedByName` (both default when blank), `proposalType`
+(`SUA_CHUA` · `THAY_THE` · `KHAC`), `budgetSource` (`KINH_PHI_BAO_TRI` · `KINH_PHI_VAN_HANH` · `KHAC`),
+`requestContent` and `assessment` (10–2000), `desiredApprovalDate` (`YYYY-MM-DD`, optional), `items`
+(`{ name, unit, quantity }`, quantity a decimal string with ≤ 3 decimals), `contractors` (`{ name, unitPricesVnd[],
+otherCostVnd, taxVnd, quotationAttachmentIds[] }`, money as integer strings), `proposedContractorIndex`,
+`shortfallReason`, `incidentAttachmentIds`. The server computes every total: line = quantity × unit price rounded half
+up to the đồng, contractor total = Σ lines + other costs + tax; totals sent by a client are ignored.
 
 ## Attachment endpoints (Đợt 2 · T2)
 
-Only repair-record site photos (`subjectType = REPAIR_RECORD`, `purpose = SITE_PHOTO`) are enabled; any other
-combination answers 400 `details.reason = attachment_purpose_not_supported`. Allowed files are the demo's:
+Repair-record files only (`subjectType = REPAIR_RECORD`); another subject or purpose answers 400
+`details.reason = attachment_purpose_not_supported`. Who may upload depends on the purpose, otherwise 403
+`attachment_step_denied`:
+
+| Purpose | Who | When |
+| --- | --- | --- |
+| `SITE_PHOTO` | the record's manager | `DRAFT`, `NEEDS_RECORD_UPDATE` |
+| `QUOTATION`, `INCIDENT_MINUTES` | the record's manager | `PENDING_PROPOSAL`, `NEEDS_SUBMISSION_UPDATE`, `REJECTED_RESUBMITTABLE` |
+| `BOARD_MINUTES` | holder of the current BQT-role approval step | while the proposal waits on that step |
+ Allowed files are the demo's:
 JPEG/PNG/WebP/PDF, at most 10 MB, non-empty, and the content must match the declared type (magic bytes).
 Content lives under `STORAGE_DIR` (default `storage/`), named by a random id rather than the uploaded name.
 
 | Method | Path | Capability | Notes |
 | --- | --- | --- | --- |
-| POST | `/api/attachments` | RECORD_EDIT | Multipart `file`, `subjectType`, `subjectId`, `purpose` → 201 metadata. Only the record's manager may upload while it is `DRAFT`/`NEEDS_RECORD_UPDATE` (otherwise 403 `attachment_step_denied`) |
+| POST | `/api/attachments` | VIEW | Multipart `file`, `subjectType`, `subjectId`, `purpose` → 201 metadata; the purpose rule above decides who and when |
 | GET | `/api/attachments/:id/content` | any | Bytes with the stored `Content-Type`, `Content-Disposition: inline`; another building answers 404 |
 
 ## Tests

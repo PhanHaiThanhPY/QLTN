@@ -35,7 +35,8 @@ export const SignaturePad = ({ onChange, disabled = false, invalid = false, labe
     let cssWidth = 0;
     const fit = () => {
       const nextWidth = canvas.offsetWidth;
-      if (nextWidth === cssWidth) return;
+      // A hidden or collapsing pad reports 0: resizing to it would wipe the strokes and emit an empty "data:," image.
+      if (nextWidth === 0 || nextWidth === cssWidth) return;
       const ratio = window.devicePixelRatio || 1;
       // Keep the existing strokes: the backing store is wiped whenever width/height are assigned.
       const snapshot = hasInkRef.current && cssWidth > 0 ? document.createElement('canvas') : null;

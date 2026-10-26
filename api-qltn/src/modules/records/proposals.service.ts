@@ -37,6 +37,10 @@ const UNRESOLVED = 'UNRESOLVED';
 const REASON_MIN = 5;
 const REASON_MAX = 1000;
 
+/** §4.1 default "Ban quản trị tòa «tên tòa»", without doubling the word when the name already starts with it. */
+const recipientOf = (buildingName: string): string =>
+  /^tòa\s/i.test(buildingName) ? `Ban quản trị ${buildingName}` : `Ban quản trị tòa ${buildingName}`.trim();
+
 type SubmitAction = 'submitProposal' | 'resubmitProposal';
 type DecisionAction = 'approveProposal' | 'requestProposalUpdate' | 'rejectProposal';
 
@@ -443,7 +447,7 @@ export class ProposalsService {
       manager.getRepository(User).findOneBy({ id: record.managerUserId }),
     ]);
     return {
-      recipient: `Ban quản trị tòa ${building?.name ?? ''}`.trim(),
+      recipient: recipientOf(building?.name ?? ''),
       preparedByName: submitter?.fullName ?? '',
     };
   }

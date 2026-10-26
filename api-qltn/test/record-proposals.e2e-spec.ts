@@ -309,7 +309,7 @@ describe('Repair proposal and approval chain, slice S2 (e2e)', () => {
     expect(submission.content.contractorTotals).toEqual(EXPECTED_TOTALS);
     expect(submission.proposedAmountVnd).toBe('3410000');
     expect(submission.content.reviewerUserId).toBe(tvktId);
-    expect(submission.content.recipient).toMatch(/^Ban quản trị tòa \S/);
+    expect(submission.content.recipient).toMatch(/^Ban quản trị Tòa A\b/);
     expect(submission.content.preparedByName).not.toBe('');
     expect(submission.signatures).toEqual([
       expect.objectContaining({ documentType: 'PROPOSAL', documentId: submission.id, imageDataUrl: SIGNATURE }),

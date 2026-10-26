@@ -4,6 +4,7 @@ import { approvalStepsFor } from '@/domain/actions';
 import type { ApprovalStepKey } from '@/domain/constants';
 import { isActionRelevant } from '../../record-utils';
 import { useRecordContext } from '../../record-context';
+import { QuoteApprovalTab } from '../quote/QuoteApprovalTab';
 import { PendingDecisionCard } from './PendingDecisionCard';
 import { ProposalEditor } from './ProposalEditor';
 import { SubmissionCard } from './SubmissionCard';
@@ -14,10 +15,14 @@ const returnTitle = (status: string, step: ApprovalStepKey | undefined, approval
   return status === 'REJECTED_RESUBMITTABLE' ? `${who} từ chối – được trình lại` : `${who} yêu cầu bổ sung`;
 };
 
-/** Tờ trình và phê duyệt: draft editor, approver decision, simulated signing, every attempt. */
+/**
+ * Tờ trình và phê duyệt: draft editor, approver decision, simulated signing, every attempt. A record served by
+ * api-qltn carries the S2 quotation proposal and uses its own tab.
+ */
 export const ApprovalTab = () => {
   const { detail } = useRecordContext();
   const { record, submissions } = detail;
+  if (detail.quoteProposal) return <QuoteApprovalTab proposal={detail.quoteProposal} />;
   const isEditable = isActionRelevant('saveProposalDraft', record.status);
   if (submissions.length === 0 && !isEditable) {
     return (

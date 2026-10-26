@@ -30,6 +30,7 @@ import {
   toUpdateUserBody,
   toWithdrawRecordBody,
 } from './mappers';
+import { toProposalBody, toProposalDecisionBody } from './proposal-mappers';
 import type {
   ApiBuilding,
   ApiConfigSaveResult,
@@ -285,9 +286,35 @@ const confirmationCommand =
     return { ok: true, subjectId: updated.id };
   };
 
+/** S2 proposal actions T04–T09 (SPEC B03–B09 v2): `POST /records/:id/<route>`; the server recomputes every total. */
+const PROPOSAL_ROUTES = {
+  saveProposalDraft: 'save-proposal-draft',
+  submitProposal: 'submit-proposal',
+  resubmitProposal: 'resubmit-proposal',
+  approveProposal: 'approve-proposal',
+  requestProposalUpdate: 'request-proposal-update',
+  rejectProposal: 'reject-proposal',
+} as const;
+type ProposalAction = keyof typeof PROPOSAL_ROUTES;
+const PROPOSAL_EDIT_ACTIONS: readonly ProposalAction[] = ['saveProposalDraft', 'submitProposal', 'resubmitProposal'];
+
+const proposalCommand =
+  (action: ProposalAction): ApiCommandHandler =>
+  async (command) => {
+    const id = command.subjectId?.trim() ?? '';
+    if (!id) throw new AppError(ERROR_CODE.NOT_FOUND, 'Không tìm thấy hồ sơ.');
+    const body = PROPOSAL_EDIT_ACTIONS.includes(action)
+      ? toProposalBody(command.payload, command.expectedVersion)
+      : toProposalDecisionBody(command.payload, command.expectedVersion);
+    const route = PROPOSAL_ROUTES[action];
+    const updated = await apiRequest<ApiRepairRecord>('POST', `/records/${encodeURIComponent(id)}/${route}`, { body });
+    broadcastChange();
+    return { ok: true, subjectId: updated.id };
+  };
+
 /**
  * Actions wired to api-qltn. T2a accounts; T2b departments and roles; T2c buildings and locations; T2d configuration;
- * Đợt 2 repair records (draft, submit, withdraw); B03–B09 slice S1 confirmation.
+ * Đợt 2 repair records (draft, submit, withdraw); B03–B09 slice S1 confirmation; v2 slice S2 proposal and approval.
  */
 const API_COMMANDS: Readonly<Record<string, ApiCommandHandler>> = {
   createUser,
@@ -311,6 +338,12 @@ const API_COMMANDS: Readonly<Record<string, ApiCommandHandler>> = {
   requestRecordUpdate: confirmationCommand(CONFIRMATION_ROUTES.requestRecordUpdate),
   confirmRepair: confirmationCommand(CONFIRMATION_ROUTES.confirmRepair),
   closeNoRepair: confirmationCommand(CONFIRMATION_ROUTES.closeNoRepair),
+  saveProposalDraft: proposalCommand('saveProposalDraft'),
+  submitProposal: proposalCommand('submitProposal'),
+  resubmitProposal: proposalCommand('resubmitProposal'),
+  approveProposal: proposalCommand('approveProposal'),
+  requestProposalUpdate: proposalCommand('requestProposalUpdate'),
+  rejectProposal: proposalCommand('rejectProposal'),
 };
 
 export const API_UNSUPPORTED_MESSAGE = 'Thao tác này chưa nối API.';

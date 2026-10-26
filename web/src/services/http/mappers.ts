@@ -24,6 +24,8 @@ import type {
 } from '@/domain/types';
 import { asNumber, asOptionalString, asRecord, asString, asStringArray, requireVndAmount } from '@/domain/validation';
 import type { RecordDetail } from '../records-service';
+import { mapProposalHistory, type ApiProposalHistory } from './proposal-mappers';
+import { MISSING_VERSION_MESSAGE } from './version';
 
 /**
  * Account profile as returned by api-qltn (`GET /api/auth/me`, `user` in the login payload).
@@ -533,7 +535,7 @@ export const toCreateUserBody = (payload: unknown): ApiCreateUserBody => {
  * and is mandatory; `active` is forwarded only when the caller sets it explicitly. The login name is fixed
  * after creation, so `username` is never sent here.
  */
-export const MISSING_VERSION_MESSAGE = 'Thiếu phiên bản dữ liệu (expectedVersion). Vui lòng tải lại.';
+export { MISSING_VERSION_MESSAGE };
 
 export const toUpdateUserBody = (payload: unknown, expectedVersion: number | undefined): ApiUpdateUserBody => {
   if (expectedVersion === undefined) {
@@ -973,6 +975,12 @@ export interface ApiRepairRecord {
   approvalAssigneeUserIds?: Readonly<Record<string, string>>;
   dueDays?: Readonly<Record<string, number>>;
   attachmentIds?: readonly string[];
+  /** S2: the step the proposal waits on and the submissions it points to. */
+  currentApprovalStepKey?: string | null;
+  currentSubmissionId?: string | null;
+  approvedSubmissionId?: string | null;
+  approvedAmountVnd?: string | null;
+  executingContractorName?: string | null;
   createdBy: string;
   version: number;
   createdAt: string;
@@ -1010,6 +1018,9 @@ export const mapRepairRecord = (row: ApiRepairRecord): RepairRecord => {
     approvalAssigneeUserIds: { ...(row.approvalAssigneeUserIds ?? {}) },
     dueDays: taskDueDaysOf(row.dueDays),
     attachmentIds: [...(row.attachmentIds ?? [])],
+    ...(row.currentApprovalStepKey ? { currentApprovalStepKey: row.currentApprovalStepKey } : {}),
+    ...(row.currentSubmissionId ? { currentSubmissionId: row.currentSubmissionId } : {}),
+    ...(row.approvedSubmissionId ? { approvedSubmissionId: row.approvedSubmissionId } : {}),
     createdBy: row.createdBy,
     version: row.version,
     createdAt: row.createdAt,
@@ -1068,22 +1079,27 @@ export interface ApiRecordDetail {
   record: ApiRepairRecord;
   confirmations?: readonly ApiRepairConfirmation[];
   attachments?: readonly ApiAttachment[];
+  /** S2: proposal draft and submissions, and the quotation / minutes files they reference. */
+  proposal?: ApiProposalHistory;
+  proposalAttachments?: readonly ApiAttachment[];
   audit?: readonly ApiAuditEvent[];
 }
 
 /**
- * Backend detail → web `RecordDetail`. The record, its site photos, the confirmer conclusions (S1) and the history;
- * parts that arrive in later slices (proposal, construction, acceptance, payment, other files) come back as empty values.
+ * Backend detail → web `RecordDetail`. The record, its files, the confirmer conclusions (S1), the quotation proposal
+ * (S2) and the history; parts that arrive in later slices (construction, acceptance, payment) come back empty.
+ * `attachments` holds site photos and proposal files so any file id on the screen resolves.
  */
 export const mapRecordDetail = (row: ApiRecordDetail): RecordDetail => ({
   record: mapRepairRecord(row.record),
   confirmations: (row.confirmations ?? []).map(mapRepairConfirmation),
   submissions: [],
+  quoteProposal: mapProposalHistory(row.proposal, row.record),
   signatures: [],
   acceptances: [],
   paymentRequests: [],
   payments: [],
-  attachments: (row.attachments ?? []).map(mapAttachment),
+  attachments: [...(row.attachments ?? []), ...(row.proposalAttachments ?? [])].map(mapAttachment),
   audit: (row.audit ?? []).map(mapAuditEvent),
   alerts: [],
   inactiveSlots: [],

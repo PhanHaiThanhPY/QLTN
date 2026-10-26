@@ -1024,6 +1024,82 @@ describe('api command adapter — configuration and workflow', () => {
     expect(bodyOf(init)).toEqual({ version: 3, note: 'Đã kiểm tra tại chỗ.' });
   });
 
+  it('should POST the S2 proposal fields and signature to /records/:id/submit-proposal', async () => {
+    const mock = mockFetch(() => jsonResponse(200, successBody({ ...RECORD_VIEW, status: 'PENDING_TECH_REVIEW', version: 5 })));
+    const items = [{ name: 'Ống', unit: 'm', quantity: '1.5' }];
+    const contractors = [
+      { name: 'NT 1', unitPricesVnd: ['333333'], otherCostVnd: '0', taxVnd: '0', quotationAttachmentIds: ['att-q'] },
+    ];
+
+    await expect(
+      executeApiCommand(
+        createCommand(
+          {
+            recipient: '',
+            proposalType: 'SUA_CHUA',
+            requestContent: 'Thay ống cấp nước.',
+            desiredApprovalDate: '',
+            items,
+            contractors,
+            proposedContractorIndex: 0,
+            incidentAttachmentIds: ['att-i'],
+            signature: 'data:image/png;base64,AAAA',
+          },
+          { subjectType: 'REPAIR_RECORD', action: 'submitProposal', subjectId: 'rec-1', expectedVersion: 4 },
+        ),
+      ),
+    ).resolves.toEqual({ ok: true, subjectId: 'rec-1' });
+
+    const [url, init] = mock.mock.calls[0];
+    expect(String(url)).toBe('/api/records/rec-1/submit-proposal');
+    expect(bodyOf(init)).toEqual({
+      version: 4,
+      recipient: '',
+      proposalType: 'SUA_CHUA',
+      requestContent: 'Thay ống cấp nước.',
+      desiredApprovalDate: null,
+      items,
+      contractors,
+      proposedContractorIndex: 0,
+      incidentAttachmentIds: ['att-i'],
+      signature: 'data:image/png;base64,AAAA',
+    });
+  });
+
+  it.each([
+    ['approveProposal', 'approve-proposal'],
+    ['requestProposalUpdate', 'request-proposal-update'],
+    ['rejectProposal', 'reject-proposal'],
+  ])('should POST %s to /records/:id/%s with the decision fields only', async (action, route) => {
+    const mock = mockFetch(() => jsonResponse(200, successBody({ ...RECORD_VIEW, version: 6 })));
+
+    await executeApiCommand(
+      createCommand(
+        {
+          submissionId: 'sub-1',
+          reason: 'Đủ hồ sơ.',
+          boardMinutesAttachmentIds: ['att-b'],
+          signature: 'data:image/png;base64,AAAA',
+          selectedContractorIndex: 1,
+          selectionReason: '',
+          unrelated: 'x',
+        },
+        { subjectType: 'REPAIR_RECORD', action, subjectId: 'rec-1', expectedVersion: 5 },
+      ),
+    );
+
+    const [url, init] = mock.mock.calls[0];
+    expect(String(url)).toBe(`/api/records/rec-1/${route}`);
+    expect(bodyOf(init)).toEqual({
+      version: 5,
+      submissionId: 'sub-1',
+      reason: 'Đủ hồ sơ.',
+      boardMinutesAttachmentIds: ['att-b'],
+      signature: 'data:image/png;base64,AAAA',
+      selectedContractorIndex: 1,
+    });
+  });
+
   it('should refuse a confirmation without the loaded version instead of sending it', async () => {
     const mock = mockFetch(() => jsonResponse(200, successBody(RECORD_VIEW)));
 
