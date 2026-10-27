@@ -163,3 +163,18 @@ Lần đo trước, khi API vừa nạp lại, lâu nhất là 222 ms. Mọi l�
 
 Ba hồ sơ `[TEST TK VIỆC] …` mã SC-069, SC-070 và SC-071, đang chờ KT-A xác nhận, ưu tiên Cao.
 
+
+### Sửa sau review (F-TK-S1-01)
+
+- **Lỗi:** web bỏ qua `counts.done` của API và tự đếm bằng `done.length`. API chỉ trả tối đa 200 dòng, nên người đã làm hơn 200 việc trong 30 ngày thấy số sai.
+- **Sửa:** `MyTaskBoard` có thêm `doneCount`: chế độ api lấy từ `counts.done`, chế độ mock lấy từ số dòng. Ô "Đã hoàn thành (30 ngày)" và tab "Đã hoàn thành (n)" dùng số này.
+- **Test hồi quy:**
+  - `my-tasks-service.api.test.ts`: API trả 200 dòng nhưng `counts.done` = 217 → `doneCount` = 217;
+  - `TasksPage.test`: `doneCount` 250 với 1 dòng → ô số và tab đều ghi 250.
+- **Commit:** `133fe8a`.
+- **Đã rebase lên `main` 57a21cb** (đã có MT-S1).
+  - Xung đột gỡ theo cách giữ cả hai: `app.module.ts` (MaintenanceModule + TasksModule), import trong `records.service.ts`, và `API_READY_PATHS` (`/tasks` cùng `/records/schedule` và `/maintenance/items`).
+  - Commit mới sau rebase: API `00ce924`, web `fe1cdf1`, docs `ab20f66`, sửa lỗi `133fe8a`.
+- **Kiểm lại sau rebase:**
+  - api: `format:check`, `tsc` và eslint OK; unit 21/21; e2e `my-tasks`, `maintenance-items`, `records-list` và `records` đạt 41/41.
+  - web: `tsc -b` OK; vitest 522/522.
