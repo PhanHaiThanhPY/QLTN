@@ -41,6 +41,7 @@ Trạng thái của `SPEC.md`: `Nháp` → `Chờ duyệt` → `Đã duyệt` �
 
 - Một quy tắc phụ thuộc OD-xx còn `Chờ chốt` chỉ được vào SPEC `Đã duyệt` khi ghi rõ là **quy tắc tạm**, kèm OD-xx sẽ thay nó. Nếu không, quy tắc đó nằm ở mục "Ngoài phạm vi".
 - Mỗi lần chuyển bước giữa các seat (giao việc, gửi review, trả sửa) đi kèm một việc trong hàng đợi OpenRig (`rig queue`) trỏ tới `SPEC.md`/`handoff.md`. Tin nhắn `rig send` chỉ để báo tin, không thay cho việc trong hàng đợi.
+- **Module có màn hình** (quy định của operator, 27/10/2026): SPEC kèm `supporting/ui-brief.md`, tạo bằng skill `ui-mockup`. Brief gồm bố cục, design token, hành vi responsive, và các trạng thái loading, rỗng, lỗi, offline, accessibility. Brief giao cho dev-build cùng với AC. PM/BA chỉ dùng skill hợp với việc đang làm, không nạp tất cả. Với phân tích nghiệp vụ, dùng `requirements-writer`, `context-builder`, `plan-review`, `backlog-capture`, `exec-summary`.
 - Đóng ở bước 5 chỉ khi review ở bước 3 đạt và mọi AC trong SPEC có bằng chứng trong `handoff.md`, hoặc được ghi rõ là chuyển sang SPEC khác.
 
 ## 3. Mẫu và quy ước đặt tên
