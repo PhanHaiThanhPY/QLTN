@@ -192,6 +192,18 @@ describe('Operation log, slice AD-S1 (e2e)', () => {
     expect((await log(admin, `&dateFrom=${OLD_DAY}&dateTo=${OLD_DAY}`)).meta.total).toBe(10001);
   });
 
+  it('AC-FX3.8: a reason starting with = is exported with a leading quote, so Excel does not run it', async () => {
+    await dataSource.query(
+      `INSERT INTO audit_events (subject_type, subject_id, building_id, action, actor_id, reason)
+       VALUES ('BUILDING', $1, $1, 'updateBuildingConfig', NULL, '=1+1')`,
+      [building('B').id],
+    );
+    const res = await admin.getBinary(`/api/audit-events/export?buildingId=${building('B').id}`).expect(200);
+    const lines = (res.body as Buffer).subarray(3).toString('utf8').trimEnd().split('\r\n');
+    const row = lines.find((line) => line.includes('1+1')) as string;
+    expect(row.split(',')[8]).toBe("'=1+1");
+  });
+
   it('AC-6: roles and departments write their own subject type, have a history, and old rows are migrated', async () => {
     const roleHistory = dataOf<Page<{ action: string; subjectType: string }>>(
       await admin.get(`/api/roles/${roleId}/audit`).expect(200),
