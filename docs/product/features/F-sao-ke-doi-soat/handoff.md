@@ -41,7 +41,7 @@
 
 **Nhánh:** `feature/f-s4-statements-reconciliation`, tách từ F-S3 đã đạt review (`f40bb34`). Worktree `../QLTN-f-s4`. Chưa push.
 
-**Commit:** `dc23110`, `75262f7` (wip API) · `93a9185` API · `ce8e00e` web · commit sửa và bằng chứng (cuối nhánh).
+**Commit:** `dc23110`, `75262f7` (wip API) · `93a9185` API · `ce8e00e` web · `04c6487` sửa tháng đang chạy, bằng chứng.
 
 **Migration:** `api-qltn/src/database/migrations/2026-10-28a-bank-statements.sql` (chạy sau 27i của F-S3). Đã chạy thử `BEGIN … ROLLBACK` hai lần liền trên `qltn_dev`, rồi áp thật khi khởi động API.
 - Bảng: `bank_statement_imports`, `bank_statement_lines`, `bank_matches`. Gắn theo quỹ (mỗi quỹ một tài khoản, DF-26), không có chữ "khai thác", nên nhóm T dùng lại được. Đường dẫn API đều dưới `/funds`.
