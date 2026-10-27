@@ -53,6 +53,9 @@ export interface RepairRecordView {
   executingContractorName: string | null;
   /** Emergency repair (B06-S1), null for a regular record. */
   emergency: EmergencyView | null;
+  /** TK-S1 BR-TK-04: deadline of the current step and whether it passed; set by `GET /records` and `GET /records/:id`. */
+  dueAt?: Date | null;
+  isOverdue?: boolean;
   createdBy: string;
   version: number;
   createdAt: Date;

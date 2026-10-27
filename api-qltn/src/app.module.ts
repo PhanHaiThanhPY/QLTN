@@ -20,6 +20,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { ExploitationModule } from './modules/exploitation/exploitation.module';
 import { MaintenanceModule } from './modules/maintenance/maintenance.module';
 import { RecordsModule } from './modules/records/records.module';
+import { TasksModule } from './modules/tasks/tasks.module';
 import { ReferenceModule } from './modules/reference/reference.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { UsersModule } from './modules/users/users.module';
@@ -53,6 +54,7 @@ import { UsersModule } from './modules/users/users.module';
     BuildingsModule,
     RecordsModule,
     MaintenanceModule,
+    TasksModule,
     ExploitationModule,
     NotificationsModule,
     AttachmentsModule,

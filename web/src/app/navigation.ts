@@ -66,11 +66,12 @@ export const ALL_NAV_ITEMS: NavItem[] = [
 /** Modules that already talk to api-qltn (plan decision D2): entering them in api mode is allowed. */
 const API_READY_GROUPS = new Set(['Hệ thống', 'Quản trị']);
 /**
- * Single entries ready before the rest of their group: record list (T4), repair schedule (B4-S1), equipment (MT-S1),
- * maintenance plans (MT-S2) and the exploitation group (F-S1, api only); the maintenance schedule stays mock-only until
- * MT-S3.
+ * Single entries ready before the rest of their group: my tasks (TK-S1), record list (T4), repair schedule (B4-S1),
+ * equipment (MT-S1), maintenance plans (MT-S2) and the exploitation group (F-S1, api only); the maintenance schedule
+ * stays mock-only until MT-S3.
  */
 const API_READY_PATHS = new Set([
+  '/tasks',
   '/records',
   '/records/schedule',
   '/maintenance/items',
