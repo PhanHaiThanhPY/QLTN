@@ -42,4 +42,59 @@
 
 ## Bằng chứng triển khai (dev-build)
 
-_(dev-build điền: commit, migration, quyết định, bảng AC → bằng chứng, test đã chạy.)_
+**Nhánh:** `feature/f-s3-exploitation-fund`, tách từ `integration/f-s2` @`dbbe32a` (main `515cded` + F-S2 đã merge). Worktree `../QLTN-f-s3`. Chưa push.
+
+**Commit:** `af56e24`, `a167b06` (wip API) · `8dfd569` API · `57e9130` web · commit bằng chứng (cuối nhánh).
+
+**Migration:** `api-qltn/src/database/migrations/2026-10-27i-exploitation-fund.sql` (chạy sau 27g của MT-S3 và 27h của F-S2). Đã chạy thử `BEGIN … ROLLBACK` hai lần liền trên `qltn_dev`, rồi áp thật khi khởi động API.
+- Bảng chung cho mọi loại quỹ (nhóm T dùng lại): `funds` (loại là một trường; unique theo tòa + loại), `fund_ledger_entries`, `fund_tax_obligations`, `fund_tax_payments`, `fund_vouchers`, `fund_voucher_decisions`.
+- Bảng riêng của khai thác: `exploitation_receipts`, `exploitation_receipt_allocations`, `exploitation_deposits`; `exploitation_receivables` thêm `paid_vnd` và trạng thái `PARTIAL`, `PAID`.
+- Quỹ khai thác được tạo cho mọi tòa đang có, và trigger `TRG_buildings_fund` tạo cho tòa mới (kể cả tòa do seed tạo).
+- Trigger `TRG_fund_ledger_entries_immutable` từ chối mọi `UPDATE`/`DELETE` trên dòng sổ; chỉ cột `reconciliation` được đổi (để F-S4 dùng).
+
+### Quyết định của dev-build
+- **Quyền:** `FUND_VIEW` (Kế toán, BQT) xem sổ quỹ, thuế, phiếu chi; `FUND_APPROVE` (BQT) duyệt phiếu chi, duyệt hủy phiếu đã chi, duyệt đổi số dư đầu. Kế toán dùng `FUND_OPERATE` sẵn có cho mọi thao tác ghi. BQL xem tab "Khoản thu" qua `EXPLOITATION_CONTRACT_VIEW`. Đã cập nhật permissions (API, web), nhãn, ma trận quyền, ADR-0001, lịch sử SPEC RM.
+- **Số dư đầu** nằm trên quỹ, không phải một dòng trong bảng sổ; API trả nó thành dòng "Số dư đầu" của tháng bắt đầu sổ. Lý do: số dư đầu không phải một lần tiền vào ra, và đổi được (có duyệt) trong khi dòng sổ thì bất biến. Đổi số dư đầu không được làm quỹ âm ở bất kỳ ngày nào, và ngày bắt đầu sổ không được sau dòng sổ đầu tiên.
+- **Không âm quỹ (BR-F3-13):** máy chủ tính "số dư thấp nhất từ ngày chi trở về sau". Mọi lệnh ghi khóa hàng `funds` trước (`FOR UPDATE`), nên hai lệnh chi song song chạy lần lượt; e2e kiểm hai lệnh chi cùng lúc (một 201, một 400). Câu báo gắn vào trường `paidOn` (phiếu chi) hoặc `amountVnd` (giấy nộp thuế).
+- **Mã chứng từ:** PT (khoản thu), NC (nhận cọc), TH (nghĩa vụ thuế), GNT (giấy nộp thuế), PC (phiếu chi).
+- **Tệp:** mọi tệp F-S3 gắn vào quỹ (subject `FUND`), purpose `RECEIPT_PROOF`, `DEPOSIT_PROOF`, `TAX_FILING`, `TAX_PAYMENT_SLIP`, `VOUCHER_REQUEST`, `VOUCHER_PROOF`. Chỉ Kế toán tải lên. Kế toán và BQT đọc được; BQL đọc được chứng từ khoản thu và nhận cọc (hiện trên tab "Khoản thu").
+- **Trạng thái kỳ** được tính lại theo hôm nay mỗi khi đọc (trang không chờ job đêm); job 00:15 vẫn ghi trạng thái vào DB. Test F-S2 AC-F2.12 nay kiểm trạng thái lưu trong DB do job ghi.
+- **Hủy hợp đồng / hủy gói** bị chặn khi hợp đồng còn tiền cọc chưa hủy (hoàn cọc là F-S5).
+- **Hủy phiếu chi "Đã chi":** Kế toán gửi đề nghị hủy kèm lý do, BQT duyệt thì mới thêm dòng đảo.
+- **"Chuyển sang quỹ khác":** quỹ nhận chỉ có "Quỹ bảo trì" (lưu `target_fund_kind = BAO_TRI`); chỉ ghi phía chi (D-F3-4).
+- **Thanh tiến độ:** thêm token `--series-1`/`--series-2` theo B01 §5.3. Phần trăm do máy chủ tính bằng số nguyên.
+- **Seed (BR-F3-15):** chạy qua các service, đặt ví dụ D1 vào **tháng trước** tháng chạy seed, để mọi ngày đều ở quá khứ. Mở sổ ngày 1; PT-001 ngày 18; PT-002, TH-001 và GNT-001 ngày 22; PC-001 ngày 23. Seed lùi ngày duyệt PC-001 về ngày 20 để ghi được "đã chi" ngày 23. Hai khoản thu phân bổ vào kỳ 1 của HĐ-001: kỳ 1 còn 5 tr, nhưng cả HĐ-001 (3 kỳ của F-S2) còn 45 tr. Tháng đó ra đúng 50 + 15 − 5 = **60**.
+
+### AC → bằng chứng
+| AC | Bằng chứng |
+|---|---|
+| AC-F3.1 | e2e `exploitation-fund` "AC-F3.1" |
+| AC-F3.2 | e2e "AC-F3.13 / AC-F3.2" (đủ 4 dòng + số dư đầu, ra 60); unit `fund-ledger.spec`; ảnh F3-1 |
+| AC-F3.3 | e2e "AC-F3.3" (dòng đảo ngày hôm nay, kỳ còn 10 tr, SQL `UPDATE`/`DELETE` bị trigger chặn, không có API sửa dòng); test component sổ quỹ |
+| AC-F3.4 | e2e "AC-F3.4 / AC-F3.16"; mọi API chỉ trả số liệu của một quỹ |
+| AC-F3.5, F3.6, F3.7 | e2e "AC-F3.5 / AC-F3.6 / AC-F3.7"; unit trạng thái kỳ; ảnh F3-2 |
+| AC-F3.8, F3.9 | e2e "AC-F3.8 / AC-F3.9"; unit phân bổ; test component hộp thoại khoản thu; ảnh F3-3 |
+| AC-F3.10 | e2e "AC-F3.10" |
+| AC-F3.11, F3.12 | e2e "AC-F3.11 / AC-F3.12"; ảnh F3-4 |
+| AC-F3.13 | e2e "AC-F3.13 / AC-F3.2"; test component nút phiếu chi; ảnh F3-5 |
+| AC-F3.14 | e2e "AC-F3.14" (chi lùi ngày bị chặn dù hôm nay vẫn dương) và "BR-F3-13: two payouts" |
+| AC-F3.15 | e2e "AC-F3.15" |
+| AC-F3.16 | e2e "AC-F3.4 / AC-F3.16"; test menu; ảnh F3-7, F3-8 |
+| AC-F3.17 | e2e "AC-F3.17" (seed ra 60, chạy lại không thêm dòng); seed trên `qltn_dev` |
+| AC-F3.18 | ảnh F3-1…F3-10; 375px không cuộn ngang; bảng có `th scope` và `tfoot`; số tiền đọc thành chữ; thanh tiến độ `role="progressbar"`; mất mạng thì khóa nút ghi (chưa giả lập trong trình duyệt). Test F-S1, F-S2 vẫn đạt |
+
+### Test đã chạy
+- **API:**
+  - `format:check`, `tsc --noEmit`, eslint đều sạch.
+  - unit 146/146.
+  - e2e `exploitation-fund` 13/13.
+  - Hồi quy e2e: `exploitation-fund`, `exploitation-contracts`, `exploitation`, `attachments`, `role-matrix`, `maintenance-execution`, `maintenance-plans`, `records`, `audit-log`: 92/92.
+- **Web:** `tsc -b` sạch; vitest 595/595.
+- **Trình duyệt:** `supporting/f-s3-fund-check.mjs`, ảnh lưu ở `supporting/evidence/`. Mỗi lần chạy, script tạo thêm một phiếu chi `[TEST F3] …` chờ duyệt trên `qltn_dev` (hiện có PC-003, PC-004).
+- **Nhật ký:** dòng thời gian trên trang phiếu chi hiện nhãn tiếng Việt cho thao tác và trạng thái của F-S3.
+
+### Còn lại / ngoài phạm vi
+- Đối soát sao kê (F-S4); hoàn cọc, báo cáo, thanh lý (F-S5).
+- Nhãn nhật ký cho các thao tác của F-S1 và F-S2 vẫn còn thiếu (đã có từ trước); F-S3 đã thêm nhãn cho các thao tác của mình.
+- Ở chế độ sáng, token `--navy` là màu trắng, nên thẻ "Khoản thu tiếp theo" chỉ đậm ở chế độ tối.
+- Nút AI 32px vẫn là residue chung.

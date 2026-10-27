@@ -1,6 +1,7 @@
 import type { AuditEvent } from '@/domain/types';
 import { useReferenceData } from '@/hooks/useReferenceData';
 import { formatDateTime } from '@/utils/date';
+import { auditActionLabel } from '@/domain/audit-labels';
 import { ACTION_LABEL, statusText } from './audit-labels';
 
 interface AuditTimelineProps {
@@ -17,7 +18,7 @@ export const AuditTimeline = ({ events }: AuditTimelineProps) => {
         <li key={event.id} className="relative">
           <span className="absolute -left-[25px] top-1.5 h-2.5 w-2.5 rounded-full bg-accent ring-4 ring-surface" aria-hidden />
           <div className="flex flex-wrap items-baseline gap-x-2 text-sm">
-            <span className="font-medium text-ink">{ACTION_LABEL[event.action] ?? event.action}</span>
+            <span className="font-medium text-ink">{ACTION_LABEL[event.action] ?? auditActionLabel(event.action)}</span>
             {event.fromStatus !== event.toStatus && event.toStatus ? (
               <span className="text-ink-2">
                 {event.fromStatus ? `${statusText(event.fromStatus)} → ` : ''}
