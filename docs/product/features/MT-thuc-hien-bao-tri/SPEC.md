@@ -198,7 +198,7 @@ Trong test, "hôm nay" được cố định. Tài khoản: `bql-a` (quản lý 
 
 **Hủy, giao lại, quá hạn, thông báo**
 - **AC-MT3.13** Hủy lượt "Chờ xác nhận": bị từ chối. Hủy lượt "Đang làm" với lý do: thành "Đã hủy", kết quả đã điền vẫn xem được.
-- **AC-MT3.14** Giao lại người thực hiện từ `kt-a1` sang `bql-a` khi lượt đang làm: kết quả đã điền giữ nguyên. `bql-a` nhận thông báo và tiếp tục được. Giao người xác nhận trùng người thực hiện: bị từ chối.
+- **AC-MT3.14** Giao lại người thực hiện từ `kt-a1` sang `kt-a3` khi lượt đang làm: kết quả đã điền giữ nguyên. `kt-a3` nhận thông báo và tiếp tục được. Khi `bql-a` tự giao cho chính mình thì **không** có thông báo, theo BR-MT3-10. Giao người xác nhận trùng người thực hiện: bị từ chối. *(Làm rõ 27/10 khi build: bản đầu ghi `bql-a` tự giao mà vẫn nhận thông báo, mâu thuẫn với BR-MT3-10.)*
 - **AC-MT3.15** GIVEN lượt ngày 12/11 chưa làm, WHEN lần chạy 00:15 ngày 12/11, THEN `kt-a1` nhận "đến hạn hôm nay" đúng một lần. Ngày 13/11: lượt "Quá hạn 1 ngày"; `kt-a1` và `bql-a` mỗi người nhận một thông báo quá hạn. Chạy lần đó 2 lần: không có thông báo lặp.
 
 **Màn hình và phạm vi**
@@ -243,3 +243,4 @@ Chỉ chạy các test liên quan.
 |---|---|
 | 27/10/2026 | Viết từ phân tích maintenance (PD-24). |
 | 27/10/2026 | Chủ dự án duyệt (PD-27), gồm D-MT3-1 đến D-MT3-7. Giao dev-build sau khi MT-S2 đạt review. |
+| 27/10/2026 | Làm rõ khi build (PM/BA): AC-MT3.14 theo BR-MT3-10, không gửi thông báo cho người tự giao cho chính mình. |
