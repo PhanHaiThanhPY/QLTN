@@ -155,10 +155,15 @@ const toConfirmationView = (row: RepairConfirmation): RepairConfirmationView => 
   createdAt: row.createdAt,
 });
 
-/** Requested approval steps resolved against the library kept on the building configuration. */
+/**
+ * Steps of the proposal chain and of every stage (INTAKE, PROPOSAL, ACCEPTANCE, PAYMENT), resolved against the library
+ * kept on the building configuration: the record snapshots a definition and a holder for each (FX-S3 BR-FX3-01). A
+ * step used in several stages appears once, so it keeps one holder.
+ */
 const workflowApprovalStepsOf = (config: BuildingConfig): WorkflowApprovalStep[] => {
   const definitions = approvalDefinitionsOf(config.workflowApprovalSteps);
-  return config.approvalStepKeys
+  const keys = [...config.approvalStepKeys, ...config.workflowStages.flatMap((stage) => stage.approvalStepKeys)];
+  return [...new Set(keys)]
     .map((key) => definitions.find((step) => step.key === key))
     .filter((step): step is WorkflowApprovalStep => Boolean(step))
     .map((step) => ({ ...step }));

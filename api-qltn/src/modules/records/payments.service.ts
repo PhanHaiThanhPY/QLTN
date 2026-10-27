@@ -28,6 +28,7 @@ import { loadRecordForAction, validateText } from './record-loader';
 import { stepHolderOf } from './record-steps';
 import { toRecordView, type RepairRecordView } from './record-view';
 import { checkSignature, signatureDataUrl } from './signature';
+import { assertStageHolders, stageStepKeysOf } from './stage-holders';
 
 const ACCOUNT_PATTERN = /^\d{6,20}$/;
 const NAME_MAX = 200;
@@ -143,6 +144,7 @@ export class PaymentsService {
   async submitSettlement(actor: AuthenticatedUser, id: string, dto: SubmitPaymentDto): Promise<RepairRecordView> {
     return this.dataSource.transaction(async (manager) => {
       const record = await loadRecordForAction(manager, actor, id, dto.version, 'submitPaymentRequest');
+      await assertStageHolders(manager, record, 'PAYMENT');
       const payments = await this.paymentsOf(manager, record);
       if (payments.some((row) => row.kind === 'TAM_UNG' && OPEN_STATUSES.includes(row.status))) {
         throw conflictWithReason(
@@ -268,6 +270,7 @@ export class PaymentsService {
   async submitAdvance(actor: AuthenticatedUser, id: string, dto: SubmitPaymentDto): Promise<RepairRecordView> {
     return this.dataSource.transaction(async (manager) => {
       const record = await loadRecordForAction(manager, actor, id, dto.version, 'submitAdvanceRequest');
+      await assertStageHolders(manager, record, 'PAYMENT');
       const payments = await this.paymentsOf(manager, record);
       if (payments.some((row) => row.kind === 'TAM_UNG' && OPEN_STATUSES.includes(row.status))) {
         throw conflictWithReason('open_advance_exists', 'Hồ sơ đang có một đợt tạm ứng chưa hoàn tất.');
@@ -280,6 +283,7 @@ export class PaymentsService {
   async resubmitAdvance(actor: AuthenticatedUser, id: string, dto: SubmitPaymentDto): Promise<RepairRecordView> {
     return this.dataSource.transaction(async (manager) => {
       const record = await loadRecordForAction(manager, actor, id, dto.version, 'resubmitAdvanceRequest');
+      await assertStageHolders(manager, record, 'PAYMENT');
       const payments = await this.paymentsOf(manager, record);
       const advance = payments.find((row) => row.kind === 'TAM_UNG' && row.status === 'NEEDS_UPDATE');
       if (!advance) throw conflictWithReason('invalid_status_transition', 'Không có đợt tạm ứng nào cần bổ sung.');
@@ -584,9 +588,7 @@ export class PaymentsService {
     },
   ): Promise<RepairPayment> {
     const repo = manager.getRepository(RepairPayment);
-    const chain = record.workflowStageApprovalStepKeys?.PAYMENT?.length
-      ? [...(record.workflowStageApprovalStepKeys.PAYMENT ?? [])]
-      : ['BOARD'];
+    const chain = stageStepKeysOf(record, 'PAYMENT');
     const values = {
       kind: input.kind,
       status: SUBMITTED,
