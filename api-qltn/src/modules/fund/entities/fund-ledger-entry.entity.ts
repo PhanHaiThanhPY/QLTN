@@ -1,9 +1,19 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
 import type { LedgerDirection } from '../../../domain/fund-ledger';
 
-export const LEDGER_CATEGORIES = ['CONTRACT_RECEIPT', 'DEPOSIT', 'TAX', 'SERVICE', 'TRANSFER', 'OTHER'] as const;
+/** F-S4 BR-F4-08 adds BANK_FEE (out) and INTEREST (in), recorded from the statement. */
+export const LEDGER_CATEGORIES = [
+  'CONTRACT_RECEIPT',
+  'DEPOSIT',
+  'TAX',
+  'SERVICE',
+  'TRANSFER',
+  'OTHER',
+  'BANK_FEE',
+  'INTEREST',
+] as const;
 export type LedgerCategory = (typeof LEDGER_CATEGORIES)[number];
-export type LedgerSourceType = 'RECEIPT' | 'DEPOSIT' | 'TAX_PAYMENT' | 'VOUCHER';
+export type LedgerSourceType = 'RECEIPT' | 'DEPOSIT' | 'TAX_PAYMENT' | 'VOUCHER' | 'STATEMENT';
 
 /**
  * One movement of money in or out of a fund's account (SPEC F-S3 BR-F3-03). Never updated or deleted (a database

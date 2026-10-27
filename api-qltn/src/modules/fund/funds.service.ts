@@ -173,8 +173,17 @@ export class FundsService {
       .filter((line) => !query.category || line.category === query.category)
       .filter((line) => !query.direction || line.direction === query.direction);
     const contracts = await this.contractsOf(shown);
+    const codes = await this.ledger.statementCodes(
+      this.dataSource.manager,
+      shown.map((line) => line.id),
+    );
     const rows = shown.map((line) =>
-      ledgerRow(line, reversedBy.get(line.id) ?? null, contracts.get(line.sourceId) ?? null),
+      ledgerRow(
+        line,
+        reversedBy.get(line.id) ?? null,
+        contracts.get(line.sourceId) ?? null,
+        codes.get(line.id) ?? null,
+      ),
     );
     return {
       fund: view,

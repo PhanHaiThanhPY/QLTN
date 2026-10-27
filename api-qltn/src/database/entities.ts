@@ -13,6 +13,9 @@ import { ExploitationReceivable } from '../modules/exploitation/entities/exploit
 import { ExploitationDeposit } from '../modules/exploitation/entities/exploitation-deposit.entity';
 import { ExploitationReceiptAllocation } from '../modules/exploitation/entities/exploitation-receipt-allocation.entity';
 import { ExploitationReceipt } from '../modules/exploitation/entities/exploitation-receipt.entity';
+import { BankMatch } from '../modules/fund/entities/bank-match.entity';
+import { BankStatementImport } from '../modules/fund/entities/bank-statement-import.entity';
+import { BankStatementLine } from '../modules/fund/entities/bank-statement-line.entity';
 import { Fund } from '../modules/fund/entities/fund.entity';
 import { FundLedgerEntry } from '../modules/fund/entities/fund-ledger-entry.entity';
 import { FundTaxObligation } from '../modules/fund/entities/fund-tax-obligation.entity';
@@ -99,4 +102,7 @@ export const ALL_ENTITIES = [
   ExploitationReceipt,
   ExploitationReceiptAllocation,
   ExploitationDeposit,
+  BankStatementImport,
+  BankStatementLine,
+  BankMatch,
 ];

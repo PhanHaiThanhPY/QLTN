@@ -29,8 +29,16 @@ const CODE_WIDTH = 3;
 export interface TaxMonth {
   fundId: string;
   month: string;
-  obligation: (FundTaxObligation & { paidVnd: string; remainingVnd: string; settled: boolean }) | null;
-  payments: FundTaxPayment[];
+  obligation:
+    | (FundTaxObligation & {
+        paidVnd: string;
+        remainingVnd: string;
+        settled: boolean;
+        /** F-S4 BR-F4-11: "Đã đối chiếu k/n" — slips matched with the bank / slips recorded. */
+        reconciled: { matched: number; total: number };
+      })
+    | null;
+  payments: Array<FundTaxPayment & { statementCode: string | null }>;
   /** BR-F3-10: contract receipts of the month (net of reversals), for reference only — never a computed tax. */
   contractIncomeVnd: string;
   files: Record<string, Attachment>;
@@ -65,6 +73,11 @@ export class TaxService {
       Boolean(id),
     );
     const files = ids.length ? await manager.getRepository(Attachment).findBy(ids.map((id) => ({ id }))) : [];
+    const recorded = payments.filter((row) => row.status === 'RECORDED');
+    const codes = await this.ledger.statementCodes(
+      manager,
+      recorded.map((row) => row.ledgerEntryId),
+    );
     return {
       fundId,
       month,
@@ -74,9 +87,13 @@ export class TaxService {
             paidVnd: paid.toString(),
             remainingVnd: (BigInt(obligation.amountVnd) - paid).toString(),
             settled: BigInt(obligation.amountVnd) - paid === 0n,
+            reconciled: {
+              matched: recorded.filter((row) => codes.has(row.ledgerEntryId)).length,
+              total: recorded.length,
+            },
           }
         : null,
-      payments,
+      payments: payments.map((row) => ({ ...row, statementCode: codes.get(row.ledgerEntryId) ?? null })),
       contractIncomeVnd: await this.contractIncome(manager, fundId, month),
       files: Object.fromEntries(files.map((file) => [file.id, file])),
     };

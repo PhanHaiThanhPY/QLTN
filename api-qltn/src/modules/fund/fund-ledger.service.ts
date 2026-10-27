@@ -118,6 +118,11 @@ export class FundLedgerService {
     reason: string,
   ): Promise<FundLedgerEntry> {
     const original = await manager.getRepository(FundLedgerEntry).findOneByOrFail({ id: entryId });
+    // F-S4 BR-F4-07: a document matched with the bank statement is unmatched first.
+    if (original.reconciliation === 'RECONCILED') {
+      const code = (await this.statementCodes(manager, [original.id])).get(original.id) ?? 'GD';
+      throw conflictWithReason('reconciled', `Bỏ ghép ${code} trước khi hủy chứng từ này.`);
+    }
     if (await manager.getRepository(FundLedgerEntry).exists({ where: { reversesId: original.id } }))
       throw conflictWithReason('already_reversed', 'Chứng từ đã được hủy.');
     return this.post(
@@ -137,6 +142,17 @@ export class FundLedgerService {
       { date: 'reason', amount: 'reason' },
       original.id,
     );
+  }
+
+  /** F-S4 BR-F4-11: the GD code each reconciled ledger line is matched with. */
+  async statementCodes(manager: EntityManager, entryIds: readonly string[]): Promise<Map<string, string>> {
+    if (!entryIds.length) return new Map();
+    const rows = await manager.query<Array<{ entry_id: string; code: string }>>(
+      `SELECT m.entry_id, l.code FROM bank_matches m JOIN bank_statement_lines l ON l.id = m.line_id
+        WHERE m.unmatched_at IS NULL AND m.entry_id = ANY($1::uuid[])`,
+      [entryIds],
+    );
+    return new Map(rows.map((row) => [row.entry_id, row.code]));
   }
 
   private assertCovers(available: Available, amountVnd: string, field: string): void {

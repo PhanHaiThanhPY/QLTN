@@ -61,7 +61,8 @@ export const parseAmountCell = (cell: Cell, label: string): Parsed<string | null
   if (/^\d+$/.test(text)) return { ok: true, value: BigInt(text).toString() };
   if (/^\d{1,3}(\.\d{3})+$/.test(text) || /^\d{1,3}(,\d{3})+$/.test(text))
     return { ok: true, value: BigInt(text.replace(/[.,]/g, '')).toString() };
-  if (/^\d[\d.,]*[.,]\d{1,2}$/.test(text) || /^\d+[.,]\d+$/.test(text)) return { ok: false, message: `${label} có phần thập phân.` };
+  if (/^\d[\d.,]*[.,]\d{1,2}$/.test(text) || /^\d+[.,]\d+$/.test(text))
+    return { ok: false, message: `${label} có phần thập phân.` };
   return { ok: false, message: `${label} không phải số tiền hợp lệ.` };
 };
 
@@ -84,16 +85,21 @@ export const parseDateCell = (cell: Cell): Parsed<string> => {
 const normalizeHeader = (value: string): string => value.trim().replace(/\s+/g, ' ').toLowerCase();
 
 /** Maps the header row to columns; a missing required column is an error on line 1. */
-export const readHeader = (header: readonly Cell[]): { index: Partial<Record<StatementColumn, number>>; errors: StatementRowError[] } => {
+export const readHeader = (
+  header: readonly Cell[],
+): { index: Partial<Record<StatementColumn, number>>; errors: StatementRowError[] } => {
   const index: Partial<Record<StatementColumn, number>> = {};
   header.forEach((cell, at) => {
     const name = normalizeHeader(String(cell ?? ''));
-    const column = (Object.keys(STATEMENT_COLUMNS) as StatementColumn[]).find((key) => normalizeHeader(STATEMENT_COLUMNS[key]) === name);
+    const column = (Object.keys(STATEMENT_COLUMNS) as StatementColumn[]).find(
+      (key) => normalizeHeader(STATEMENT_COLUMNS[key]) === name,
+    );
     if (column && index[column] === undefined) index[column] = at;
   });
   const errors: StatementRowError[] = [];
   for (const column of ['date', 'credit', 'debit', 'description'] as const)
-    if (index[column] === undefined) errors.push({ row: 1, column, message: `Thiếu cột "${STATEMENT_COLUMNS[column]}".` });
+    if (index[column] === undefined)
+      errors.push({ row: 1, column, message: `Thiếu cột "${STATEMENT_COLUMNS[column]}".` });
   return { index, errors };
 };
 
@@ -110,13 +116,16 @@ export const readRows = (
   const [header = [], ...data] = table;
   const { index, errors } = readHeader(header);
   if (errors.length) return { rows: [], errors };
-  const cell = (line: readonly Cell[], column: StatementColumn): Cell => (index[column] === undefined ? null : line[index[column] as number]);
+  const cell = (line: readonly Cell[], column: StatementColumn): Cell =>
+    index[column] === undefined ? null : line[index[column] as number];
   const rows: StatementRow[] = [];
-  if (data.length > STATEMENT_ROWS_MAX) errors.push({ row: 1, column: null, message: `Tệp có quá ${STATEMENT_ROWS_MAX} dòng.` });
+  if (data.length > STATEMENT_ROWS_MAX)
+    errors.push({ row: 1, column: null, message: `Tệp có quá ${STATEMENT_ROWS_MAX} dòng.` });
   data.forEach((line, at) => {
     const row = at + 2;
     if (line.every(blank)) return;
-    const fail = (column: StatementColumn | null, message: string) => errors.push({ row, column, message: `Dòng ${row}: ${message}` });
+    const fail = (column: StatementColumn | null, message: string) =>
+      errors.push({ row, column, message: `Dòng ${row}: ${message}` });
     const date = parseDateCell(cell(line, 'date'));
     if (!date.ok) fail('date', date.message);
     const credit = parseAmountCell(cell(line, 'credit'), STATEMENT_COLUMNS.credit);
@@ -151,15 +160,26 @@ export const readRows = (
 };
 
 /** BR-F4-01: opening + Σ lines must equal the bank's closing; answers the gap (closing − computed). */
-export const closureGap = (openingVnd: string, closingVnd: string, rows: ReadonlyArray<Pick<StatementRow, 'direction' | 'amountVnd'>>): string => {
-  const computed = rows.reduce((total, row) => total + (row.direction === 'IN' ? 1n : -1n) * BigInt(row.amountVnd), BigInt(openingVnd));
+export const closureGap = (
+  openingVnd: string,
+  closingVnd: string,
+  rows: ReadonlyArray<Pick<StatementRow, 'direction' | 'amountVnd'>>,
+): string => {
+  const computed = rows.reduce(
+    (total, row) => total + (row.direction === 'IN' ? 1n : -1n) * BigInt(row.amountVnd),
+    BigInt(openingVnd),
+  );
   return (BigInt(closingVnd) - computed).toString();
 };
 
 /** BR-F4-03: the key a transaction is known by; without a reference the description counts, normalised. */
-export const dedupeKey = (row: Pick<StatementRow, 'txnDate' | 'direction' | 'amountVnd' | 'reference' | 'description'>): string => {
+export const dedupeKey = (
+  row: Pick<StatementRow, 'txnDate' | 'direction' | 'amountVnd' | 'reference' | 'description'>,
+): string => {
   const signed = `${row.direction === 'IN' ? '' : '-'}${row.amountVnd}`;
-  const tail = row.reference ? `ref:${row.reference.trim()}` : `txt:${row.description.trim().replace(/\s+/g, ' ').toLowerCase()}`;
+  const tail = row.reference
+    ? `ref:${row.reference.trim()}`
+    : `txt:${row.description.trim().replace(/\s+/g, ' ').toLowerCase()}`;
   return `${row.txnDate}|${signed}|${tail}`;
 };
 
@@ -190,7 +210,9 @@ export const isCandidate = (line: MatchableLine, entry: MatchableLine): boolean 
 export const suggestMatches = (lines: readonly MatchableLine[], entries: readonly MatchableLine[]): Suggestion[] => {
   const proposals: Suggestion[] = [];
   for (const line of lines) {
-    const near = entries.filter((entry) => isCandidate(line, entry) && daysBetween(line.date, entry.date) <= MATCH_DAYS_FREE);
+    const near = entries.filter(
+      (entry) => isCandidate(line, entry) && daysBetween(line.date, entry.date) <= MATCH_DAYS_FREE,
+    );
     if (near.length !== 1) continue;
     const days = daysBetween(line.date, near[0].date);
     if (days <= SUGGEST_DAYS) proposals.push({ lineId: line.id, entryId: near[0].id, days });
@@ -221,7 +243,10 @@ export const statementBalanceAt = (
   if (!covering) return null;
   return lines
     .filter((line) => line.date >= covering.periodFrom && line.date <= date)
-    .reduce((total, line) => total + (line.direction === 'IN' ? 1n : -1n) * BigInt(line.amountVnd), BigInt(covering.openingVnd))
+    .reduce(
+      (total, line) => total + (line.direction === 'IN' ? 1n : -1n) * BigInt(line.amountVnd),
+      BigInt(covering.openingVnd),
+    )
     .toString();
 };
 
@@ -237,6 +262,9 @@ export const statementBalanceBefore = (
   if (!covering) return null;
   return lines
     .filter((line) => line.date >= covering.periodFrom && line.date < date)
-    .reduce((total, line) => total + (line.direction === 'IN' ? 1n : -1n) * BigInt(line.amountVnd), BigInt(covering.openingVnd))
+    .reduce(
+      (total, line) => total + (line.direction === 'IN' ? 1n : -1n) * BigInt(line.amountVnd),
+      BigInt(covering.openingVnd),
+    )
     .toString();
 };

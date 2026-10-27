@@ -11,6 +11,8 @@ export const FUND_FILE_PURPOSES = {
   TAX_PAYMENT_SLIP: 'Giấy nộp tiền thuế',
   VOUCHER_REQUEST: 'Đề nghị chi',
   VOUCHER_PROOF: 'Chứng từ chuyển khoản chi',
+  /** F-S4: the statement file of an import, stored by the import itself (not uploadable on its own). */
+  STATEMENT_FILE: 'Tệp sao kê',
 } as const;
 export type FundFilePurpose = keyof typeof FUND_FILE_PURPOSES;
 

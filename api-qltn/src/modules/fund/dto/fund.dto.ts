@@ -188,3 +188,68 @@ export class PayVoucherDto extends FundVersionDto {
   @IsUUID()
   proofAttachmentId: string;
 }
+
+/** F-S4 BR-F4-01: multipart fields of an import (with `file`), or typed lines as JSON in `lines`. */
+export class StatementImportDto {
+  @ApiProperty({ example: '2026-11-01' })
+  @Trim()
+  @IsString()
+  periodFrom: string;
+
+  @ApiProperty({ example: '2026-11-30' })
+  @Trim()
+  @IsString()
+  periodTo: string;
+
+  @ApiProperty({ example: '50000000', description: 'Số dư đầu kỳ theo ngân hàng' })
+  @Trim()
+  @IsString()
+  openingBalanceVnd: string;
+
+  @ApiProperty({ example: '60000000', description: 'Số dư cuối kỳ theo ngân hàng' })
+  @Trim()
+  @IsString()
+  closingBalanceVnd: string;
+
+  @ApiPropertyOptional({ description: 'JSON: [{ date: "dd/mm/yyyy", credit, debit, description, reference }]' })
+  @IsOptional()
+  @IsString()
+  lines?: string;
+}
+
+export class MatchDto {
+  @ApiProperty()
+  @IsUUID()
+  entryId: string;
+
+  @ApiPropertyOptional({ nullable: true, description: 'Bắt buộc khi lệch quá 5 ngày' })
+  @IsOptional()
+  @TrimToNull()
+  @IsString()
+  reason?: string | null;
+}
+
+export class StatementReasonDto {
+  @ApiProperty()
+  @Trim()
+  @IsString()
+  reason: string;
+}
+
+export class RecordFromStatementDto {
+  @ApiProperty({ enum: ['BANK_FEE', 'INTEREST'] })
+  @IsIn(['BANK_FEE', 'INTEREST'])
+  kind: 'BANK_FEE' | 'INTEREST';
+}
+
+export class CandidatesQueryDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  lineId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  entryId?: string;
+}

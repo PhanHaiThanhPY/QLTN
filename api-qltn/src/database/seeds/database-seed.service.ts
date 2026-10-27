@@ -22,6 +22,9 @@ import { DEMO_ITEMS, DEMO_PLANS, shiftDate } from './demo-items';
 import { ensureExploitationContractDemo } from './exploitation-contract-seed';
 import { ensureExploitationDemo } from './exploitation-seed';
 import { ensureFundDemo } from './fund-seed';
+import { ensureStatementDemo } from './statement-seed';
+import { ReconciliationService } from '../../modules/fund/reconciliation.service';
+import { StatementsService } from '../../modules/fund/statements.service';
 import { ReceiptsService } from '../../modules/exploitation/receipts.service';
 import { FundsService } from '../../modules/fund/funds.service';
 import { TaxService } from '../../modules/fund/tax.service';
@@ -67,6 +70,8 @@ export class DatabaseSeedService {
     private readonly funds: FundsService,
     private readonly taxes: TaxService,
     private readonly vouchers: VouchersService,
+    private readonly statementImports: StatementsService,
+    private readonly reconciliation: ReconciliationService,
   ) {}
 
   async run(): Promise<void> {
@@ -103,6 +108,13 @@ export class DatabaseSeedService {
       receipts: this.receipts,
       taxes: this.taxes,
       vouchers: this.vouchers,
+      now: new Date(),
+    });
+    // F-S4 BR-F4-13 reconciles that month with its bank statement.
+    created.statements = await ensureStatementDemo({
+      dataSource: this.dataSource,
+      statements: this.statementImports,
+      reconciliation: this.reconciliation,
       now: new Date(),
     });
     const summary = Object.entries(created)

@@ -57,7 +57,8 @@ const decodeXml = (text: string): string =>
     .replace(/&amp;/g, '&');
 
 /** The text of every <t> inside a fragment (rich text runs are concatenated). */
-const textOf = (fragment: string): string => [...fragment.matchAll(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g)].map((match) => decodeXml(match[1])).join('');
+const textOf = (fragment: string): string =>
+  [...fragment.matchAll(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g)].map((match) => decodeXml(match[1])).join('');
 
 const columnIndex = (ref: string): number =>
   [...ref.replace(/\d+$/, '')].reduce((total, letter) => total * 26 + (letter.charCodeAt(0) - 64), 0) - 1;
@@ -80,8 +81,8 @@ export const readXlsx = (buffer: Buffer): Cell[][] => {
   const files = unzip(buffer);
   const sheet = files.get(firstSheetPath(files))?.toString('utf8');
   if (!sheet) throw new StatementFileError('Không tìm thấy trang tính đầu tiên trong tệp XLSX.');
-  const shared = [...(files.get('xl/sharedStrings.xml')?.toString('utf8') ?? '').matchAll(/<si>([\s\S]*?)<\/si>/g)].map((match) =>
-    textOf(match[1]),
+  const shared = [...(files.get('xl/sharedStrings.xml')?.toString('utf8') ?? '').matchAll(/<si>([\s\S]*?)<\/si>/g)].map(
+    (match) => textOf(match[1]),
   );
   const rows: Cell[][] = [];
   for (const rowMatch of sheet.matchAll(/<row\b([^>]*)>([\s\S]*?)<\/row>/g)) {

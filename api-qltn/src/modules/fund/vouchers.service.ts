@@ -45,8 +45,11 @@ export interface VoucherCounts {
   rejected: number;
 }
 
+/** F-S4 BR-F4-11: a paid voucher shows the bank line it is matched with. */
+export type VoucherRow = FundVoucher & { statementCode: string | null };
+
 export interface VoucherDetail {
-  voucher: FundVoucher;
+  voucher: VoucherRow;
   decisions: FundVoucherDecision[];
   files: Record<string, Attachment>;
   audit: AuditEventView[];
@@ -67,7 +70,7 @@ export class VouchersService {
     actor: AuthenticatedUser,
     fundId: string,
     month: string,
-  ): Promise<{ rows: FundVoucher[]; counts: VoucherCounts }> {
+  ): Promise<{ rows: VoucherRow[]; counts: VoucherCounts }> {
     const fund = await this.dataSource.getRepository(Fund).findOneBy({ id: fundId });
     if (!fund || !actor.buildingIds.includes(fund.buildingId)) throw notFound('Không tìm thấy quỹ.');
     assertFundView(actor);
@@ -78,8 +81,15 @@ export class VouchersService {
       ? monthBounds(month)
       : monthBounds(vnDate(this.clock.now()).slice(0, 7));
     const paid = rows.filter((row) => row.status === 'PAID' && row.paidOn && row.paidOn >= first && row.paidOn <= last);
+    const codes = await this.ledger.statementCodes(
+      this.dataSource.manager,
+      rows.flatMap((row) => (row.ledgerEntryId ? [row.ledgerEntryId] : [])),
+    );
     return {
-      rows,
+      rows: rows.map((row) => ({
+        ...row,
+        statementCode: row.ledgerEntryId ? (codes.get(row.ledgerEntryId) ?? null) : null,
+      })),
       counts: {
         pending: rows.filter((row) => row.status === 'PENDING').length,
         approved: rows.filter((row) => row.status === 'APPROVED').length,
@@ -103,7 +113,15 @@ export class VouchersService {
       this.dataSource.getRepository(Attachment).findBy({ id: In(ids) }),
       this.audit.listForSubject(SUBJECT_TYPE.FUND_VOUCHER, id, { page: 1, limit: AUDIT_LIMIT }),
     ]);
-    return { voucher, decisions, files: Object.fromEntries(files.map((file) => [file.id, file])), audit: audit.data };
+    const codes = voucher.ledgerEntryId
+      ? await this.ledger.statementCodes(this.dataSource.manager, [voucher.ledgerEntryId])
+      : new Map<string, string>();
+    return {
+      voucher: { ...voucher, statementCode: voucher.ledgerEntryId ? (codes.get(voucher.ledgerEntryId) ?? null) : null },
+      decisions,
+      files: Object.fromEntries(files.map((file) => [file.id, file])),
+      audit: audit.data,
+    };
   }
 
   /** BR-F3-12: Kế toán drafts a voucher. */

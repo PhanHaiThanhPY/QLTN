@@ -36,6 +36,8 @@ export interface LedgerRow {
   reconciliation: 'UNRECONCILED' | 'RECONCILED';
   /** The contract behind an exploitation receipt or deposit, for the code's link. */
   contractId: string | null;
+  /** F-S4 BR-F4-11: the bank line (GD-…) it is matched with. */
+  statementCode: string | null;
   createdBy: string;
   createdAt: Date;
 }
@@ -69,6 +71,7 @@ export const ledgerRow = (
   entry: FundLedgerEntry,
   reversedById: string | null,
   contractId: string | null,
+  statementCode: string | null = null,
 ): LedgerRow => ({
   id: entry.id,
   entryDate: entry.entryDate,
@@ -83,6 +86,7 @@ export const ledgerRow = (
   reversedById,
   reconciliation: entry.reconciliation,
   contractId,
+  statementCode,
   createdBy: entry.createdBy,
   createdAt: entry.createdAt,
 });

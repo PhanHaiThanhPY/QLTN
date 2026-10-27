@@ -3,7 +3,10 @@ import { readCsv, readStatementFile, readXlsx, statementTemplateCsv, StatementFi
 
 describe('statement files (SPEC F-S4 BR-F4-02)', () => {
   it('reads CSV with a BOM, quotes and either separator', () => {
-    const csv = Buffer.from('﻿Ngày giao dịch,Ghi có,Nội dung\r\n18/11/2026,"10.000.000","DV-A, ""HĐ-001"""\r\n', 'utf8');
+    const csv = Buffer.from(
+      '﻿Ngày giao dịch,Ghi có,Nội dung\r\n18/11/2026,"10.000.000","DV-A, ""HĐ-001"""\r\n',
+      'utf8',
+    );
     expect(readCsv(csv)).toEqual([
       ['Ngày giao dịch', 'Ghi có', 'Nội dung'],
       ['18/11/2026', '10.000.000', 'DV-A, "HĐ-001"'],

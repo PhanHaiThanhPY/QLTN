@@ -110,6 +110,12 @@ export const AUDIT_ACTION_LABEL: Readonly<Record<string, string>> = {
   requestFundVoucherCancel: 'Đề nghị hủy phiếu đã chi',
   approveFundVoucherCancel: 'Duyệt hủy phiếu đã chi',
   rejectFundVoucherCancel: 'Từ chối hủy phiếu đã chi',
+  // Sao kê và đối soát (F-S4)
+  importStatement: 'Nhập sao kê',
+  deleteStatementImport: 'Xóa lần nhập sao kê',
+  matchStatementLine: 'Ghép sao kê với chứng từ',
+  unmatchStatementLine: 'Bỏ ghép sao kê',
+  recordFromStatement: 'Ghi nhận từ sao kê',
 };
 
 /** Label of a code, or the code itself when none is defined yet (BR-05). */
