@@ -19,9 +19,13 @@ import { RoleDefinition } from '../../modules/roles/entities/role-definition.ent
 import { CUSTOM_ROLE_PREFIX, RolesService } from '../../modules/roles/roles.service';
 import { User } from '../../modules/users/entities/user.entity';
 import { DEMO_ITEMS, DEMO_PLANS, shiftDate } from './demo-items';
+import { ensureExploitationContractDemo } from './exploitation-contract-seed';
 import { ensureExploitationDemo } from './exploitation-seed';
 import { ensureMaintenanceExecutionDemo } from './maintenance-execution-seed';
 import { RecordsService } from '../../modules/records/records.service';
+import { AssembliesService } from '../../modules/exploitation/assemblies.service';
+import { ContractsService } from '../../modules/exploitation/contracts.service';
+import { SelectionsService } from '../../modules/exploitation/selections.service';
 import { FileStorage } from '../../modules/attachments/file-storage';
 import {
   DEMO_ASSIGNMENT_RULES,
@@ -51,6 +55,9 @@ export class DatabaseSeedService {
     private readonly codes: CodeCounterService,
     private readonly storage: FileStorage,
     private readonly records: RecordsService,
+    private readonly selections: SelectionsService,
+    private readonly assemblies: AssembliesService,
+    private readonly contracts: ContractsService,
   ) {}
 
   async run(): Promise<void> {
@@ -66,7 +73,19 @@ export class DatabaseSeedService {
       );
     }
     const passwordHash = await hashPassword(password);
-    const created = await this.dataSource.transaction((manager) => this.seed(manager, passwordHash));
+    const created: Record<string, number> = await this.dataSource.transaction((manager) =>
+      this.seed(manager, passwordHash),
+    );
+    // F-S2 runs through its services (their own transactions), so after the rest has committed.
+    created.contracts = await ensureExploitationContractDemo({
+      dataSource: this.dataSource,
+      storage: this.storage,
+      codes: this.codes,
+      selections: this.selections,
+      assemblies: this.assemblies,
+      contracts: this.contracts,
+      now: new Date(),
+    });
     const summary = Object.entries(created)
       .map(([name, count]) => `+${count} ${name}`)
       .join(', ');

@@ -39,4 +39,61 @@
 
 ## Bằng chứng triển khai (dev-build)
 
-_(dev-build điền: commit, migration, quyết định, bảng AC → bằng chứng, test đã chạy.)_
+**Nhánh:** `feature/f-s2-selection-contracts`, tách từ `main` `5775da4` (đã có F-S1). Worktree `../QLTN-f-s2`. Chưa push.
+
+**Commit:** `969b918` quy tắc lịch phải thu · `6d36cc0` quyền · `7f1de9f` schema · `0929e24`, `8789c90`, `4fbb051` (wip API) · `f1fc4ab` API · `dcbfc8a` seed · `6b1e903` format · `1639d61` web · commit bằng chứng (cuối nhánh).
+
+**Migration:** `api-qltn/src/database/migrations/2026-10-27h-exploitation-contracts.sql`, gồm cả ràng buộc. Đã chạy thử `BEGIN … ROLLBACK` hai lần liền và chạy được. Đã áp lên `qltn_dev` khi khởi động API.
+- Trạng thái gói thêm `SELECTED` và `NO_RESULT`.
+- Bảng mới: `exploitation_selections`, `exploitation_selection_decisions`, `exploitation_assemblies`, `exploitation_contracts`, `exploitation_contract_revisions`, `exploitation_receivables`.
+- Ràng buộc:
+  - Mỗi gói chỉ có một hợp đồng chưa hủy (unique một phần).
+  - Mỗi hợp đồng chỉ có một kỳ phải thu hiện hành cho mỗi số kỳ (`superseded_at IS NULL`).
+
+### Quyết định của dev-build
+- **Tên quyền:**
+  - `EXPLOITATION_APPROVE` cấp cho BQT (BR-F2-13).
+  - `EXPLOITATION_CONTRACT_VIEW` cấp cho BQL, BQT và Kế toán.
+  - Kế toán không có `EXPLOITATION_VIEW`, nên không thấy hồ sơ dự thầu hay bảng so sánh.
+  - Đã cập nhật permissions (API và web), ADR-0001 và lịch sử SPEC RM.
+- **Kết quả chọn:** lập xong là ở ngay "Chờ duyệt", không qua bước nháp riêng. "Sửa và gửi lại" giữ nguyên mã KQ. "Đổi kết quả" tạo KQ mới, còn KQ cũ chuyển "Đã thay thế" khi KQ mới được duyệt.
+- **Lý do:** lý do xét hồ sơ trễ hạn và các lý do yêu cầu sửa, từ chối, hủy cần tối thiểu 10 ký tự. Căn cứ và lý do đổi kết quả cần tối thiểu 20 ký tự.
+- **Tệp của F-S2:** biên bản, tài liệu hội nghị và tài liệu hợp đồng đều gắn vào gói (`EXPLOITATION_PACKAGE`), với purpose `SELECTION_MINUTES`, `ASSEMBLY_DOCUMENT` và `CONTRACT_DOCUMENT`. Kế toán đọc được `CONTRACT_DOCUMENT` qua `EXPLOITATION_CONTRACT_VIEW`.
+- **Hội nghị:**
+  - Lập hồ sơ mới sau một HN "Thông qua" thì phải có lý do, và HN cũ chuyển "Đã thay thế".
+  - Sau một HN "Không thông qua" thì là trình lại, không cần lý do.
+  - HN được tính (DF-27) là HN mới nhất có kết quả. Nếu trùng ngày họp thì lấy HN lập sau (`createdAt`).
+- **Hủy gói:** bị từ chối khi gói ở "Không có kết quả" hoặc có hợp đồng "Hiệu lực". Hợp đồng nháp hoặc đã ký thì bị hủy theo gói.
+- **Trạng thái kỳ phải thu:** chạy hằng ngày lúc 00:15 giờ VN, qua JobScheduler của F-S1.
+- **Seed:** đi qua các service thật, chạy sau khi transaction seed chính commit, và có thể chạy lại.
+  - Kết quả: MT-001 → KQ-001 (DV-A) → HN-001 (NQ-001) → HĐ-001 hiệu lực, chu kỳ tháng, 3 kỳ từ ngày 1 tháng hiện tại.
+  - Thêm gói "Quảng cáo màn hình thang máy · Sảnh" ở trạng thái "Đang nhận hồ sơ" (BR-F2-14).
+
+### AC → bằng chứng
+| AC | Bằng chứng |
+|---|---|
+| AC-F2.1, F2.2 | e2e `exploitation-contracts` "AC-F2.1 / AC-F2.2"; ảnh F2-1 (DV-B bị khóa, nêu tài liệu còn thiếu), F2-7 (BQT có nút Duyệt, Yêu cầu sửa, Từ chối); test component `F2Components` |
+| AC-F2.3 | e2e "AC-F2.3" |
+| AC-F2.4 | e2e "AC-F2.4" |
+| AC-F2.5 | e2e "AC-F2.5" |
+| AC-F2.6, F2.7 | e2e "AC-F2.6 / AC-F2.7"; ảnh F2-3 |
+| AC-F2.8, F2.9, F2.11, F2.12 | e2e "AC-F2.8 / … / AC-F2.12"; unit `exploitation-receivables.spec`; test component cho danh sách điều kiện hiệu lực; ảnh F2-4, F2-5 |
+| AC-F2.10 | e2e "AC-F2.10"; unit |
+| AC-F2.13, F2.14 | e2e "AC-F2.13 / AC-F2.14"; unit sinh lại kỳ |
+| AC-F2.15 | e2e "AC-F2.15"; ảnh F2-8 (Kế toán: không có nút ghi; menu có "Hợp đồng khai thác" nhưng không có "Mời thầu khai thác"); test `navigation.test` |
+| AC-F2.16 | e2e "AC-F2.16"; seed trên `qltn_dev`: `+1 contracts`, MT-001 `SELECTED`/HĐ-001 `ACTIVE`, MT-008 `OPEN` |
+| AC-F2.17 | ảnh F2-1…F2-10; ảnh 375px F2-9, F2-10 không cuộn ngang; bảng dùng `<tfoot>` và `th scope`, mốc hồ sơ dùng `<ol>` và `<time>`; mất mạng thì vô hiệu nút ghi và hiện Notice (chưa giả lập trong trình duyệt) |
+
+### Test đã chạy
+- **API:**
+  - `format:check`, `tsc --noEmit`, eslint đều sạch.
+  - unit 132/132.
+  - e2e `exploitation-contracts` 10/10.
+  - e2e exploitation, attachments và role-matrix: 38/38.
+  - e2e plans, records và my-tasks: 30/30.
+- **Web:** `tsc -b` sạch; vitest 575/575.
+- **Trình duyệt:** `supporting/f-s2-contracts-check.mjs`, ảnh lưu ở `supporting/evidence/`. Script tạo thêm một gói tên bắt đầu bằng `[TEST F2 CHỌN]` trên `qltn_dev`.
+
+### Còn lại / ngoài phạm vi
+- Thu tiền, phiếu thu và tiền cọc thuộc F-S3. Kỳ 1 của HĐ-001 trong seed hiện "Quá hạn" vì chưa có bút toán thu.
+- Nút AI 32px vẫn là residue chung, như ở MT-S3.

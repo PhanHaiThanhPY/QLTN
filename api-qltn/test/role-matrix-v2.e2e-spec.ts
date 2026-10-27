@@ -86,10 +86,17 @@ describe('Role matrix v2, RM-S1 (e2e)', () => {
     await app.close();
   });
 
-  it('AC-1.2: seeds the Kế toán system role with exactly its 4 capabilities and the KTOAN-A account', async () => {
+  // F-S2 BR-F2-13 adds EXPLOITATION_CONTRACT_VIEW to the 4 capabilities of RM-S1.
+  it('AC-1.2: seeds the Kế toán system role with exactly its capabilities and the KTOAN-A account', async () => {
     const accountant = (await roles()).find((row) => row.code === 'KTOAN') as Role;
     expect(accountant).toMatchObject({ name: 'Kế toán', baseRole: 'ACCOUNTANT', isSystem: true });
-    expect([...accountant.capabilities].sort()).toEqual(['FUND_OPERATE', 'PAYMENT_CONFIRM', 'REPORT_VIEW', 'VIEW']);
+    expect([...accountant.capabilities].sort()).toEqual([
+      'EXPLOITATION_CONTRACT_VIEW',
+      'FUND_OPERATE',
+      'PAYMENT_CONFIRM',
+      'REPORT_VIEW',
+      'VIEW',
+    ]);
 
     const session = await signIn(server, 'ktoan-a');
     const me = dataOf<Profile>(await session.get('/api/auth/me').expect(200));
@@ -168,7 +175,15 @@ describe('Role matrix v2, RM-S1 (e2e)', () => {
 
     const legacy = (await roles()).find((row) => row.code === 'VT-90') as Role;
     // AUDIT_VIEW (AD-S1) and EXPLOITATION_VIEW (F-S1) are also new to a role saved before they existed, not granted.
-    const gained = ['RECORD_CONFIRM', 'ACCEPTANCE_DECIDE', 'PAYMENT_CONFIRM', 'AUDIT_VIEW', 'EXPLOITATION_VIEW'];
+    const gained = [
+      'RECORD_CONFIRM',
+      'ACCEPTANCE_DECIDE',
+      'PAYMENT_CONFIRM',
+      'AUDIT_VIEW',
+      'EXPLOITATION_VIEW',
+      'EXPLOITATION_APPROVE',
+      'EXPLOITATION_CONTRACT_VIEW',
+    ];
     expect(legacy.newBaseCapabilities).toEqual(gained);
     const holder = await accountWith('BQT-CU', legacy.id, 'BQT');
     const me = dataOf<Profile>(await holder.get('/api/auth/me').expect(200));

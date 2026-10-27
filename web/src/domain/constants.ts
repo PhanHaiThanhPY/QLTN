@@ -288,6 +288,10 @@ export const ATTACHMENT_PURPOSE = {
   /** F-S1, api mode only. */
   EXPLOITATION_DOCUMENT: 'EXPLOITATION_DOCUMENT',
   BID_DOCUMENT: 'BID_DOCUMENT',
+  /** F-S2, api mode only. */
+  SELECTION_MINUTES: 'SELECTION_MINUTES',
+  ASSEMBLY_DOCUMENT: 'ASSEMBLY_DOCUMENT',
+  CONTRACT_DOCUMENT: 'CONTRACT_DOCUMENT',
   OTHER: 'OTHER',
 } as const;
 export type AttachmentPurpose = (typeof ATTACHMENT_PURPOSE)[keyof typeof ATTACHMENT_PURPOSE];
@@ -307,6 +311,9 @@ export const ATTACHMENT_PURPOSE_LABEL: Record<AttachmentPurpose, string> = {
   ITEM_DOCUMENT: 'Tài liệu thiết bị',
   EXPLOITATION_DOCUMENT: 'Tài liệu mời thầu khai thác',
   BID_DOCUMENT: 'Tài liệu dự thầu',
+  SELECTION_MINUTES: 'Biên bản đánh giá',
+  ASSEMBLY_DOCUMENT: 'Tài liệu hội nghị',
+  CONTRACT_DOCUMENT: 'Tài liệu hợp đồng',
   OTHER: 'Khác',
 };
 
@@ -321,6 +328,9 @@ export const SUBJECT_TYPE = {
   EXPLOITATION_PARTNER: 'EXPLOITATION_PARTNER',
   EXPLOITATION_PACKAGE: 'EXPLOITATION_PACKAGE',
   EXPLOITATION_BID: 'EXPLOITATION_BID',
+  EXPLOITATION_SELECTION: 'EXPLOITATION_SELECTION',
+  EXPLOITATION_ASSEMBLY: 'EXPLOITATION_ASSEMBLY',
+  EXPLOITATION_CONTRACT: 'EXPLOITATION_CONTRACT',
 } as const;
 export type SubjectType = (typeof SUBJECT_TYPE)[keyof typeof SUBJECT_TYPE];
 export const SUBJECT_TYPE_LABEL: Record<SubjectType, string> = {
@@ -333,6 +343,9 @@ export const SUBJECT_TYPE_LABEL: Record<SubjectType, string> = {
   EXPLOITATION_PARTNER: 'Đơn vị khai thác',
   EXPLOITATION_PACKAGE: 'Gói khai thác',
   EXPLOITATION_BID: 'Hồ sơ dự thầu',
+  EXPLOITATION_SELECTION: 'Kết quả chọn đơn vị',
+  EXPLOITATION_ASSEMBLY: 'Hồ sơ hội nghị',
+  EXPLOITATION_CONTRACT: 'Hợp đồng khai thác',
 };
 
 export const NOTIFICATION_KIND = {

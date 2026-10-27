@@ -26,4 +26,6 @@ export const CAPABILITY_LABEL: Record<Capability, string> = {
   AUDIT_VIEW: 'Xem nhật ký thao tác',
   EXPLOITATION_VIEW: 'Xem mời thầu khai thác',
   EXPLOITATION_MANAGE: 'Quản lý mời thầu khai thác',
+  EXPLOITATION_APPROVE: 'Duyệt kết quả chọn đơn vị khai thác',
+  EXPLOITATION_CONTRACT_VIEW: 'Xem hợp đồng khai thác và lịch phải thu',
 };

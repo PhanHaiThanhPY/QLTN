@@ -6,6 +6,7 @@ import {
   CalendarDays,
   CalendarClock,
   ClipboardList,
+  FileSignature,
   Landmark,
   LayoutDashboard,
   MapPin,
@@ -49,6 +50,14 @@ export const ALL_NAV_ITEMS: NavItem[] = [
 
   { to: '/exploitation/packages', label: 'Mời thầu khai thác', icon: Landmark, capability: 'EXPLOITATION_VIEW', group: 'Quỹ khai thác', apiOnly: true },
   { to: '/exploitation/partners', label: 'Đơn vị khai thác', icon: Store, capability: 'EXPLOITATION_VIEW', group: 'Quỹ khai thác', apiOnly: true },
+  {
+    to: '/exploitation/contracts',
+    label: 'Hợp đồng khai thác',
+    icon: FileSignature,
+    capability: 'EXPLOITATION_CONTRACT_VIEW',
+    group: 'Quỹ khai thác',
+    apiOnly: true,
+  },
 
   { to: '/space', label: 'Không gian chung cư', icon: Map, group: 'Theo dõi' },
   { to: '/reports', label: 'Báo cáo', icon: BarChart3, capability: 'REPORT_VIEW', group: 'Theo dõi' },
@@ -79,6 +88,7 @@ const API_READY_PATHS = new Set([
   '/maintenance/schedule',
   '/exploitation/packages',
   '/exploitation/partners',
+  '/exploitation/contracts',
   '/audit',
   '/notifications',
 ]);
