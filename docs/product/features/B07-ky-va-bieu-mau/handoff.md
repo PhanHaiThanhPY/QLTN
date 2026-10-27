@@ -70,3 +70,10 @@ Họ tên người ký lấy từ dữ liệu tham chiếu của phiên.
 **Test đã chạy:** web `tsc -b`; vitest toàn bộ 68 file, 446/446. Các test mới: `document-models.test.ts` (13), `DocumentsTab.test.tsx` (3), `DocumentView.test.tsx` (7), `DocumentPrintPage.test.tsx` (2).
 
 **Dữ liệu thử trong `qltn_dev`:** SC-020 đến SC-023 (`[TEST B7 IN]`, mỗi lần chạy script tạo một hồ sơ, đều `COMPLETED`). Tòa A đã về STANDARD.
+
+## Đóng B7-S1 (PM/BA, 27/10/2026)
+
+- **B7-S1 đóng.** Review lần 1 không đạt vì F-B7-S1-01 (trình đọc màn hình không đọc đúng chữ chìm của biên bản) và F-B7-S1-02 (ảnh chữ ký lỗi bị bỏ qua, nút In vẫn bấm được). Bản sửa `1b7778e` qua review lần 2: PASS WITH RESIDUE, có chạy trình duyệt trên đúng bản ứng viên (SC-023).
+- Cả 14 AC đều có bằng chứng ở trên. Chỉ sửa web, không đổi API, không có migration.
+- **Residue được chấp nhận:** chưa có ảnh chứng minh tiêu đề bảng báo giá lặp lại khi sang trang. Mục này chuyển vào danh sách kiểm khi khách nghiệm thu (UAT), dùng một hồ sơ có báo giá dài.
+- **Merge vào `main`** (`eabe18d`). Kiểm trên bản đã merge: typecheck web, test web của documents và auth 43/43.

@@ -122,7 +122,7 @@ Trường của mẫu: số công văn, "V/v", ngày, nơi phát sinh, **hạng 
 
 | Slice | Nội dung | Phụ thuộc |
 |---|---|---|
-| **B7-S1** ([SPEC](../features/B07-ky-va-bieu-mau/SPEC.md), đã duyệt PD-20) | Bản xem / in (A4, in ra PDF bằng trình duyệt) theo đúng bố cục 3 mẫu D5: tờ trình (mỗi lần trình), biên bản nghiệm thu (mỗi lượt), thư đề nghị (mỗi đợt). Dùng dữ liệu `api` đã có; trường chưa có thì để dòng trống như mẫu. Thay nút demo | Không. Dữ liệu S2–S4 đã đủ cho phần lớn trường |
+| **B7-S1** ([SPEC](../features/B07-ky-va-bieu-mau/SPEC.md), đã triển khai 27/10) | Bản xem / in (A4, in ra PDF bằng trình duyệt) theo đúng bố cục 3 mẫu D5: tờ trình (mỗi lần trình), biên bản nghiệm thu (mỗi lượt), thư đề nghị (mỗi đợt). Dùng dữ liệu `api` đã có; trường chưa có thì để dòng trống như mẫu. Thay nút demo | Không. Dữ liệu S2–S4 đã đủ cho phần lớn trường |
 | B7-S2 | Bổ sung trường thiếu (B7G-03), lưu bản chụp mỗi revision thanh toán (B7G-04) | B7Q-02, B7Q-03, B7Q-06 |
 | B7-S3 | Thông báo chào thầu; mã băm nội dung lúc ký và in trên bản PDF; tạo PDF phía máy chủ nếu cần lưu kèm hồ sơ | B7Q-01, B7Q-05 |
 
