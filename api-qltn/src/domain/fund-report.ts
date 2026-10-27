@@ -23,7 +23,12 @@ const vnDay = (iso: string): string => iso.split('-').reverse().join('/');
 export const reportPeriod = (kind: ReportPeriodKind, value: string): ReportPeriod | null => {
   if (kind === 'MONTH' && /^\d{4}-(0[1-9]|1[0-2])$/.test(value)) {
     const [year, month] = value.split('-').map(Number);
-    return { from: `${value}-01`, to: lastDay(year, month), label: `Tháng ${value.slice(5)}/${value.slice(0, 4)}`, slug: value };
+    return {
+      from: `${value}-01`,
+      to: lastDay(year, month),
+      label: `Tháng ${value.slice(5)}/${value.slice(0, 4)}`,
+      slug: value,
+    };
   }
   const quarter = /^(\d{4})-Q([1-4])$/.exec(value);
   if (kind === 'QUARTER' && quarter) {
@@ -37,10 +42,16 @@ export const reportPeriod = (kind: ReportPeriodKind, value: string): ReportPerio
       slug: `${year}-q${q}`,
     };
   }
-  if (kind === 'YEAR' && /^\d{4}$/.test(value)) return { from: `${value}-01-01`, to: `${value}-12-31`, label: `Năm ${value}`, slug: value };
+  if (kind === 'YEAR' && /^\d{4}$/.test(value))
+    return { from: `${value}-01-01`, to: `${value}-12-31`, label: `Năm ${value}`, slug: value };
   const range = /^(\d{4}-\d{2}-\d{2})\.\.(\d{4}-\d{2}-\d{2})$/.exec(value);
   if (kind === 'RANGE' && range && range[1] <= range[2])
-    return { from: range[1], to: range[2], label: `${vnDay(range[1])} – ${vnDay(range[2])}`, slug: `${range[1]}_${range[2]}` };
+    return {
+      from: range[1],
+      to: range[2],
+      label: `${vnDay(range[1])} – ${vnDay(range[2])}`,
+      slug: `${range[1]}_${range[2]}`,
+    };
   return null;
 };
 
@@ -92,7 +103,9 @@ export const ledgerReport = (
   from: string,
   to: string,
 ): ReportFigures => {
-  const start = lines.filter((line) => line.entryDate < from).reduce((total, line) => total + signed(line), BigInt(opening.openingBalanceVnd));
+  const start = lines
+    .filter((line) => line.entryDate < from)
+    .reduce((total, line) => total + signed(line), BigInt(opening.openingBalanceVnd));
   const inPeriod = lines.filter((line) => line.entryDate >= from && line.entryDate <= to && !line.internal);
   const sum = (direction: LedgerDirection): bigint =>
     inPeriod.filter((line) => line.direction === direction).reduce((total, line) => total + BigInt(line.amountVnd), 0n);
@@ -118,10 +131,15 @@ export const ledgerReport = (
 };
 
 /** BR-F5-01: whether statements cover every day from `from` to `to` (their union, gaps and all). */
-export const statementsCover = (periods: ReadonlyArray<{ periodFrom: string; periodTo: string }>, from: string, to: string): boolean => {
+export const statementsCover = (
+  periods: ReadonlyArray<{ periodFrom: string; periodTo: string }>,
+  from: string,
+  to: string,
+): boolean => {
   const sorted = [...periods].sort((a, b) => a.periodFrom.localeCompare(b.periodFrom));
   let reached = from;
-  const nextDay = (iso: string): string => new Date(Date.parse(`${iso}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+  const nextDay = (iso: string): string =>
+    new Date(Date.parse(`${iso}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
   let covered = false;
   for (const period of sorted) {
     if (period.periodFrom > reached) break;
@@ -170,6 +188,10 @@ export const closeChecks = (input: {
       detail: BigInt(input.depositHeldVnd) === 0n ? 'Đã xử lý' : `Còn giữ ${money(input.depositHeldVnd)} đ`,
       amountVnd: input.depositHeldVnd,
     },
-    { key: 'PENDING', ok: input.pending === 0, detail: input.pending === 0 ? 'Không' : `${input.pending} đang chờ duyệt hoặc chờ chi` },
+    {
+      key: 'PENDING',
+      ok: input.pending === 0,
+      detail: input.pending === 0 ? 'Không' : `${input.pending} đang chờ duyệt hoặc chờ chi`,
+    },
   ];
 };

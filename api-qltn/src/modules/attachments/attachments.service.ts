@@ -14,7 +14,7 @@ import { ExploitationBid } from '../exploitation/entities/exploitation-bid.entit
 import { ExploitationPackage } from '../exploitation/entities/exploitation-package.entity';
 import {
   BID_FILE_PURPOSE,
-  CONTRACT_FILE_PURPOSE,
+  CONTRACT_READABLE_PACKAGE_PURPOSES,
   PACKAGE_FILE_PURPOSE,
   PACKAGE_PURPOSE_STATUSES,
 } from '../exploitation/exploitation-files';
@@ -119,6 +119,7 @@ export const PURPOSE_LABEL: Readonly<Record<string, string>> = {
   SELECTION_MINUTES: 'Biên bản đánh giá',
   ASSEMBLY_DOCUMENT: 'Tài liệu hội nghị',
   CONTRACT_DOCUMENT: 'Tài liệu hợp đồng',
+  TERMINATION_DOCUMENT: 'Tài liệu thanh lý',
   ...FUND_FILE_PURPOSES,
 };
 
@@ -212,7 +213,8 @@ export class AttachmentsService {
     }
     // F-S2 D-F2-6: contract documents are for contract readers too (Kế toán); the rest is bid material.
     const contractFile =
-      attachment.purpose === CONTRACT_FILE_PURPOSE && hasCapability(actor, 'EXPLOITATION_CONTRACT_VIEW');
+      CONTRACT_READABLE_PACKAGE_PURPOSES.includes(attachment.purpose) &&
+      hasCapability(actor, 'EXPLOITATION_CONTRACT_VIEW');
     if (
       EXPLOITATION_SUBJECTS.includes(attachment.subjectType) &&
       !hasCapability(actor, 'EXPLOITATION_VIEW') &&

@@ -7,7 +7,7 @@ import { Clock } from '../../common/services/clock.service';
 import { CodeCounterService } from '../../common/services/code-counter.service';
 import { isIsoDate, vnDate } from '../../common/utils/vn-date';
 import { FieldErrors } from '../../common/validation/field-errors';
-import { monthBounds } from '../../domain/fund-ledger';
+import { groupVnd, monthBounds } from '../../domain/fund-ledger';
 import { Attachment } from '../attachments/entities/attachment.entity';
 import { AuditService, type AuditEventView } from '../audit/audit.service';
 import { SUBJECT_TYPE } from '../audit/entities/audit-event.entity';
@@ -16,6 +16,7 @@ import type { LedgerCategory } from './entities/fund-ledger-entry.entity';
 import { FundVoucherDecision, type VoucherDecisionKind } from './entities/fund-voucher-decision.entity';
 import { FundVoucher, type VoucherCategory, type VoucherStatus } from './entities/fund-voucher.entity';
 import { Fund } from './entities/fund.entity';
+import { depositPosition } from './deposit-held';
 import { checkFundFile } from './fund-files';
 import { FundLedgerService } from './fund-ledger.service';
 import { assertFundApprove, assertFundOperate, assertFundView, isVnd, validateReason, vnd } from './fund-rules';
@@ -33,6 +34,7 @@ export const VOUCHER_CATEGORY_LEDGER: Readonly<Record<VoucherCategory, LedgerCat
   SERVICE: 'SERVICE',
   TRANSFER: 'TRANSFER',
   OTHER: 'OTHER',
+  DEPOSIT_REFUND: 'DEPOSIT_REFUND',
 } as const;
 const EDITABLE: readonly VoucherStatus[] = ['DRAFT', 'NEEDS_CHANGES'];
 const CANCELLABLE: readonly VoucherStatus[] = ['DRAFT', 'NEEDS_CHANGES', 'APPROVED'];
@@ -152,7 +154,7 @@ export class VouchersService {
       const voucher = await this.lock(manager, actor, id, dto.version, assertFundOperate);
       if (!EDITABLE.includes(voucher.status))
         throw conflictWithReason('voucher_locked', 'Chỉ sửa được phiếu nháp hoặc cần sửa.');
-      Object.assign(voucher, await this.validate(manager, voucher.fundId, dto));
+      Object.assign(voucher, await this.validate(manager, voucher.fundId, dto, voucher.id));
       await this.save(manager, actor, voucher, 'updateFundVoucher');
       return voucher;
     });
@@ -225,6 +227,14 @@ export class VouchersService {
         'Ngày chi không được sau hôm nay.',
       );
       await checkFundFile(manager, errors, fund.id, dto.proofAttachmentId, 'VOUCHER_PROOF', 'proofAttachmentId');
+      if (voucher.contractId) {
+        const { heldVnd } = await depositPosition(manager, voucher.contractId);
+        errors.when(
+          BigInt(voucher.amountVnd) > heldVnd,
+          'paidOn',
+          `Vượt tiền cọc đang giữ (${groupVnd(heldVnd.toString())} ₫).`,
+        );
+      }
       errors.throwIfAny();
       const line = await this.ledger.post(
         manager,
@@ -358,8 +368,14 @@ export class VouchersService {
   }
 
   /** BR-F3-12 fields: a transfer names the receiving fund (D-F3-4). */
-  private async validate(manager: EntityManager, fundId: string, dto: VoucherFieldsDto): Promise<Partial<FundVoucher>> {
+  private async validate(
+    manager: EntityManager,
+    fundId: string,
+    dto: VoucherFieldsDto,
+    voucherId: string | null = null,
+  ): Promise<Partial<FundVoucher>> {
     const errors = new FieldErrors();
+    const refund = dto.category === 'DEPOSIT_REFUND';
     const transfer = dto.category === 'TRANSFER';
     const target = dto.targetFundKind ?? null;
     errors.when(transfer && !TARGET_FUNDS.some((kind) => kind === target), 'targetFundKind', 'Chọn quỹ nhận.');
@@ -376,6 +392,7 @@ export class VouchersService {
     errors.when((dto.payeeAccount ?? '').length > 60, 'payeeAccount', 'Số tài khoản tối đa 60 ký tự.');
     errors.when(!isVnd(dto.amountVnd), 'amountVnd', 'Số tiền là số nguyên VND lớn hơn 0.');
     await checkFundFile(manager, errors, fundId, dto.requestAttachmentId, 'VOUCHER_REQUEST', 'requestAttachmentId');
+    if (refund) await this.checkRefund(manager, errors, fundId, dto, voucherId);
     errors.throwIfAny();
     return {
       category: dto.category,
@@ -385,7 +402,34 @@ export class VouchersService {
       payeeAccount: dto.payeeAccount ?? null,
       amountVnd: vnd(dto.amountVnd),
       requestAttachmentId: dto.requestAttachmentId,
+      contractId: refund ? (dto.contractId ?? null) : null,
     };
+  }
+
+  /** BR-F5-12: a refund names a contract being terminated in this fund's building, within the deposit it still holds. */
+  private async checkRefund(
+    manager: EntityManager,
+    errors: FieldErrors,
+    fundId: string,
+    dto: VoucherFieldsDto,
+    voucherId: string | null,
+  ): Promise<void> {
+    const [contract] = dto.contractId
+      ? await manager.query<Array<{ status: string; building_id: string; code: string }>>(
+          `SELECT c.status, c.building_id, c.code FROM exploitation_contracts c JOIN funds f ON f.building_id = c.building_id
+            WHERE c.id = $1 AND f.id = $2`,
+          [dto.contractId, fundId],
+        )
+      : [];
+    if (!contract) {
+      errors.add('contractId', 'Chọn hợp đồng hoàn cọc.');
+      return;
+    }
+    if (contract.status !== 'TERMINATING') errors.add('contractId', 'Chỉ hoàn cọc cho hợp đồng đang thanh lý.');
+    const { heldVnd, reservedVnd } = await depositPosition(manager, dto.contractId as string, voucherId);
+    const free = heldVnd - reservedVnd;
+    if (isVnd(dto.amountVnd) && BigInt(dto.amountVnd) > free)
+      errors.add('amountVnd', `Vượt tiền cọc đang giữ của ${contract.code} (${groupVnd(free.toString())} ₫).`);
   }
 
   private async headOf(manager: EntityManager, actor: AuthenticatedUser, id: string): Promise<FundVoucher> {

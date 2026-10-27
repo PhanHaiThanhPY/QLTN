@@ -1,7 +1,8 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import type { FundKind } from './fund.entity';
 
-export const VOUCHER_CATEGORIES = ['SERVICE', 'TRANSFER', 'OTHER'] as const;
+/** F-S5 BR-F5-12 adds DEPOSIT_REFUND ("Hoàn cọc"), naming its contract. */
+export const VOUCHER_CATEGORIES = ['SERVICE', 'TRANSFER', 'OTHER', 'DEPOSIT_REFUND'] as const;
 export type VoucherCategory = (typeof VOUCHER_CATEGORIES)[number];
 export const VOUCHER_STATUSES = [
   'DRAFT',
@@ -36,8 +37,11 @@ export class FundVoucher {
   @Column({ name: 'building_id', type: 'uuid' })
   buildingId: string;
 
-  @Column({ type: 'varchar', length: 10 })
+  @Column({ type: 'varchar', length: 20 })
   category: VoucherCategory;
+
+  @Column({ name: 'contract_id', type: 'uuid', nullable: true })
+  contractId: string | null;
 
   @Column({ name: 'target_fund_kind', type: 'varchar', length: 20, nullable: true })
   targetFundKind: FundKind | null;
