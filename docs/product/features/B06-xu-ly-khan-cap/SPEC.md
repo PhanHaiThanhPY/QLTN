@@ -1,7 +1,7 @@
 ---
 id: B06.S1
 title: Xử lý khẩn cấp — làm trước, duyệt hậu kiểm
-status: Đã duyệt
+status: Đã triển khai
 owner: PM/BA
 intent: "BQL được cho làm ngay các sự cố khẩn cấp trong hạn mức của tòa; hồ sơ vẫn đi đủ chuỗi duyệt sau đó và không trả tiền khi chưa được duyệt."
 depends_on: []
@@ -9,7 +9,7 @@ depends_on: []
 
 # SPEC: Xử lý khẩn cấp (B06-S1)
 
-**Chủ sở hữu:** PM/BA · **Cập nhật:** 27/10/2026 · **Trạng thái:** `Đã duyệt`, chủ dự án duyệt ngày 27/10/2026 (PD-19)
+**Chủ sở hữu:** PM/BA · **Cập nhật:** 27/10/2026 · **Trạng thái:** `Đã triển khai` (27/10/2026, merge vào `main`); trước đó `Đã duyệt`, chủ dự án duyệt ngày 27/10/2026 (PD-19)
 
 **Nguồn:**
 - Phân tích [B06-xu-ly-khan-cap.md](../../modules/B06-xu-ly-khan-cap.md) (đã duyệt, PD-18), các mục B6G-01 đến 04, 09, 11, 12 và mặc định D-B6-1 đến D-B6-7.
@@ -191,3 +191,4 @@ Chỉ chạy các test liên quan, không chạy toàn bộ suite.
 |---|---|
 | 27/10/2026 | Viết từ phân tích B06 (PD-18). Đưa "không duyệt hậu kiểm" từ S2 lên S1 (lý do ở §2 mục 4). |
 | 27/10/2026 | Chủ dự án duyệt (PD-19) và cho giao dev-build. |
+| 27/10/2026 | Triển khai, review đạt (sau một vòng sửa accessibility), đóng và merge vào `main`. |

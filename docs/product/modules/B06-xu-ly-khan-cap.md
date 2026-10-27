@@ -136,7 +136,7 @@ Dữ liệu demo: SC-020 "Vỡ ống cấp nước chính hầm B1" (12,5 tr, nh
 
 | Slice | Nội dung | Sẵn sàng? |
 |---|---|---|
-| **B06-S1** ([SPEC](../features/B06-xu-ly-khan-cap/SPEC.md), đã duyệt PD-19, đang build; gồm cả B6G-04) | Đưa luồng demo lên API và web chế độ `api`: E1–E3, E5, E6, chặn thanh toán bằng trạng thái, thẻ và cờ khẩn cấp | Sau khi chủ dự án duyệt phân tích này (PD-08). Không phụ thuộc slice khác đang mở |
+| **B06-S1** ([SPEC](../features/B06-xu-ly-khan-cap/SPEC.md), đã triển khai 27/10; gồm cả B6G-04) | Đưa luồng demo lên API và web chế độ `api`: E1–E3, E5, E6, chặn thanh toán bằng trạng thái, thẻ và cờ khẩn cấp | Sau khi chủ dự án duyệt phân tích này (PD-08). Không phụ thuộc slice khác đang mở |
 | **B06-S2** | Từ chối hậu kiểm (B6G-04, có trạng thái mới), nhật ký sự cố D1 (B6G-05, 06), quá hạn báo BQT (B6G-08), cờ và danh sách báo cáo hội nghị (B6G-07) | Sau S1. Cần chủ dự án chốt B6G-04 (thêm trạng thái) |
 
 **AC nháp B06-S1**

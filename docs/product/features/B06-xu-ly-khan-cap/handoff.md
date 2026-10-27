@@ -88,3 +88,12 @@ Migration `2026-10-27b-emergency.sql` thêm cột `repair_records.emergency` (js
 - Chế độ `mock` giữ nguyên, nên §2.5 và §2.6 chỉ có ở `api`.
 - Responsive và chế độ tối chưa có ảnh riêng; mọi màu dùng token có sẵn.
 - Dữ liệu thử trong `qltn_dev`: SC-018 và SC-019 (`[TEST B06 UI]`, đều đã `CLOSED_POST_REVIEW_REJECTED`). Tòa A đã về STANDARD.
+
+## Đóng B06-S1 (PM/BA, 27/10/2026)
+
+- **B06-S1 đóng.** Review lần 1 không đạt vì F-B06-S1-01 (accessibility, AC-E0.3). Bản sửa `f21dcff` qua review lần 2: PASS WITH RESIDUE.
+- Cả 18 AC đều có bằng chứng ở trên.
+- **Residue được chấp nhận:** chưa chạy lại trình duyệt trên đúng bản ứng viên, vì seat review không có trình duyệt. Ảnh chụp B06-1..6 và test component bù cho phần này.
+- **Merge vào `main`** theo yêu cầu của chủ dự án. Kiểm trên bản đã merge: tsc API, unit API 76/76, typecheck web, test web của auth và emergency 26/26.
+- **Trước khi chạy code này**, phải áp migration `2026-10-27b-emergency.sql` lên mọi DB.
+
