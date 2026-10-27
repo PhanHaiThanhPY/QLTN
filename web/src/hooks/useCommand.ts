@@ -39,6 +39,8 @@ export const useCommand = (options: UseCommandOptions = {}) => {
   });
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  /** Code of the last failure (e.g. CONFLICT for a stale version), so a dialog can offer a reload. */
+  const [errorCode, setErrorCode] = useState<ErrorCode | null>(null);
 
   const { mutateAsync, isPending } = useMutation({
     mutationFn: (request: CommandRequest) =>
@@ -49,6 +51,7 @@ export const useCommand = (options: UseCommandOptions = {}) => {
     commandIdRef.current = newId('cmd');
     setFieldErrors({});
     setErrorMessage(null);
+    setErrorCode(null);
   }, []);
 
   const execute = useCallback(
@@ -56,6 +59,7 @@ export const useCommand = (options: UseCommandOptions = {}) => {
       lastFieldErrorsRef.current = {};
       setFieldErrors({});
       setErrorMessage(null);
+      setErrorCode(null);
       try {
         const result = await mutateAsync(request);
         commandIdRef.current = newId('cmd');
@@ -67,6 +71,7 @@ export const useCommand = (options: UseCommandOptions = {}) => {
         console.error(`Command ${request.action} failed:`, error);
         const message = toErrorMessage(error);
         setErrorMessage(message);
+        setErrorCode(isAppError(error) ? error.code : null);
         if (isAppError(error) && error.fieldErrors) {
           lastFieldErrorsRef.current = error.fieldErrors;
           setFieldErrors(error.fieldErrors);
@@ -82,5 +87,5 @@ export const useCommand = (options: UseCommandOptions = {}) => {
 
   const getLastFieldErrors = useCallback((): FieldErrors => lastFieldErrorsRef.current, []);
 
-  return { execute, isPending, fieldErrors, errorMessage, reset, getLastFieldErrors };
+  return { execute, isPending, fieldErrors, errorMessage, errorCode, reset, getLastFieldErrors };
 };

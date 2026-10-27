@@ -6,15 +6,17 @@ interface ItemQuickFilterBarProps {
   value: ItemQuickFilter;
   counts: Record<ItemQuickFilter, number>;
   onChange: (value: ItemQuickFilter) => void;
+  /** Views shown; api mode (MT-S1) leaves out "Quá hạn bảo trì", which needs plans. */
+  filters?: ReadonlyArray<{ value: ItemQuickFilter; label: string }>;
 }
 
 /** Filters that need a decision get a red count so problems stand out before any click. */
 const ALERTING: readonly ItemQuickFilter[] = ['attention', 'overdue'];
 
 /** One-click views with live counts (all, needs action, overdue, repairing, warranty ending). */
-export const ItemQuickFilterBar = ({ value, counts, onChange }: ItemQuickFilterBarProps) => (
+export const ItemQuickFilterBar = ({ value, counts, onChange, filters = ITEM_QUICK_FILTERS }: ItemQuickFilterBarProps) => (
   <div role="radiogroup" aria-label="Lọc nhanh thiết bị" className="scroll-thin -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
-    {ITEM_QUICK_FILTERS.map((entry) => {
+    {filters.map((entry) => {
       const isActive = entry.value === value;
       const isAlert = ALERTING.includes(entry.value) && counts[entry.value] > 0;
       return (

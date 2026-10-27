@@ -19,10 +19,23 @@ interface ItemListFiltersProps {
   buildings: Building[];
   types: string[];
   onChange: (patch: Partial<ItemListFilterValues>) => void;
+  /** Sort options; api mode (MT-S1) leaves out "next maintenance", which needs plans. */
+  sorts?: ReadonlyArray<{ value: ItemSort; label: string }>;
+  searchPlaceholder?: string;
+  /** Shows the "Gồm thiết bị đã ngừng" check box (MT-S1 BR-MT-07). */
+  showInactiveToggle?: boolean;
 }
 
 /** Search + building/type/sort selects; one row on desktop, stacked on phones. */
-export const ItemListFilters = ({ values, buildings, types, onChange }: ItemListFiltersProps) => (
+export const ItemListFilters = ({
+  values,
+  buildings,
+  types,
+  onChange,
+  sorts = ITEM_SORTS,
+  searchPlaceholder = 'Mã, tên, loại, model, nhà cung cấp, vị trí…',
+  showInactiveToggle = false,
+}: ItemListFiltersProps) => (
   <Card className="shadow-none">
     <CardBody className="grid grid-cols-1 gap-2.5 p-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))] lg:items-end">
       <Field label="Tìm thiết bị" htmlFor="i-q">
@@ -32,7 +45,7 @@ export const ItemListFilters = ({ values, buildings, types, onChange }: ItemList
             id="i-q"
             value={values.q}
             className="pl-9"
-            placeholder="Mã, tên, loại, model, nhà cung cấp, vị trí…"
+            placeholder={searchPlaceholder}
             onChange={(event) => onChange({ q: event.target.value })}
           />
         </div>
@@ -62,11 +75,23 @@ export const ItemListFilters = ({ values, buildings, types, onChange }: ItemList
             if (isItemSort(next)) onChange({ sort: next });
           }}
         >
-          {ITEM_SORTS.map((entry) => (
+          {sorts.map((entry) => (
             <option key={entry.value} value={entry.value}>{entry.label}</option>
           ))}
         </NativeSelect>
       </Field>
+      {showInactiveToggle ? (
+        <label htmlFor="i-inactive" className="flex items-center gap-2 text-sm text-ink sm:col-span-2 lg:col-span-4">
+          <input
+            id="i-inactive"
+            type="checkbox"
+            className="size-4 accent-accent"
+            checked={values.includeInactive}
+            onChange={(event) => onChange({ includeInactive: event.target.checked })}
+          />
+          Gồm thiết bị đã ngừng
+        </label>
+      ) : null}
     </CardBody>
   </Card>
 );

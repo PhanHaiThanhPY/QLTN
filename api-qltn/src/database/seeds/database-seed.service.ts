@@ -3,16 +3,19 @@ import { ConfigService } from '@nestjs/config';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In } from 'typeorm';
 import { CodeCounterService } from '../../common/services/code-counter.service';
+import { vnDate } from '../../common/utils/vn-date';
 import { templateValues } from '../../domain/building-config';
 import { roleCapabilities } from '../../domain/permissions';
 import { hashPassword } from '../../modules/auth/password';
 import { BuildingConfig } from '../../modules/buildings/entities/building-config.entity';
 import { Building } from '../../modules/buildings/entities/building.entity';
 import { Location } from '../../modules/buildings/entities/location.entity';
+import { MaintenanceItem } from '../../modules/maintenance/entities/maintenance-item.entity';
 import { Department } from '../../modules/organization/entities/department.entity';
 import { RoleDefinition } from '../../modules/roles/entities/role-definition.entity';
 import { CUSTOM_ROLE_PREFIX, RolesService } from '../../modules/roles/roles.service';
 import { User } from '../../modules/users/entities/user.entity';
+import { DEMO_ITEMS, shiftDate } from './demo-items';
 import {
   DEMO_ASSIGNMENT_RULES,
   DEMO_BUILDING_TEMPLATES,
@@ -68,6 +71,7 @@ export class DatabaseSeedService {
     const configs = await this.ensureConfigs(manager, buildings.byCode, departments.byCode);
     const roles = await this.ensureCustomRole(manager);
     const users = await this.ensureUsers(manager, buildings.byCode, departments.byCode, passwordHash);
+    const items = await this.ensureItems(manager, buildings.byCode);
     return {
       buildings: buildings.created,
       departments: departments.created,
@@ -75,6 +79,7 @@ export class DatabaseSeedService {
       configs,
       roles,
       users,
+      items,
     };
   }
 
@@ -159,6 +164,54 @@ export class DatabaseSeedService {
       }),
     );
     return 1;
+  }
+
+  /** BR-MT-12: demo equipment added by code per building when missing; never touches items already there. */
+  private async ensureItems(manager: EntityManager, buildings: Map<string, Building>): Promise<number> {
+    const repo = manager.getRepository(MaintenanceItem);
+    const buildingIds = [...buildings.values()].map((b) => b.id);
+    const [existing, locations, owners] = await Promise.all([
+      repo.findBy({ buildingId: In(buildingIds) }),
+      manager.getRepository(Location).findBy({ buildingId: In(buildingIds) }),
+      manager.getRepository(User).findBy({ code: In([...new Set(DEMO_ITEMS.map((i) => i.ownerCode)), 'ADMIN-DEMO']) }),
+    ]);
+    const creator = owners.find((u) => u.code === 'ADMIN-DEMO');
+    if (!creator) return 0;
+    const today = vnDate(new Date());
+    const rows = DEMO_ITEMS.flatMap((i) => {
+      const building = buildings.get(i.buildingCode);
+      const location = locations.find(
+        (l) =>
+          l.buildingId === building?.id && l.floor === i.floor && l.name.toLowerCase() === i.locationName.toLowerCase(),
+      );
+      const owner = owners.find((u) => u.code === i.ownerCode);
+      if (!building || !location || !owner) return [];
+      if (existing.some((e) => e.buildingId === building.id && e.code === i.code)) return [];
+      return [
+        repo.create({
+          buildingId: building.id,
+          locationId: location.id,
+          code: i.code,
+          name: i.name,
+          type: i.type,
+          ownerUserId: owner.id,
+          model: i.equipment?.model ?? null,
+          supplier: i.equipment?.supplier ?? null,
+          installDate: i.equipment ? shiftDate(today, i.equipment.installMonths) : null,
+          warrantyUntil: i.equipment
+            ? shiftDate(today, i.equipment.warrantyMonths, i.equipment.warrantyDays ?? 0)
+            : null,
+          description: null,
+          documentIds: [],
+          condition: 'UNKNOWN',
+          active: true,
+          createdBy: creator.id,
+          version: 1,
+        }),
+      ];
+    });
+    await repo.save(rows);
+    return rows.length;
   }
 
   private async ensureUsers(

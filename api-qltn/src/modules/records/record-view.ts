@@ -26,6 +26,8 @@ export interface RepairRecordView {
   buildingId: string;
   locationId: string;
   noMaintenanceItem: boolean;
+  /** MT-S1: the equipment of the record, or null. */
+  maintenanceItemId: string | null;
   title: string;
   description: string;
   priority: string;
@@ -63,6 +65,7 @@ export const toRecordView = (record: RepairRecord): RepairRecordView => ({
   buildingId: record.buildingId,
   locationId: record.locationId ?? '',
   noMaintenanceItem: record.noMaintenanceItem,
+  maintenanceItemId: record.maintenanceItemId,
   title: record.title,
   description: record.description,
   priority: record.priority,

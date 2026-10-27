@@ -111,7 +111,8 @@ const updateMaintenanceItem: CommandHandler = async (ctx, command) => {
   const item = await loadItem(ctx, command);
   requireManage(ctx);
   if (!item.active) throw invalidTransition('Hạng mục đã vô hiệu hóa, không thể sửa.');
-  const fields = await validateFields(ctx, item.buildingId, { code: item.code, ...asRecord(command.payload) }, item.id);
+  // MD-06 / MT-S1 BR-MT-06: a code in the payload is ignored, the item keeps its own.
+  const fields = await validateFields(ctx, item.buildingId, { ...asRecord(command.payload), code: item.code }, item.id);
   await commitSimple(ctx, 'MAINTENANCE_ITEM', item, { ...item, ...fields }, 'updateMaintenanceItem');
   return { ok: true, subjectId: item.id };
 };

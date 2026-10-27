@@ -21,8 +21,11 @@ const SchedulePage = lazy(() => import('@/features/maintenance/SchedulePage'));
 const PlansPage = lazy(() => import('@/features/maintenance/PlansPage'));
 const PlanDetailPage = lazy(() => import('@/features/maintenance/PlanDetailPage'));
 const PlanFormPage = lazy(() => import('@/features/maintenance/PlanFormPage'));
-const ItemsPage = lazy(() => import('@/features/maintenance/ItemsPage'));
-const ItemDetailPage = lazy(() => import('@/features/maintenance/ItemDetailPage'));
+// MT-S1: equipment reads api-qltn in api mode through its own screens built from the demo components.
+const ItemsPage = lazy(() => (IS_API_MODE ? import('@/features/maintenance/api/ItemsApiPage') : import('@/features/maintenance/ItemsPage')));
+const ItemDetailPage = lazy(() =>
+  IS_API_MODE ? import('@/features/maintenance/api/ItemDetailApiPage') : import('@/features/maintenance/ItemDetailPage'),
+);
 const OccurrenceDetailPage = lazy(() => import('@/features/maintenance/OccurrenceDetailPage'));
 const ReportsPage = lazy(() => import('@/features/reports'));
 const AuditLogPage = lazy(() => import('@/features/audit'));
@@ -65,8 +68,8 @@ export const router = createBrowserRouter([
       { path: 'maintenance/plans/new', element: connected(page(<PlanFormPage />)) },
       { path: 'maintenance/plans/:planId', element: connected(page(<PlanDetailPage />)) },
       { path: 'maintenance/plans/:planId/edit', element: connected(page(<PlanFormPage />)) },
-      { path: 'maintenance/items', element: connected(page(<ItemsPage />)) },
-      { path: 'maintenance/items/:itemId', element: connected(page(<ItemDetailPage />)) },
+      { path: 'maintenance/items', element: page(<ItemsPage />) },
+      { path: 'maintenance/items/:itemId', element: page(<ItemDetailPage />) },
       { path: 'maintenance/occurrences/:occurrenceId', element: connected(page(<OccurrenceDetailPage />)) },
       { path: 'reports', element: connected(page(<ReportsPage />)) },
       { path: 'audit', element: apiConnected(page(<AuditLogPage />)) },

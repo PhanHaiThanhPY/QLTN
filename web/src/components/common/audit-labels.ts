@@ -50,6 +50,9 @@ export const ACTION_LABEL: Record<string, string> = {
   createMaintenanceItem: 'Tạo hạng mục',
   updateMaintenanceItem: 'Sửa hạng mục',
   deactivateMaintenanceItem: 'Vô hiệu hóa hạng mục',
+  reactivateMaintenanceItem: 'Dùng lại thiết bị',
+  // api-qltn writes one row per uploaded file (the reason holds the file purpose).
+  uploadAttachment: 'Tải tệp lên',
   updateItemCondition: 'Cập nhật tình trạng',
   confirmMaintenanceCondition: 'Cập nhật tình trạng khi xác nhận bảo trì',
   createMaintenancePlan: 'Tạo kế hoạch',

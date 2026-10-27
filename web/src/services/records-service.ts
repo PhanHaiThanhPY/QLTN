@@ -273,6 +273,8 @@ export interface RecordDetail {
   attachments: Attachment[];
   audit: AuditEvent[];
   item?: MaintenanceItem;
+  /** api mode (MT-S1): the record's equipment as the detail line shows it; the full item lives on its own page. */
+  itemSummary?: { id: string; code: string; name: string; active: boolean };
   sourceOccurrence?: MaintenanceOccurrence;
   inactiveSlots: AssigneeSlot[];
   isOverdue: boolean;

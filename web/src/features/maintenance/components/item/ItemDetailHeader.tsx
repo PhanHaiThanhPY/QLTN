@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Building2, Cog, MapPin, UserRound, Wrench } from 'lucide-react';
 import { Link } from 'react-router';
 import { Badge, Tag } from '@/components/ui/badge';
@@ -18,10 +19,22 @@ interface ItemDetailHeaderProps {
   buildingLabel: string;
   locationLabel: string;
   ownerLabel: string;
+  /** api mode (MT-S1) passes its own actions (with "Dùng lại") and wording; mock keeps the demo ones. */
+  actions?: ReactNode;
+  inactiveLabel?: string;
 }
 
 /** Identity of the equipment (what, where, who) with the main actions on the right. */
-export const ItemDetailHeader = ({ item, viewer, warranty, buildingLabel, locationLabel, ownerLabel }: ItemDetailHeaderProps) => {
+export const ItemDetailHeader = ({
+  item,
+  viewer,
+  warranty,
+  buildingLabel,
+  locationLabel,
+  ownerLabel,
+  actions,
+  inactiveLabel = 'Đã vô hiệu hóa',
+}: ItemDetailHeaderProps) => {
   const canReport = item.active && hasCapability(viewer, 'RECORD_EDIT') && viewer.buildingIds.includes(item.buildingId);
   return (
     <Card className="p-3.5 sm:p-4">
@@ -35,9 +48,12 @@ export const ItemDetailHeader = ({ item, viewer, warranty, buildingLabel, locati
               <Tag>{item.code}</Tag>
               <ConditionBadge condition={item.condition} />
               <WarrantyBadge warranty={warranty} />
-              {item.active ? null : <Badge tone="neutral">Đã vô hiệu hóa</Badge>}
+              {item.active ? null : <Badge tone="neutral">{inactiveLabel}</Badge>}
             </div>
-            <h1 className="text-lg font-semibold tracking-tight text-ink sm:text-xl">{item.name}</h1>
+            <h1 className="text-lg font-semibold tracking-tight text-ink sm:text-xl">
+              <span className="sr-only">{item.code} · </span>
+              {item.name}
+            </h1>
             <dl className="grid grid-cols-1 gap-x-4 gap-y-1 text-xs text-ink-2 sm:grid-cols-2 xl:grid-cols-4">
               <div className="flex items-center gap-1.5">
                 <dt className="sr-only">Loại</dt>
@@ -55,9 +71,9 @@ export const ItemDetailHeader = ({ item, viewer, warranty, buildingLabel, locati
                 <dd className="truncate">{buildingLabel}</dd>
               </div>
               <div className="flex items-center gap-1.5">
-                <dt className="sr-only">Đầu mối</dt>
+                <dt className="sr-only">Người phụ trách</dt>
                 <UserRound className="size-3.5 text-ink-3" aria-hidden />
-                <dd>Đầu mối: {ownerLabel}</dd>
+                <dd>Phụ trách: {ownerLabel}</dd>
               </div>
             </dl>
           </div>
@@ -68,7 +84,7 @@ export const ItemDetailHeader = ({ item, viewer, warranty, buildingLabel, locati
               <Wrench aria-hidden /> Báo sự cố
             </Link>
           ) : null}
-          <ItemActions item={item} viewer={viewer} size="sm" />
+          {actions ?? <ItemActions item={item} viewer={viewer} size="sm" />}
         </div>
       </div>
     </Card>
