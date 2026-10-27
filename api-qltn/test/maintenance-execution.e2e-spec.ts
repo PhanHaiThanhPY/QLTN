@@ -2,6 +2,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import type { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 import { Clock } from '../src/common/services/clock.service';
+import { DatabaseSeedService } from '../src/database/seeds/database-seed.service';
 import { MaintenanceRemindersService } from '../src/modules/maintenance/maintenance-reminders.service';
 import { createApp, dataOf, errorFields, errorOf, signIn, type Session } from './app-harness';
 import { PDF, PNG } from './repair-flow';
@@ -185,6 +186,24 @@ describe('Maintenance execution, MT-S3 (e2e)', () => {
       [buildingA],
     );
     await app.close();
+  });
+
+  it('BR-MT3-12: the demo seed holds every state once, and a completed occurrence with a repair record', async () => {
+    const states = async () =>
+      (
+        await db.query<Array<{ status: string }>>(
+          `SELECT o.status FROM maintenance_occurrences o JOIN maintenance_plans p ON p.id = o.plan_id
+            WHERE p.name LIKE 'Bảo trì định kỳ %' AND o.status <> 'SCHEDULED' ORDER BY o.status`,
+        )
+      ).map((row) => row.status);
+    const before = await states();
+    expect(before).toEqual(['CANCELLED', 'COMPLETED', 'IN_PROGRESS', 'PENDING_REVIEW', 'REWORK']);
+    await app.get(DatabaseSeedService).run();
+    expect(await states()).toEqual(before);
+    const linked = await db.query<Array<{ code: string }>>(
+      `SELECT r.code FROM repair_records r JOIN maintenance_occurrences o ON o.id = r.source_occurrence_id WHERE o.status = 'COMPLETED'`,
+    );
+    expect(linked.length).toBeGreaterThan(0);
   });
 
   it('AC-MT3.1: starting opens 3 days before the day, for the performer only', async () => {
@@ -435,10 +454,16 @@ describe('Maintenance execution, MT-S3 (e2e)', () => {
     expect(mineKt2.rows.some((row) => row.id === id)).toBe(true);
     expect(mineKt2.rows.every((row) => row.status === 'PENDING_REVIEW')).toBe(true);
     expect(mineKt2.counts.pendingReview).toBe(mineKt2.rows.length);
-    const mineKt1 = dataOf<{ rows: Array<{ performerUserId: string; status: string }> }>(
+    const mineKt1 = dataOf<{ rows: Array<{ performerUserId: string; reviewerUserId: string; status: string }> }>(
       await kt1.get('/api/maintenance-occurrences?scope=mine').expect(200),
     );
-    expect(mineKt1.rows.every((row) => row.performerUserId === ids['KT-A'] && row.status !== 'COMPLETED')).toBe(true);
+    expect(
+      mineKt1.rows.every(
+        (row) =>
+          (row.performerUserId === ids['KT-A'] && row.status !== 'COMPLETED') ||
+          (row.reviewerUserId === ids['KT-A'] && row.status === 'PENDING_REVIEW'),
+      ),
+    ).toBe(true);
     const all = dataOf<{ rows: Array<{ id: string }> }>(
       await bqlB.get('/api/maintenance-occurrences?scope=all').expect(200),
     );
