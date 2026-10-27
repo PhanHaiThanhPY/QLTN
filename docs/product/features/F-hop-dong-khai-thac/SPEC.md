@@ -253,3 +253,4 @@ Chỉ chạy các test liên quan.
 |---|---|
 | 27/10/2026 | Viết từ phân tích nhóm F (PD-31), sau F-S1 (PD-32). |
 | 27/10/2026 | Chủ dự án duyệt (PD-33), gồm D-F2-1 đến D-F2-6, và cho giao dev-build (bắt đầu sau khi F-S1 đạt review). |
+| 27/10/2026 | Review PASS WITH RESIDUE trên `64d6a62`; PM/BA đóng slice. Chờ merge (migration `2026-10-27h-exploitation-contracts.sql`). |
