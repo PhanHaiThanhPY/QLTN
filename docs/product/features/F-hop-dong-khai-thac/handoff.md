@@ -97,3 +97,18 @@
 ### Còn lại / ngoài phạm vi
 - Thu tiền, phiếu thu và tiền cọc thuộc F-S3. Kỳ 1 của HĐ-001 trong seed hiện "Quá hạn" vì chưa có bút toán thu.
 - Nút AI 32px vẫn là residue chung, như ở MT-S3.
+
+## Đóng F-S2 (PM/BA, 27/10/2026)
+
+- **F-S2 đóng.** Review trên đúng bản ứng viên `64d6a62`: PASS WITH RESIDUE, không có lỗi sản phẩm.
+  - e2e hợp đồng 10/10; chạy lại các phần liên quan 73/73; API unit 132/132; web 575/575.
+  - PM/BA tự kiểm AC-F2.1, F2.2, F2.8 đến F2.13 và tệp migration.
+- **Residue được chấp nhận:**
+  - Chưa chạy lại trình duyệt và chưa giả lập offline trên đúng bản ứng viên, vì môi trường của seat review không có trình duyệt.
+  - Nút AI dùng chung cao 32px, dưới mức 44px. Lỗi này có từ trước, không thuộc F-S2; ghi vào việc tồn.
+- **Merge vào `main`:**
+  - Merge thẳng xung đột 4 tệp với MT-S3: `database.module.ts`, `database-seed.service.ts`, `attachments.service.ts`, `router.tsx`.
+  - dev-build gỡ trên nhánh tích hợp `integration/f-s2` (`dbbe32a`), giữ cả hai bên. Kết quả: API unit 138/138, e2e 58/58, web 92/92.
+  - PM/BA kiểm route và module, rồi fast-forward `main`, rồi chạy typecheck API và web.
+- **Trước khi chạy code này**, phải áp migration `2026-10-27h-exploitation-contracts.sql` lên mọi DB. API tự áp khi khởi động.
+

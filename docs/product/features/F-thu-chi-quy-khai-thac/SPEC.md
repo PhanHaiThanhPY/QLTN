@@ -303,3 +303,4 @@ Chỉ chạy các test liên quan.
 |---|---|
 | 27/10/2026 | Viết từ phân tích nhóm F (PD-31), sau F-S2 (PD-33). |
 | 27/10/2026 | Chủ dự án duyệt (PD-34), gồm D-F3-1 đến D-F3-7, và cho giao dev-build (bắt đầu sau khi F-S2 đạt review). |
+| 27/10/2026 | Review lần 1 FAILED (F3-1: số tài khoản luôn bị che, trái BR-F3-02). Làm rõ brief: thẻ "Khoản thu tiếp theo" dùng `--accent-strong` / `--accent-fg` thay cho `--navy`. |
