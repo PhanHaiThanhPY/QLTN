@@ -110,7 +110,7 @@ Có 10 file test; file chính là `acceptance-maintenance.test.ts` với 11 ca.
 
 Đi theo đường đã làm với B03–B09: API trước, web chế độ `api` nối theo, demo là tài liệu sống về hành vi. Mỗi slice đi qua workflow review như thường lệ.
 
-**MT-S1 Thiết bị** ([SPEC](../features/MT-thiet-bi-bao-tri/SPEC.md), đã duyệt PD-25, đang build; không phụ thuộc slice nào; nên làm trước vì mở khóa MG-02 cho cả B03). API và web `api` cho B10:
+**MT-S1 Thiết bị** ([SPEC](../features/MT-thiet-bi-bao-tri/SPEC.md), đã triển khai 27/10; không phụ thuộc slice nào; nên làm trước vì mở khóa MG-02 cho cả B03). API và web `api` cho B10:
 - tạo, sửa, ngừng dùng và dùng lại thiết bị; tài liệu; tình trạng; danh sách và hồ sơ thiết bị;
 - **migration gắn thiết bị vào hồ sơ sửa chữa** (MG-02): form hồ sơ chọn được thiết bị, và hồ sơ thiết bị hiện lịch sử sửa chữa, số lần hỏng, chi phí đã duyệt;
 - sửa MD-06.

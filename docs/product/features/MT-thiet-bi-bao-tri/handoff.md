@@ -142,3 +142,11 @@
 - Thiết bị BOM-A09 của tòa A (tạo ở lần chạy đầu, lần sau dùng lại).
 - Hai hồ sơ nháp `[TEST MT THIẾT BỊ] …` mã SC-067 và SC-068, gắn với BOM-A09.
 
+## Đóng MT-S1 (PM/BA, 27/10/2026)
+
+- **MT-S1 đóng.** Review trên đúng bản ứng viên `0202f29`: PASS WITH RESIDUE, không có lỗi sản phẩm. Cả 16 AC có bằng chứng ở trên. PM/BA tự kiểm AC-MT.3, AC-MT.12, AC-MT.13, AC-MT.15 và tệp migration.
+- **Residue được chấp nhận:**
+  - Chưa chạy lại trình duyệt trên đúng bản ứng viên, vì môi trường của seat review không có trình duyệt.
+  - Tiền hiện ký hiệu của `formatVnd` dùng chung toàn ứng dụng ("₫").
+- **Merge vào `main`** (`905ba2e`) theo yêu cầu của chủ dự án. Kiểm trên bản đã merge: typecheck API và web; test web bảo trì và form hồ sơ 25/25.
+- **Trước khi chạy code này**, phải áp migration `2026-10-27c-maintenance-items.sql` lên mọi DB. API tự áp khi khởi động.

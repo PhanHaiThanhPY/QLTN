@@ -1,7 +1,7 @@
 ---
 id: MT.S1
 title: Thiết bị trên dữ liệu thật, gắn với hồ sơ sửa chữa
-status: Đã duyệt
+status: Đã triển khai
 owner: PM/BA
 intent: "Mỗi tòa có danh mục thiết bị thật; hồ sơ sửa chữa gắn được với thiết bị, nên tra một thiết bị là thấy số lần hỏng, các hồ sơ sửa chữa và chi phí đã duyệt."
 depends_on: []
@@ -9,7 +9,7 @@ depends_on: []
 
 # SPEC: Thiết bị trên dữ liệu thật, gắn với hồ sơ sửa chữa (MT-S1)
 
-**Chủ sở hữu:** PM/BA · **Cập nhật:** 27/10/2026 · **Trạng thái:** `Đã duyệt`, chủ dự án duyệt ngày 27/10/2026 (PD-25), gồm 5 mặc định D-MT-1 đến D-MT-5 ở §6
+**Chủ sở hữu:** PM/BA · **Cập nhật:** 27/10/2026 · **Trạng thái:** `Đã triển khai` (27/10/2026, merge vào `main`); trước đó `Đã duyệt`, chủ dự án duyệt ngày 27/10/2026 (PD-25), gồm 5 mặc định D-MT-1 đến D-MT-5 ở §6
 
 **Nguồn:**
 - Phân tích [maintenance.md](../../modules/maintenance.md), đã duyệt (PD-24): MG-01 (phần thiết bị), MG-02, MG-10 (dùng lại thiết bị), MD-06, MD-10 (mã thiết bị); mặc định MQ-01 đến MQ-07 (OD-23).
@@ -185,3 +185,4 @@ Chỉ chạy các test liên quan.
 | 27/10/2026 | Viết từ phân tích maintenance (PD-24). |
 | 27/10/2026 | Chủ dự án duyệt (PD-25), gồm D-MT-1 đến D-MT-5, và cho giao dev-build. |
 | 27/10/2026 | Review PASS WITH RESIDUE trên `0202f29`; PM/BA đóng slice. Chờ chủ dự án cho merge (migration `2026-10-27c-maintenance-items.sql`). |
+| 27/10/2026 | Merge vào `main` (`905ba2e`); trạng thái `Đã triển khai`. |

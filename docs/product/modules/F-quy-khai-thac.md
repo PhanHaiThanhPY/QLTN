@@ -1,6 +1,6 @@
 # Phân tích nhóm F: Quỹ khai thác (F01–F10)
 
-**Chủ sở hữu:** PM/BA · **Cập nhật:** 27/10/2026 · **Trạng thái:** Phân tích lần 1, **chờ chủ dự án duyệt** (PD-08). Chưa phải SPEC
+**Chủ sở hữu:** PM/BA · **Cập nhật:** 27/10/2026 · **Trạng thái:** Phân tích lần 1, **chủ dự án duyệt 27/10/2026 (PD-31)**. Chưa phải SPEC
 
 **Nguồn:**
 - D1 tr. 3 (tổng quan "Quỹ khai thác, rõ từ hồ sơ đến tiền"), tr. 5–14 (hình F01–F10; PM/BA đã xem cả 10 hình ngày 27/10), tr. 2 ("Hai quỹ theo dõi riêng"), tr. 39 (cách viết tiêu chí nghiệm thu của nhóm T, dùng làm mẫu).
@@ -185,7 +185,7 @@
 
 ## 5. Câu hỏi cho khách
 
-Đề xuất gom thành **OD-26** trong `DECISIONS.md`. Mỗi câu có mặc định để làm trước (PD-06).
+Đã ghi thành **OD-26** trong `DECISIONS.md`. Mỗi câu có mặc định để làm trước (PD-06).
 
 | ID | Câu hỏi | Mặc định đề xuất (giả định) |
 |---|---|---|
