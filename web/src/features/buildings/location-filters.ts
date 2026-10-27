@@ -25,5 +25,17 @@ export const filterLocations = (locations: Location[], filters: LocationFilters)
   });
 };
 
-/** Audit actions about locations (the rest of the building history is configuration). */
+/** Audit actions about locations. */
 export const LOCATION_ACTIONS: readonly string[] = ['createLocation', 'updateLocation', 'activateLocation', 'deactivateLocation'];
+
+/** Audit actions about the building configuration and its workflow. */
+export const CONFIG_ACTIONS: readonly string[] = ['updateBuildingConfig', 'applyConfigTemplate', 'updateWorkflowConfig', 'migrateApprovalChain'];
+
+export type BuildingHistoryFilter = 'all' | 'locations' | 'config';
+
+/** FX-S3 BR-FX3-04: every building event, or only locations / only configuration. */
+export const filterBuildingHistory = <T extends { action: string }>(events: readonly T[], filter: BuildingHistoryFilter): T[] => {
+  if (filter === 'locations') return events.filter((event) => LOCATION_ACTIONS.includes(event.action));
+  if (filter === 'config') return events.filter((event) => CONFIG_ACTIONS.includes(event.action));
+  return [...events];
+};
