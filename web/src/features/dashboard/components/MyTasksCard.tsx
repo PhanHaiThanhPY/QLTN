@@ -3,6 +3,8 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/common/States
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { useServiceQuery } from '@/hooks/useServiceQuery';
 import { getMyTasks } from '@/services/tasks-service';
+import { toMyTaskRow } from '@/services/my-tasks-service';
+import { todayVn } from '@/services/runtime';
 import { TaskCard } from '@/features/tasks/components/TaskCard';
 
 const TOP_COUNT = 5;
@@ -11,6 +13,8 @@ const TOP_COUNT = 5;
 export const MyTasksCard = ({ className }: { className?: string }) => {
   const query = useServiceQuery(['tasks', 'mine', false], () => getMyTasks(false));
   const rows = query.data ?? [];
+  const today = todayVn();
+  const now = new Date(query.dataUpdatedAt || Date.now());
 
   const renderBody = () => {
     if (query.isLoading) return <LoadingState rows={3} />;
@@ -19,7 +23,7 @@ export const MyTasksCard = ({ className }: { className?: string }) => {
     return (
       <div className="space-y-2">
         {rows.slice(0, TOP_COUNT).map((row) => (
-          <TaskCard key={row.task.id} row={row} />
+          <TaskCard key={row.task.id} row={toMyTaskRow(row)} now={now} today={today} />
         ))}
       </div>
     );

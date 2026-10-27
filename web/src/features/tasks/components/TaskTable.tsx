@@ -1,63 +1,60 @@
-import { ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router';
+import { RepairStatusBadge } from '@/components/common/StatusBadge';
 import { Table, Td, Th, Tr } from '@/components/ui/table';
-import { TASK_KIND_LABEL } from '@/domain/constants';
-import type { TaskView } from '@/services/tasks-service';
-import { formatDateTime } from '@/utils/date';
-import { subjectPath } from '@/utils/subject-link';
-import { COMPLETION_REASON_LABEL } from '../task-labels';
+import type { IsoDate } from '@/domain/types';
+import type { MyTaskRow } from '@/services/my-tasks-service';
+import { taskAriaLabel } from '../task-list';
 import { SubjectTypeBadge } from './SubjectTypeBadge';
-import { TaskStatusBadge } from './TaskStatusBadge';
+import { TaskDue } from './TaskDue';
+import { TaskFlags } from './TaskFlags';
 
 interface TaskTableProps {
-  rows: TaskView[];
+  rows: readonly MyTaskRow[];
   buildingName: (id?: string) => string;
+  locationName: (id?: string) => string;
+  now: Date;
+  today: IsoDate;
 }
 
-/** Desktop task table (hidden below md). */
-export const TaskTable = ({ rows, buildingName }: TaskTableProps) => (
+const Status = ({ row }: { row: MyTaskRow }) => (row.status ? <RepairStatusBadge status={row.status} /> : <SubjectTypeBadge subjectType={row.subjectType} />);
+
+/**
+ * Open tasks from 768px (ui-brief §2.1, §3): the whole row is one link to the right record tab, named for screen
+ * readers; below 1024px the status moves under the record.
+ */
+export const TaskTable = ({ rows, buildingName, locationName, now, today }: TaskTableProps) => (
   <Table>
     <thead>
       <tr>
-        <Th>Loại</Th>
-        <Th>Việc cần làm</Th>
-        <Th>Hồ sơ / lượt</Th>
-        <Th>Tòa nhà</Th>
-        <Th>Hạn xử lý</Th>
-        <Th>Trạng thái</Th>
-        <Th>Thao tác</Th>
+        <Th scope="col">Việc</Th>
+        <Th scope="col">Hồ sơ</Th>
+        <Th scope="col">Ưu tiên</Th>
+        <Th scope="col">Hạn</Th>
+        <Th scope="col" className="hidden lg:table-cell">Trạng thái</Th>
       </tr>
     </thead>
     <tbody>
       {rows.map((row) => (
-        <Tr key={row.task.id}>
-          <Td>
-            <SubjectTypeBadge subjectType={row.task.subjectType} />
-          </Td>
+        <Tr key={row.id} className="relative hover:bg-surface-2">
           <Td className="font-medium text-ink">
-            <Link to={subjectPath(row.task.subjectType, row.task.subjectId, row.tab)} className="hover:text-accent hover:underline">
-              {TASK_KIND_LABEL[row.task.kind]}
+            <Link to={row.href} aria-label={taskAriaLabel(row, now, today)} className="after:absolute after:inset-0 hover:text-accent">
+              {row.label}
             </Link>
+            {row.detail ? <p className="mt-0.5 text-xs font-normal text-ink-2">{row.detail}</p> : null}
           </Td>
           <Td>
-            <p className="font-medium text-ink">{row.subjectCode || '—'}</p>
-            <p className="text-xs text-ink-2">{row.subjectTitle}</p>
+            <p className="font-medium text-ink">
+              {row.code} <span className="font-normal">{row.title}</span>
+            </p>
+            <p className="text-xs text-ink-2">
+              {buildingName(row.buildingId)}
+              {row.locationId ? ` · ${locationName(row.locationId)}` : ''}
+            </p>
+            <div className="mt-1 lg:hidden"><Status row={row} /></div>
           </Td>
-          <Td className="text-ink-2">{buildingName(row.task.buildingId)}</Td>
-          <Td>
-            <span className={row.isOverdue ? 'font-medium text-crit' : undefined}>{formatDateTime(row.task.dueAt)}</span>
-          </Td>
-          <Td>
-            <TaskStatusBadge row={row} />
-            {row.task.completionReason ? (
-              <p className="mt-1 text-xs text-ink-2">{COMPLETION_REASON_LABEL[row.task.completionReason]}</p>
-            ) : null}
-          </Td>
-          <Td>
-            <Link to={subjectPath(row.task.subjectType, row.task.subjectId, row.tab)} className="inline-flex items-center gap-1.5 rounded-lg border border-accent/35 px-3 py-1.5 text-xs font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-fg">
-              Mở việc <ArrowUpRight className="size-3.5" aria-hidden />
-            </Link>
-          </Td>
+          <Td><TaskFlags row={row} /></Td>
+          <Td><TaskDue row={row} now={now} today={today} /></Td>
+          <Td className="hidden lg:table-cell"><Status row={row} /></Td>
         </Tr>
       ))}
     </tbody>
