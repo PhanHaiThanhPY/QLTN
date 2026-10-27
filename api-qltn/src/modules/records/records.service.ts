@@ -64,6 +64,7 @@ const PROPOSAL_FILE_PURPOSES = [
   'PAYMENT_REQUEST',
   'INVOICE',
   'PAYMENT_PROOF',
+  'BOARD_DECISION',
 ] as const;
 
 /** The three confirmer actions of S1 (SPEC B03–B09 T01–T03): outcome stored, target status, label of `note`. */
@@ -131,6 +132,11 @@ export interface RecordDetailView {
   execution: ExecutionHistoryView;
   /** Payment instalments, approved amount and transferred total (S4). */
   payment: PaymentHistoryView;
+  /**
+   * The building's current emergency limit and document hours, shown in the E-T1 dialog (B06-S1 ui-brief §2.2): the
+   * manager cannot read the building configuration itself (DF-11). A started emergency keeps its own snapshot.
+   */
+  emergencyPolicy: { limitVnd: string; docHours: number } | null;
   audit: AuditEventView[];
 }
 
@@ -497,20 +503,22 @@ export class RecordsService {
   async getDetail(actor: AuthenticatedUser, id: string): Promise<RecordDetailView> {
     const record = await this.dataSource.getRepository(RepairRecord).findOneBy({ id });
     if (!record || !actor.buildingIds.includes(record.buildingId)) throw notFound('Không tìm thấy hồ sơ.');
-    const [confirmations, attachments, proposal, proposalAttachments, execution, payment, audit] = await Promise.all([
-      this.dataSource
-        .getRepository(RepairConfirmation)
-        .find({ where: { recordId: id }, order: { createdAt: 'ASC', id: 'ASC' } }),
-      this.attachmentsOf(record),
-      this.proposals.historyOf(record),
-      this.dataSource.getRepository(Attachment).find({
-        where: { subjectId: id, purpose: In([...PROPOSAL_FILE_PURPOSES]) },
-        order: { createdAt: 'ASC', id: 'ASC' },
-      }),
-      this.construction.historyOf(record),
-      this.payments.historyOf(record),
-      this.audit.listForSubject(SUBJECT_TYPE.REPAIR_RECORD, id, { page: 1, limit: 100 }),
-    ]);
+    const [confirmations, attachments, proposal, proposalAttachments, execution, payment, audit, config] =
+      await Promise.all([
+        this.dataSource
+          .getRepository(RepairConfirmation)
+          .find({ where: { recordId: id }, order: { createdAt: 'ASC', id: 'ASC' } }),
+        this.attachmentsOf(record),
+        this.proposals.historyOf(record),
+        this.dataSource.getRepository(Attachment).find({
+          where: { subjectId: id, purpose: In([...PROPOSAL_FILE_PURPOSES]) },
+          order: { createdAt: 'ASC', id: 'ASC' },
+        }),
+        this.construction.historyOf(record),
+        this.payments.historyOf(record),
+        this.audit.listForSubject(SUBJECT_TYPE.REPAIR_RECORD, id, { page: 1, limit: 100 }),
+        this.dataSource.getRepository(BuildingConfig).findOneBy({ buildingId: record.buildingId }),
+      ]);
     return {
       record: toRecordView(record),
       confirmations: confirmations.map(toConfirmationView),
@@ -519,6 +527,9 @@ export class RecordsService {
       proposalAttachments: proposalAttachments.map(toAttachmentView),
       execution,
       payment,
+      emergencyPolicy: config
+        ? { limitVnd: String(config.emergencyLimitVnd), docHours: config.emergencyDocHours }
+        : null,
       audit: audit.data,
     };
   }
@@ -561,7 +572,8 @@ export class RecordsService {
   }
 
   /** Mirrors web `assertSubmittable`; T3 only supports "no specific equipment" (maintenance items are Đợt 3). */
-  private async assertSubmittable(manager: EntityManager, ctx: AssignmentContext, record: RepairRecord): Promise<void> {
+  /** T01 eligibility (title, description, location, active manager and confirmer); also checked by E-T1 from DRAFT. */
+  async assertSubmittable(manager: EntityManager, ctx: AssignmentContext, record: RepairRecord): Promise<void> {
     const errors = new FieldErrors();
     validateText(errors, 'title', 'Tên hồ sơ', record.title, TITLE_MIN, TITLE_MAX);
     validateText(errors, 'description', 'Mô tả hư hỏng', record.description, DESCRIPTION_MIN, DESCRIPTION_MAX);

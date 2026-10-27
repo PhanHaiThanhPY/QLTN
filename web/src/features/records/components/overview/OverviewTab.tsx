@@ -2,6 +2,7 @@ import { Notice } from '@/components/common/Notice';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { useRecordContext } from '../../record-context';
 import { EmergencyCard } from '../emergency/EmergencyCard';
+import { PostReviewRejectedCard } from '../emergency/PostReviewRejectedCard';
 import { RecordAlerts } from '../shared/RecordAlerts';
 import { RecordFiles } from '../shared/RecordFiles';
 import { AssigneesCard } from './AssigneesCard';
@@ -18,6 +19,7 @@ export const OverviewTab = () => {
   return (
     <div className="space-y-4">
       <ReassignNotice />
+      <PostReviewRejectedCard />
       <EmergencyCard />
       <RecordAlerts alerts={detail.alerts} />
       {record.status === 'NEEDS_RECORD_UPDATE' && lastUpdateRequest ? (

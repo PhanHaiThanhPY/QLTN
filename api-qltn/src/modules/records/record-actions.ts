@@ -1,6 +1,8 @@
 import type { AuthenticatedUser } from '../../common/auth/authenticated-user';
 import { hasCapability } from '../../common/auth/scope';
 import { conflictWithReason, forbiddenWithReason } from '../../common/errors';
+import { EMERGENCY_START_STATUSES } from '../../domain/emergency';
+import { RECORD_STATUS_LABEL } from './record-status-labels';
 import type { Capability } from '../../domain/permissions';
 import type { RepairRecord } from './entities/repair-record.entity';
 import { acceptanceStepsHeldBy, currentStepKeyOf, PROPOSAL_APPROVAL_STATUSES, stepHolderOf } from './record-steps';
@@ -20,40 +22,15 @@ export const ADVANCE_FOLLOW_UP_STATUSES: readonly string[] = [
   ...SETTLEMENT_REQUEST_STATUSES,
 ];
 
-/** Statuses where the manager prepares or reworks a proposal (T04–T06). */
+/** Statuses where the manager prepares or reworks a proposal (T04–T06); B06-S1 adds the emergency in progress. */
 export const PROPOSAL_EDIT_STATUSES: readonly string[] = [
   'PENDING_PROPOSAL',
+  'EMERGENCY_IN_PROGRESS',
   'NEEDS_SUBMISSION_UPDATE',
   'REJECTED_RESUBMITTABLE',
 ];
 
-/** Vietnamese labels of every repair status, mirroring web `REPAIR_STATUS_LABEL`. */
-export const RECORD_STATUS_LABEL: Record<string, string> = {
-  DRAFT: 'Nháp',
-  PENDING_CONFIRMATION: 'Chờ xác nhận',
-  NEEDS_RECORD_UPDATE: 'Cần bổ sung thông tin',
-  PENDING_PROPOSAL: 'Chờ lập tờ trình',
-  EMERGENCY_IN_PROGRESS: 'Đang xử lý khẩn cấp',
-  PENDING_TECH_APPROVAL: 'Chờ kỹ thuật duyệt',
-  PENDING_TECH_REVIEW: 'Chờ TVKT thẩm định',
-  PENDING_BOARD_APPROVAL: 'Chờ BQT duyệt',
-  PENDING_CUSTOM_APPROVAL: 'Chờ phê duyệt theo workflow',
-  PENDING_CUSTOM_PAYMENT_APPROVAL: 'Chờ duyệt thanh toán theo workflow',
-  NEEDS_SUBMISSION_UPDATE: 'Cần bổ sung tờ trình',
-  REJECTED_RESUBMITTABLE: 'Từ chối và được trình lại',
-  READY_FOR_CONSTRUCTION: 'Chờ thi công',
-  IN_CONSTRUCTION: 'Đang thi công',
-  PENDING_ACCEPTANCE: 'Chờ nghiệm thu',
-  NEEDS_REPAIR: 'Cần khắc phục',
-  PENDING_PAYMENT_REQUEST: 'Chờ đề nghị thanh toán',
-  PENDING_PAYMENT_APPROVAL: 'Chờ duyệt thanh toán',
-  NEEDS_PAYMENT_UPDATE: 'Cần bổ sung thanh toán',
-  PENDING_PAYMENT: 'Chờ thanh toán',
-  COMPLETED: 'Hoàn tất',
-  CLOSED_NO_REPAIR: 'Đóng vì không cần sửa',
-  UNRESOLVED: 'Chưa xử lý',
-  CLOSED_WITHDRAWN: 'Đóng do rút hồ sơ',
-};
+export { RECORD_STATUS_LABEL };
 
 export const recordStatusLabel = (status: string): string => RECORD_STATUS_LABEL[status] ?? status;
 
@@ -69,9 +46,10 @@ export interface RecordActionDef {
    * (SPEC B03–B09 §4). `acceptanceMember` = holder of an ACCEPTANCE step of the snapshot, checked the same way; the
    * service then refuses a member who already decided in the round (409 `step_already_decided`). `paymentStep` =
    * holder of the instalment's current PAYMENT step, checked by the service after the status. `building` = anyone
-   * holding the capability in the record's building scope (transfer confirmation, ADR-0001 Q4).
+   * holding the capability in the record's building scope (transfer confirmation, ADR-0001 Q4). `boardStep` = holder
+   * of the BOARD step of the snapshot, checked after the status like `approvalStep` (B06-S1 E-T2).
    */
-  slot: 'manager' | 'confirmer' | 'approvalStep' | 'acceptanceMember' | 'paymentStep' | 'building';
+  slot: 'manager' | 'confirmer' | 'approvalStep' | 'acceptanceMember' | 'paymentStep' | 'building' | 'boardStep';
 }
 
 /**
@@ -121,9 +99,21 @@ export const RECORD_ACTIONS = {
     capability: 'RECORD_EDIT',
     slot: 'manager',
   },
+  startEmergencyRepair: {
+    label: 'Xử lý khẩn cấp',
+    from: EMERGENCY_START_STATUSES,
+    capability: 'EMERGENCY_START',
+    slot: 'manager',
+  },
+  closePostReviewRejected: {
+    label: 'Ghi quyết định và đóng hồ sơ',
+    from: ['POST_REVIEW_REJECTED'],
+    capability: 'PROPOSAL_DECIDE',
+    slot: 'boardStep',
+  },
   submitProposal: {
     label: 'Trình duyệt',
-    from: ['PENDING_PROPOSAL'],
+    from: ['PENDING_PROPOSAL', 'EMERGENCY_IN_PROGRESS'],
     capability: 'RECORD_EDIT',
     slot: 'manager',
   },
@@ -159,7 +149,7 @@ export const RECORD_ACTIONS = {
   },
   updateConstruction: {
     label: 'Cập nhật thi công',
-    from: ['IN_CONSTRUCTION'],
+    from: ['IN_CONSTRUCTION', 'EMERGENCY_IN_PROGRESS'],
     capability: 'CONSTRUCTION',
     slot: 'manager',
   },
@@ -286,6 +276,9 @@ export function assertRecordAction(actor: AuthenticatedUser, record: RepairRecor
   }
   if (def.slot === 'acceptanceMember' && acceptanceStepsHeldBy(record, actor.id).length === 0) {
     throw forbiddenWithReason('not_step_assignee', 'Bạn không phải thành phần nghiệm thu của hồ sơ này.');
+  }
+  if (def.slot === 'boardStep' && stepHolderOf(record, 'BOARD') !== actor.id) {
+    throw forbiddenWithReason('not_step_assignee', 'Chỉ người giữ bước BQT của hồ sơ mới thực hiện được bước này.');
   }
   if (def.slot === 'approvalStep') {
     const key = currentStepKeyOf(record);

@@ -9,6 +9,7 @@ import { useAttachmentDraft } from '../../hooks/useAttachmentDraft';
 import { useRecordCommand } from '../../hooks/useRecordCommand';
 import { useRecordContext } from '../../record-context';
 import { AttachmentField } from '../shared/AttachmentField';
+import { PostReviewToggle } from '../emergency/PostReviewToggle';
 import { CommandDialog } from '../shared/CommandDialog';
 import { FieldErrorList } from '../shared/FieldErrorList';
 
@@ -53,6 +54,11 @@ export const QuoteDecisionDialog = ({ mode, step, submission, isLastStep, onClos
   const needsBoardEvidence = step.role === 'OWNERS_BOARD' && mode !== 'requestProposalUpdate';
   const canChooseContractor = mode === 'approveProposal' && isLastStep;
   const isChanged = canChooseContractor && selected !== content.proposedContractorIndex;
+  // B06-S1 BR-E-07: on an emergency record the BOARD holder may end the post-review; the last attempt always does.
+  const isFinalAttempt = submission.attemptNo >= LIMITS.MAX_SUBMISSION_ATTEMPTS;
+  const offersPostReview = mode === 'rejectProposal' && Boolean(detail.record.emergency) && step.key === 'BOARD';
+  const [finalPostReview, setFinalPostReview] = useState(false);
+  const endsPostReview = offersPostReview && (finalPostReview || isFinalAttempt);
   const errors = command.fieldErrors;
 
   const confirm = () =>
@@ -62,13 +68,14 @@ export const QuoteDecisionDialog = ({ mode, step, submission, isLastStep, onClos
       ...(needsBoardEvidence ? { boardMinutesAttachmentIds: minutes.ids, signature: signature ?? '' } : {}),
       ...(canChooseContractor ? { selectedContractorIndex: selected } : {}),
       ...(isChanged ? { selectionReason: reason.trim() } : {}),
+      ...(endsPostReview ? { finalPostReview: true } : {}),
     });
 
   return (
     <CommandDialog
       title={`${TITLE[mode]} · ${step.label}`}
       description={`Lần trình ${submission.attemptNo}/${LIMITS.MAX_SUBMISSION_ATTEMPTS}.`}
-      confirmLabel={TITLE[mode]}
+      confirmLabel={endsPostReview ? 'Không duyệt hậu kiểm' : TITLE[mode]}
       confirmVariant={mode === 'rejectProposal' ? 'danger' : 'primary'}
       isPending={command.isPending}
       onConfirm={confirm}
@@ -102,6 +109,7 @@ export const QuoteDecisionDialog = ({ mode, step, submission, isLastStep, onClos
           <Textarea id="decision-reason" rows={3} maxLength={LIMITS.REASON_MAX} value={reason} onChange={(event) => setReason(event.target.value)} />
         </Field>
       ) : null}
+      {offersPostReview ? <PostReviewToggle checked={endsPostReview} isFinalAttempt={isFinalAttempt} onChange={setFinalPostReview} /> : null}
       {needsBoardEvidence ? (
         <>
           <AttachmentField

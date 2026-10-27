@@ -13,3 +13,13 @@ export const vnDate = (at: Date): string => dateFormatter.format(at);
 
 /** "2026-10-26" → "26/10/2026". */
 export const formatVnDate = (isoDate: string): string => isoDate.split('-').reverse().join('/');
+
+const timeFormatter = new Intl.DateTimeFormat('en-GB', {
+  timeZone: VN_TIME_ZONE,
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+});
+
+/** "09:10 28/10/2026" for an instant, in Vietnam time (the app's date-time format). */
+export const formatVnDateTime = (at: Date): string => `${timeFormatter.format(at)} ${formatVnDate(vnDate(at))}`;

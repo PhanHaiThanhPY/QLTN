@@ -1,3 +1,4 @@
+import type { EmergencyInfo } from '../../../domain/emergency';
 import { Check, Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../../database/base.entity';
 import type { TaskDueDays, WorkflowApprovalStep, WorkflowStageConfig } from '../../../domain/building-config';
@@ -121,6 +122,10 @@ export class RepairRecord extends BaseEntity {
   /** Acceptance round in progress or last closed (S3). */
   @Column({ name: 'current_acceptance_id', type: 'uuid', nullable: true })
   currentAcceptanceId: string | null;
+
+  /** Emergency repair data (B06-S1 §3), set by E-T1 and never cleared. */
+  @Column({ type: 'jsonb', nullable: true })
+  emergency: EmergencyInfo | null;
 
   /** Repair work saved by T15 and offered again by T16. */
   @Column({ name: 'repair_draft', type: 'jsonb', nullable: true })

@@ -30,6 +30,9 @@ export const AUDIT_ACTION_LABEL: Readonly<Record<string, string>> = {
   approveProposal: 'Duyệt tờ trình',
   requestProposalUpdate: 'Yêu cầu bổ sung tờ trình',
   rejectProposal: 'Từ chối tờ trình',
+  // Xử lý khẩn cấp (B06-S1)
+  startEmergencyRepair: 'Bắt đầu xử lý khẩn cấp',
+  closePostReviewRejected: 'Đóng hồ sơ không được duyệt hậu kiểm',
   // Thi công và nghiệm thu (B03–B09 v2 S3)
   startConstruction: 'Bắt đầu thi công',
   updateConstruction: 'Cập nhật thi công',
@@ -99,6 +102,8 @@ export const AUDIT_ACTIONS_BY_SUBJECT: Readonly<Record<string, readonly string[]
     'approveProposal',
     'requestProposalUpdate',
     'rejectProposal',
+    'startEmergencyRepair',
+    'closePostReviewRejected',
     'startConstruction',
     'updateConstruction',
     'submitAcceptance',

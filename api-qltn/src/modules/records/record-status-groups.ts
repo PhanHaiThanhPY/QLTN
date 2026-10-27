@@ -40,6 +40,8 @@ export const RECORD_STATUS_GROUP_BY_STATUS: Readonly<Record<string, RecordStatus
   CLOSED_NO_REPAIR: 'CLOSED',
   UNRESOLVED: 'NEEDS_ACTION',
   CLOSED_WITHDRAWN: 'CLOSED',
+  POST_REVIEW_REJECTED: 'NEEDS_ACTION',
+  CLOSED_POST_REVIEW_REJECTED: 'CLOSED',
 };
 
 export const statusesOfGroup = (group: RecordStatusGroup): string[] =>
@@ -48,7 +50,13 @@ export const statusesOfGroup = (group: RecordStatusGroup): string[] =>
     .map(([status]) => status);
 
 /** Final statuses (web `REPAIR_FINAL_STATUSES`); an "open" record is any status outside this list. */
-export const RECORD_FINAL_STATUSES = ['COMPLETED', 'CLOSED_NO_REPAIR', 'UNRESOLVED', 'CLOSED_WITHDRAWN'] as const;
+export const RECORD_FINAL_STATUSES = [
+  'COMPLETED',
+  'CLOSED_NO_REPAIR',
+  'UNRESOLVED',
+  'CLOSED_WITHDRAWN',
+  'CLOSED_POST_REVIEW_REJECTED',
+] as const;
 
 /** Statuses where the manager still has to supplement the record (card "cần bổ sung" and `attention=needs_update`). */
 export const RECORD_NEEDS_UPDATE_STATUSES = [

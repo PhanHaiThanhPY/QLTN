@@ -169,6 +169,8 @@ export const REPAIR_ACTIONS = {
     capability: 'EMERGENCY_START',
     slot: 'manager',
   },
+  // B06-S1 E-T2, api mode only: the BOARD holder records the cost decision and closes the record.
+  closePostReviewRejected: { label: 'Ghi quyết định và đóng', from: ['POST_REVIEW_REJECTED'], capability: 'PROPOSAL_DECIDE', slot: 'board' },
   updateConstruction: { label: 'Cập nhật tiến độ', from: ['IN_CONSTRUCTION', 'EMERGENCY_IN_PROGRESS'], capability: 'CONSTRUCTION', slot: 'manager' },
   submitAcceptance: { label: 'Gửi nghiệm thu', from: ['IN_CONSTRUCTION'], capability: 'CONSTRUCTION', slot: 'manager' },
   passAcceptance: { label: 'Nghiệm thu đạt', from: ['PENDING_ACCEPTANCE'], capability: 'ACCEPTANCE_DECIDE', slot: 'ACCEPTANCE_PENDING' },

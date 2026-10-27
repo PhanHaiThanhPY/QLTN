@@ -35,6 +35,8 @@ export const REPAIR_STATUS_TONE: Record<RepairStatus, StatusTone> = {
   CLOSED_NO_REPAIR: 'neutral',
   UNRESOLVED: 'crit',
   CLOSED_WITHDRAWN: 'neutral',
+  POST_REVIEW_REJECTED: 'crit',
+  CLOSED_POST_REVIEW_REJECTED: 'neutral',
 };
 
 export const OCCURRENCE_STATUS_TONE: Record<OccurrenceStatus, StatusTone> = {

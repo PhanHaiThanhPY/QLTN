@@ -1,4 +1,5 @@
 import { InfoGrid } from '@/components/common/InfoGrid';
+import { Notice } from '@/components/common/Notice';
 import { EmptyState } from '@/components/common/States';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { isOpenInstalment, type PaymentHistory } from '@/domain/payment';
@@ -10,6 +11,9 @@ import { ConfirmActionButton } from '../shared/ConfirmActionButton';
 import { DialogActionButton } from '../shared/DialogActionButton';
 import { InstalmentCard } from './InstalmentCard';
 import { PaymentRequestDialog } from './PaymentRequestDialog';
+
+/** B06-S1 ui-brief §2.6: nothing is paid for an emergency record the board did not accept. */
+const NO_PAYMENT_STATUSES: readonly string[] = ['POST_REVIEW_REJECTED', 'CLOSED_POST_REVIEW_REJECTED'];
 
 /** Tab "Thanh toán" for records served by api-qltn (S4): advances during the work, settlement, transfers, close. */
 export const ExecPaymentTab = ({ history }: { history: PaymentHistory }) => {
@@ -28,6 +32,9 @@ export const ExecPaymentTab = ({ history }: { history: PaymentHistory }) => {
   const settled = settlement?.settlementAmountVnd ?? null;
   const canClose = settlement?.status === 'TRANSFERRED' && settled !== null && history.transferredTotalVnd === settled;
 
+  if (NO_PAYMENT_STATUSES.includes(detail.record.status)) {
+    return <Notice tone="warning">Hồ sơ không được duyệt hậu kiểm: không có thanh toán.</Notice>;
+  }
   if (!history.approvedAmountVnd) {
     return <EmptyState title="Chưa đến bước thanh toán" description="Thanh toán mở sau khi tờ trình được duyệt và có số được duyệt." />;
   }

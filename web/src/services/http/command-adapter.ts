@@ -1,3 +1,4 @@
+import { toClosePostReviewBody, toStartEmergencyBody } from './emergency-mappers';
 import { asRecord, asString, asStringArray } from '@/domain/validation';
 import { AppError, ERROR_CODE } from '@/domain/errors';
 import { broadcastChange } from '../change-channel';
@@ -315,6 +316,21 @@ const proposalCommand =
     return { ok: true, subjectId: updated.id };
   };
 
+/** B06-S1 emergency E-T1 and E-T2: `POST /records/:id/<route>`. */
+const emergencyCommand =
+  (route: 'start-emergency-repair' | 'close-post-review-rejected'): ApiCommandHandler =>
+  async (command) => {
+    const id = command.subjectId?.trim() ?? '';
+    if (!id) throw new AppError(ERROR_CODE.NOT_FOUND, 'Không tìm thấy hồ sơ.');
+    const body =
+      route === 'start-emergency-repair'
+        ? toStartEmergencyBody(command.payload, command.expectedVersion)
+        : toClosePostReviewBody(command.payload, command.expectedVersion);
+    const updated = await apiRequest<ApiRepairRecord>('POST', `/records/${encodeURIComponent(id)}/${route}`, { body });
+    broadcastChange();
+    return { ok: true, subjectId: updated.id };
+  };
+
 /** S3 construction and acceptance actions T10–T16: `POST /records/:id/<route>`. */
 const EXECUTION_ROUTES: Readonly<Record<ExecutionAction, string>> = {
   startConstruction: 'start-construction',
@@ -391,6 +407,8 @@ const API_COMMANDS: Readonly<Record<string, ApiCommandHandler>> = {
   approveProposal: proposalCommand('approveProposal'),
   requestProposalUpdate: proposalCommand('requestProposalUpdate'),
   rejectProposal: proposalCommand('rejectProposal'),
+  startEmergencyRepair: emergencyCommand('start-emergency-repair'),
+  closePostReviewRejected: emergencyCommand('close-post-review-rejected'),
   markNotificationRead,
   ...(Object.fromEntries(
     (Object.keys(PAYMENT_ROUTES) as PaymentAction[]).map((action) => [action, paymentCommand(action)]),

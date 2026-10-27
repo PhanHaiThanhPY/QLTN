@@ -1,6 +1,24 @@
 import type { TaskDueDays, WorkflowApprovalStep } from '../../domain/building-config';
+import {
+  emergencyTiming,
+  isOverEmergencyLimit,
+  type EmergencyInfo,
+  type EmergencyTiming,
+} from '../../domain/emergency';
 import type { RepairRecord } from './entities/repair-record.entity';
 import { currentStepKeyOf } from './record-steps';
+
+/** B06-S1 BR-E-11: the stored emergency data plus what the server derives from it. */
+export type EmergencyView = EmergencyInfo & EmergencyTiming & { overEmergencyLimit: boolean };
+
+const toEmergencyView = (record: RepairRecord): EmergencyView | null =>
+  record.emergency
+    ? {
+        ...record.emergency,
+        ...emergencyTiming(record.emergency, new Date()),
+        overEmergencyLimit: isOverEmergencyLimit(record.emergency, record.approvedAmountVnd),
+      }
+    : null;
 
 export interface RepairRecordView {
   id: string;
@@ -31,6 +49,8 @@ export interface RepairRecordView {
   /** Integer VND as a string; set when the last approval step approves. */
   approvedAmountVnd: string | null;
   executingContractorName: string | null;
+  /** Emergency repair (B06-S1), null for a regular record. */
+  emergency: EmergencyView | null;
   createdBy: string;
   version: number;
   createdAt: Date;
@@ -62,6 +82,7 @@ export const toRecordView = (record: RepairRecord): RepairRecordView => ({
   approvedSubmissionId: record.approvedSubmissionId,
   approvedAmountVnd: record.approvedAmountVnd,
   executingContractorName: record.executingContractorName,
+  emergency: toEmergencyView(record),
   createdBy: record.createdBy,
   version: record.version,
   createdAt: record.createdAt,

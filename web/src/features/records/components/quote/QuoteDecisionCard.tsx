@@ -57,7 +57,7 @@ export const QuoteDecisionCard = ({ submission }: { submission: QuoteSubmission 
         ) : null}
         {isLastAttempt ? (
           <Notice tone="warning" title="Lần trình thứ 3">
-            Chỉ được Duyệt hoặc Từ chối. Từ chối sẽ chuyển hồ sơ sang “Chưa xử lý”.
+            Chỉ được Duyệt hoặc Từ chối. Từ chối sẽ chuyển hồ sơ sang {record.emergency ? '“Không được duyệt hậu kiểm”' : '“Chưa xử lý”'}.
           </Notice>
         ) : null}
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">

@@ -29,6 +29,9 @@ const APPROVAL_STATUSES: readonly RepairStatus[] = [
   'NEEDS_SUBMISSION_UPDATE',
   'REJECTED_RESUBMITTABLE',
   'UNRESOLVED',
+  // B06-S1: an emergency record not accepted at post-review stops at the approval stage, even once closed.
+  'POST_REVIEW_REJECTED',
+  'CLOSED_POST_REVIEW_REJECTED',
 ];
 const CONSTRUCTION_STATUSES: readonly RepairStatus[] = ['READY_FOR_CONSTRUCTION', 'IN_CONSTRUCTION', 'EMERGENCY_IN_PROGRESS'];
 const ACCEPTANCE_STATUSES: readonly RepairStatus[] = ['PENDING_ACCEPTANCE', 'NEEDS_REPAIR'];

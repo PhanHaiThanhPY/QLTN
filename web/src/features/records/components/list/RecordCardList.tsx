@@ -3,7 +3,7 @@ import { RepairStatusBadge } from '@/components/common/StatusBadge';
 import { useReferenceData } from '@/hooks/useReferenceData';
 import type { RecordListItem } from '@/services/records-service';
 import { formatDateTime } from '@/utils/date';
-import { RecordFlags } from './RecordFlags';
+import { isDocsOverdue, RecordFlags } from './RecordFlags';
 
 /** Mobile card list of records (shown below md). */
 export const RecordCardList = ({ items }: { items: RecordListItem[] }) => {
@@ -20,7 +20,7 @@ export const RecordCardList = ({ items }: { items: RecordListItem[] }) => {
             <p className="mt-1 font-medium text-ink">{record.title || '(Chưa đặt tên)'}</p>
             <p className="mt-0.5 text-sm text-ink-3">{locationName(record.locationId)}</p>
             <div className="mt-2">
-              <RecordFlags isOverdue={isOverdue} needsReassignment={needsReassignment} isEmergency={Boolean(record.emergency)} />
+              <RecordFlags isOverdue={isOverdue} needsReassignment={needsReassignment} isEmergency={Boolean(record.emergency)} isDocsOverdue={isDocsOverdue(record)} />
             </div>
             <p className="mt-2 text-xs text-ink-3">
               {userName(record.managerUserId)} · {formatDateTime(record.updatedAt)}
