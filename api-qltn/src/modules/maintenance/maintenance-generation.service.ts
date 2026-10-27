@@ -42,9 +42,13 @@ export class MaintenanceGenerationService implements OnApplicationBootstrap, OnA
     private readonly codes: CodeCounterService,
   ) {}
 
-  /** The daily timer is off under tests and when MAINTENANCE_SCHEDULER=off; the run itself is callable directly. */
+  /** The boot run and the daily timer are off under tests and when MAINTENANCE_SCHEDULER=off; runDaily stays callable. */
   onApplicationBootstrap(): void {
     if (process.env.NODE_ENV === 'test' || process.env.MAINTENANCE_SCHEDULER === 'off') return;
+    // Catch-up at boot: periods missed while the server was down, and plans just seeded, need no wait until 00:15.
+    this.runDaily().catch((error: unknown) =>
+      this.logger.error(`Boot maintenance generation failed: ${(error as Error).message}`),
+    );
     this.schedule();
   }
 
