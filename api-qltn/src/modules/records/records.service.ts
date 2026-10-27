@@ -48,6 +48,7 @@ import {
   loadAssignmentContext,
 } from './record-assignment';
 import { resolveItemChoice, recordItemSummary, validateItemOnSubmit, type RecordItemSummary } from './record-item-link';
+import { recordDues } from '../tasks/record-due';
 import { loadRecordForAction, validateText } from './record-loader';
 import { applyRecordScope, isOutOfScope, NO_BUILDING } from './record-scope-query';
 import { RECORD_FINAL_STATUSES, RECORD_NEEDS_UPDATE_STATUSES } from './record-status-groups';
@@ -462,7 +463,12 @@ export class RecordsService {
       .skip(window.skip)
       .take(window.limit)
       .getManyAndCount();
-    return toPaginated(page.map(toRecordView), total, window);
+    const dues = await recordDues(this.dataSource, page);
+    return toPaginated(
+      page.map((row) => ({ ...toRecordView(row), ...dues.get(row.id) })),
+      total,
+      window,
+    );
   }
 
   /**
@@ -519,8 +525,9 @@ export class RecordsService {
         this.audit.listForSubject(SUBJECT_TYPE.REPAIR_RECORD, id, { page: 1, limit: 100 }),
         this.dataSource.getRepository(BuildingConfig).findOneBy({ buildingId: record.buildingId }),
       ]);
+    const dues = await recordDues(this.dataSource, [record]);
     return {
-      record: toRecordView(record),
+      record: { ...toRecordView(record), ...dues.get(record.id) },
       confirmations: confirmations.map(toConfirmationView),
       attachments,
       proposal,
