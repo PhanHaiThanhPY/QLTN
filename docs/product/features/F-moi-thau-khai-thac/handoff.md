@@ -128,3 +128,14 @@ Script: `supporting/f-s1-exploitation-check.mjs`. Kết quả: PASS.
 - **Khi merge:**
   - `API_READY_PATHS` (`web/src/app/navigation.ts`) bị TK-S1, MT-S2 và F-S1 cùng sửa. Giữ đủ `/tasks`, `/maintenance/plans`, `/exploitation/packages` và `/exploitation/partners`.
   - Thứ tự `app.module.ts` cần có cả `TasksModule` lẫn `ExploitationModule`.
+
+## Đóng F-S1 (PM/BA, 27/10/2026)
+
+- **F-S1 đóng.** Review PASS WITH RESIDUE trên `a572cbe`: e2e khai thác 13/13, API unit 104/104, web 555/555. Đọc tệp của gói và hồ sơ giờ cần quyền `EXPLOITATION_VIEW` (AC-F1.12). Mọi AC đều có bằng chứng ở trên.
+- **Residue được chấp nhận:** chưa chạy lại trình duyệt trên đúng bản ứng viên, vì môi trường của seat review không có trình duyệt.
+- **Merge vào `main`** theo yêu cầu của chủ dự án: TK-S1 (`896d7eb`), rồi nhánh tích hợp `integration/tk-mt2-f1` (`d6ebda4`, MT-S2 và F-S1). dev-build gỡ xung đột `navigation.ts` và `app.module.ts` theo kiểu giữ cả hai. PM/BA kiểm `API_READY_PATHS` đủ 9 đường dẫn.
+- **Kiểm trên bản đã merge:**
+  - dev-build: vitest 229/229, API unit 79/79, e2e 58/58;
+  - PM/BA: typecheck API và web.
+- **Trước khi chạy code này**, phải áp migration `2026-10-27f-exploitation-invitations.sql` lên mọi DB. API tự áp khi khởi động.
+

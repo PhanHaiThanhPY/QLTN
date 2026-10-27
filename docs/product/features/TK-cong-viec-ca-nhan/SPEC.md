@@ -1,7 +1,7 @@
 ---
 id: TK.S1
 title: Việc sửa chữa của tôi, có hạn xử lý
-status: Đã duyệt
+status: Đã triển khai
 owner: PM/BA
 intent: "Mỗi người mở một màn là biết hồ sơ sửa chữa nào đang chờ chính mình, phải làm gì, hạn đến khi nào, và việc nào đã quá hạn."
 depends_on: []
@@ -9,7 +9,7 @@ depends_on: []
 
 # SPEC: Việc sửa chữa của tôi, có hạn xử lý (TK-S1)
 
-**Chủ sở hữu:** PM/BA · **Cập nhật:** 27/10/2026 · **Trạng thái:** `Đã duyệt`, chủ dự án duyệt ngày 27/10/2026 (PD-29), gồm 5 mặc định D-TK-1 đến D-TK-5 ở §6
+**Chủ sở hữu:** PM/BA · **Cập nhật:** 27/10/2026 · **Trạng thái:** `Đã triển khai` (27/10/2026, merge vào `main`); trước đó `Đã duyệt`, chủ dự án duyệt ngày 27/10/2026 (PD-29), gồm 5 mặc định D-TK-1 đến D-TK-5 ở §6
 
 **Nguồn:**
 - Phân tích [tasks.md](../../modules/tasks.md), đã duyệt (PD-28): TG-01, TG-02, TG-04 (chỉ báo), TG-06, TG-07, TG-08, TD-01 đến TD-03; mặc định TKQ-01 đến TKQ-03 (OD-24).
@@ -183,3 +183,4 @@ Chỉ chạy các test liên quan.
 | 27/10/2026 | Viết từ phân tích tasks (PD-28). |
 | 27/10/2026 | Chủ dự án duyệt (PD-29), gồm D-TK-1 đến D-TK-5, và cho giao dev-build. |
 | 27/10/2026 | Review lần 1 FAILED (F-TK-S1-01, đếm "Đã hoàn thành" theo số dòng); sửa `133fe8a`; review lần 2 PASS WITH RESIDUE trên `2621f92`. PM/BA đóng slice. Chờ chủ dự án cho merge. |
+| 27/10/2026 | Merge vào `main` (`896d7eb`); trạng thái `Đã triển khai`. |

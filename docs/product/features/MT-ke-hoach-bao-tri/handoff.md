@@ -120,3 +120,14 @@ Script: `supporting/mt-s2-plans-check.mjs`. Kết quả: PASS, không cuộn nga
 
 - **Gộp với TK-S1:** TK-S1 (đang chờ PM/BA đóng) cũng sửa `API_READY_PATHS` trong `web/src/app/navigation.ts`. Khi gộp, giữ cả `/tasks` lẫn `/maintenance/plans`.
 - Lượt chưa có trang chi tiết (MT-S3), nên dòng lượt không phải liên kết.
+
+## Đóng MT-S2 (PM/BA, 27/10/2026)
+
+- **MT-S2 đóng.** Review PASS WITH RESIDUE trên `6e3b32c`. Sau khi F-S1 chuyển lần sinh lượt sang bộ lịch chạy dùng chung, dev-review chạy lại e2e kế hoạch bảo trì trên bản F-S1 `a572cbe`: 13/13 (AC-MT2.6, AC-MT2.8). Mọi AC đều có bằng chứng ở trên.
+- **Residue được chấp nhận:** chưa chạy lại trình duyệt trên đúng bản ứng viên, vì môi trường của seat review không có trình duyệt.
+- **Merge vào `main`** theo yêu cầu của chủ dự án: TK-S1 (`896d7eb`), rồi nhánh tích hợp `integration/tk-mt2-f1` (`d6ebda4`, MT-S2 và F-S1). dev-build gỡ xung đột `navigation.ts` và `app.module.ts` theo kiểu giữ cả hai. PM/BA kiểm `API_READY_PATHS` đủ 9 đường dẫn.
+- **Kiểm trên bản đã merge:**
+  - dev-build: vitest 229/229, API unit 79/79, e2e 58/58;
+  - PM/BA: typecheck API và web.
+- **Trước khi chạy code này**, phải áp migration `2026-10-27e-maintenance-plans.sql` lên mọi DB. API tự áp khi khởi động.
+

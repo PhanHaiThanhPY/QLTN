@@ -90,7 +90,7 @@
 
 | Slice | Nội dung | Phụ thuộc |
 |---|---|---|
-| **TK-S1 Việc sửa chữa của tôi** ([SPEC](../features/TK-cong-viec-ca-nhan/SPEC.md), đã duyệt PD-29, đang build) | Phần chính:<br>• API đọc "việc của tôi" cho hồ sơ sửa chữa, tính ngay lúc đọc (TG-07): đúng người giữ bước hiện tại, mỗi người nghiệm thu một việc, "Cần phân công lại" cho BQL;<br>• hạn xử lý và quá hạn (TG-02);<br>• "Đã hoàn thành" lấy từ nhật ký;<br>• web `api`: 4 ô số đúng nghĩa (sửa TD-02), mức ưu tiên (TG-06), tìm kiếm bỏ dấu (TD-03), thẻ "Tiếp tục công việc" trên điện thoại.<br>Hạn xử lý tính ở API được trả kèm trong danh sách hồ sơ, để B04 và B01 dùng lại | Không |
+| **TK-S1 Việc sửa chữa của tôi** ([SPEC](../features/TK-cong-viec-ca-nhan/SPEC.md), đã triển khai 27/10) | Phần chính:<br>• API đọc "việc của tôi" cho hồ sơ sửa chữa, tính ngay lúc đọc (TG-07): đúng người giữ bước hiện tại, mỗi người nghiệm thu một việc, "Cần phân công lại" cho BQL;<br>• hạn xử lý và quá hạn (TG-02);<br>• "Đã hoàn thành" lấy từ nhật ký;<br>• web `api`: 4 ô số đúng nghĩa (sửa TD-02), mức ưu tiên (TG-06), tìm kiếm bỏ dấu (TD-03), thẻ "Tiếp tục công việc" trên điện thoại.<br>Hạn xử lý tính ở API được trả kèm trong danh sách hồ sơ, để B04 và B01 dùng lại | Không |
 | TK-S2 Việc bảo trì | Gộp lượt bảo trì vào B02, theo người thực hiện và người xác nhận của MT-S2/S3 | MT-S3 |
 | — | Giao lại người giữ bước (TG-04) | US-S2 (R-06) |
 | — | Nhắc hạn bằng thông báo | module `notifications` |

@@ -115,7 +115,7 @@ Có 10 file test; file chính là `acceptance-maintenance.test.ts` với 11 ca.
 - **migration gắn thiết bị vào hồ sơ sửa chữa** (MG-02): form hồ sơ chọn được thiết bị, và hồ sơ thiết bị hiện lịch sử sửa chữa, số lần hỏng, chi phí đã duyệt;
 - sửa MD-06.
 
-**MT-S2 Kế hoạch** ([SPEC](../features/MT-ke-hoach-bao-tri/SPEC.md), đã duyệt PD-26; sau MT-S1). API và web `api` cho B12:
+**MT-S2 Kế hoạch** ([SPEC](../features/MT-ke-hoach-bao-tri/SPEC.md), đã triển khai 27/10). API và web `api` cho B12:
 - kế hoạch và danh mục kiểm; chu kỳ theo MQ-02; người thực hiện và người xác nhận theo MQ-01;
 - kích hoạt, tạm dừng theo MQ-04, đổi chu kỳ, lượt bù;
 - **sinh lượt bằng lịch chạy hằng ngày ở máy chủ** (MG-05);

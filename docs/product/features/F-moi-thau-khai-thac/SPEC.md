@@ -1,7 +1,7 @@
 ---
 id: F.S1
 title: Mời thầu và tiếp nhận hồ sơ dự thầu khai thác
-status: Đã duyệt
+status: Đã triển khai
 owner: PM/BA
 intent: "BQL phát hành một đợt mời thầu khai thác khu vực chung với bộ tài liệu có phiên bản và hạn nhận rõ ràng, rồi ghi nhận hồ sơ của từng đơn vị đến khi biết đơn vị nào đủ, đơn vị nào còn thiếu."
 depends_on: []
@@ -9,7 +9,7 @@ depends_on: []
 
 # SPEC: Mời thầu và tiếp nhận hồ sơ dự thầu khai thác (F-S1)
 
-**Chủ sở hữu:** PM/BA · **Cập nhật:** 27/10/2026 · **Trạng thái:** `Đã duyệt`, chủ dự án duyệt ngày 27/10/2026 (PD-32), gồm 6 mặc định D-F1-1 đến D-F1-6 ở §6
+**Chủ sở hữu:** PM/BA · **Cập nhật:** 27/10/2026 · **Trạng thái:** `Đã triển khai` (27/10/2026, merge vào `main`); trước đó `Đã duyệt`, chủ dự án duyệt ngày 27/10/2026 (PD-32), gồm 6 mặc định D-F1-1 đến D-F1-6 ở §6
 
 **Nguồn:**
 - Phân tích [F-quy-khai-thac.md](../../modules/F-quy-khai-thac.md), đã duyệt (PD-31): §2 F01, F02; FG-01, FG-12; mặc định FQ-01, FQ-02, FQ-12 (OD-26).
@@ -244,3 +244,4 @@ Chỉ chạy các test liên quan.
 |---|---|
 | 27/10/2026 | Viết từ phân tích nhóm F (PD-31). |
 | 27/10/2026 | Chủ dự án duyệt (PD-32), gồm D-F1-1 đến D-F1-6, và cho giao dev-build. |
+| 27/10/2026 | Merge vào `main` (`d6ebda4` (nhánh tích hợp)); trạng thái `Đã triển khai`. |

@@ -1,7 +1,7 @@
 ---
 id: MT.S2
 title: Kế hoạch bảo trì và sinh lượt tự động
-status: Đã duyệt
+status: Đã triển khai
 owner: PM/BA
 intent: "BQL lập kế hoạch bảo trì cho từng thiết bị với chu kỳ, danh mục kiểm và người làm; hệ thống tự sinh đúng các lượt bảo trì mỗi ngày, không trùng, kể cả khi không ai mở web."
 depends_on: [MT.S1]
@@ -9,7 +9,7 @@ depends_on: [MT.S1]
 
 # SPEC: Kế hoạch bảo trì và sinh lượt tự động (MT-S2)
 
-**Chủ sở hữu:** PM/BA · **Cập nhật:** 27/10/2026 · **Trạng thái:** `Đã duyệt`, chủ dự án duyệt ngày 27/10/2026 (PD-26), gồm 7 mặc định D-MT2-1 đến D-MT2-7 ở §6. Chỉ giao dev-build sau khi MT-S1 đạt review
+**Chủ sở hữu:** PM/BA · **Cập nhật:** 27/10/2026 · **Trạng thái:** `Đã triển khai` (27/10/2026, merge vào `main`); trước đó `Đã duyệt`, chủ dự án duyệt ngày 27/10/2026 (PD-26), gồm 7 mặc định D-MT2-1 đến D-MT2-7 ở §6. Chỉ giao dev-build sau khi MT-S1 đạt review
 
 **Nguồn:**
 - Phân tích [maintenance.md](../../modules/maintenance.md), đã duyệt (PD-24):
@@ -238,3 +238,4 @@ Chỉ chạy các test liên quan.
 | 27/10/2026 | Viết từ phân tích maintenance (PD-24). |
 | 27/10/2026 | Chủ dự án duyệt (PD-26), gồm D-MT2-1 đến D-MT2-7. Giao dev-build sau khi MT-S1 đạt review. |
 | 27/10/2026 | Review PASS WITH RESIDUE trên `6e3b32c`; PM/BA đóng slice. Chờ chủ dự án cho merge (migration `2026-10-27e-maintenance-plans.sql`). |
+| 27/10/2026 | Merge vào `main` (`d6ebda4` (nhánh tích hợp)); trạng thái `Đã triển khai`. |
