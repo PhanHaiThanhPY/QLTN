@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
+import type { Watermark } from '../build-document';
 import '../print-sheet.css';
 
 interface PrintSheetProps {
@@ -6,8 +7,8 @@ interface PrintSheetProps {
   title: string;
   recordCode: string;
   printedAt: string;
-  /** BR-B7-04: "CHƯA PHÊ DUYỆT" or "CHƯA HOÀN TẤT" across the page while the document is not final. */
-  watermark?: string;
+  /** BR-B7-04: across the page while the document is not final, with its screen-reader wording. */
+  watermark?: Watermark;
   children: ReactNode;
 }
 
@@ -38,9 +39,9 @@ export const PrintSheet = ({ title, recordCode, printedAt, watermark, children }
       {watermark ? (
         <>
           <div className="d5-watermark" aria-hidden>
-            {watermark}
+            {watermark.text}
           </div>
-          <p className="sr-only">Bản chưa phê duyệt</p>
+          <p className="sr-only">{watermark.spoken}</p>
         </>
       ) : null}
       {children}

@@ -2,7 +2,7 @@ import type { RecordDetail } from '@/services/records-service';
 import type { DocumentKind } from './document-list';
 import { buildMinutesModel, type MinutesPrintModel } from './minutes-model';
 import { buildPaymentLetterModel, type PaymentLetterModel } from './payment-letter-model';
-import type { PrintNames } from './print-format';
+import type { PrintNames, PrintSignature } from './print-format';
 import { buildProposalModel, type ProposalPrintModel } from './proposal-model';
 
 export type PrintableDocument =
@@ -26,8 +26,28 @@ export const buildDocument = (detail: RecordDetail, kind: DocumentKind, docId: s
   return { kind, model: buildPaymentLetterModel(detail, payment, names) };
 };
 
+/** BR-B7-04: what is printed across an unfinished document, and what a screen reader says for it (F-B7-S1-01). */
+export const WATERMARKS = {
+  unapproved: { text: 'CHƯA PHÊ DUYỆT', spoken: 'Bản chưa phê duyệt' },
+  incomplete: { text: 'CHƯA HOÀN TẤT', spoken: 'Bản chưa hoàn tất' },
+} as const;
+export type Watermark = (typeof WATERMARKS)[keyof typeof WATERMARKS];
+
 /** BR-B7-04: the watermark of a document that is not final yet. */
-export const watermarkOf = (document: PrintableDocument): string | undefined => {
-  if (document.kind === 'minutes') return document.model.isComplete ? undefined : 'CHƯA HOÀN TẤT';
-  return document.model.isApproved ? undefined : 'CHƯA PHÊ DUYỆT';
+export const watermarkOf = (document: PrintableDocument): Watermark | undefined => {
+  if (document.kind === 'minutes') return document.model.isComplete ? undefined : WATERMARKS.incomplete;
+  return document.model.isApproved ? undefined : WATERMARKS.unapproved;
 };
+
+/** Every signature the document prints; the print waits until each image is loaded (F-B7-S1-02). */
+const slotsOf = (document: PrintableDocument): Array<PrintSignature | null> => {
+  if (document.kind === 'proposal') return [document.model.boardSignature, document.model.managerSignature];
+  if (document.kind === 'minutes') return document.model.columns.map((column) => column.signature);
+  return [document.model.managerSignature];
+};
+
+export const signaturesOf = (document: PrintableDocument): PrintSignature[] =>
+  slotsOf(document).filter((signature): signature is PrintSignature => signature !== null);
+
+/** Identity of one signature slot on the sheet. */
+export const signatureKey = (signature: PrintSignature): string => `${signature.signerName}|${signature.signedAt}`;

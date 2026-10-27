@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { advance, completedDetail, failedRound, NAMES, passedRound, settlement } from '../__fixtures__/completed-record';
 import { buildDocument, type PrintableDocument } from '../build-document';
@@ -55,6 +55,9 @@ describe('DocumentView', () => {
     const detail = completedDetail({ execution: { construction: null, acceptances: [failedRound, open], repairDraft: null } });
     renderDocument('minutes', open.id, detail);
     expect(document.querySelector('.d5-watermark')?.textContent).toBe('CHƯA HOÀN TẤT');
+    // F-B7-S1-01: the screen-reader line matches the visible watermark.
+    expect(screen.getByText('Bản chưa hoàn tất')).toBeTruthy();
+    expect(screen.queryByText('Bản chưa phê duyệt')).toBeNull();
     expect(sheetText()).toContain('☐ ĐẠT ☐ KHÔNG ĐẠT');
     expect(screen.getAllByRole('img')).toHaveLength(1);
   });
@@ -80,5 +83,42 @@ describe('DocumentView', () => {
     const zero = { ...settlement, amountVnd: '0' };
     const detail = completedDetail({ paymentHistory: { approvedAmountVnd: '10000000', transferredTotalVnd: '10000000', draft: null, payments: [advance, zero] } });
     expect(buildDocument(detail, 'payment', zero.id, NAMES)).toBeNull();
+  });
+
+  describe('F-B7-S1-02: printing waits for every signature image', () => {
+    const printButton = () => screen.getByRole('button', { name: 'In' }) as HTMLButtonElement;
+
+    it('enables "In" only once every signature image has loaded', () => {
+      renderDocument('minutes', passedRound.id);
+      const images = screen.getAllByRole('img');
+      expect(images).toHaveLength(3);
+      expect(printButton().disabled).toBe(true);
+      fireEvent.load(images[0]);
+      fireEvent.load(images[1]);
+      expect(printButton().disabled).toBe(true);
+      fireEvent.load(images[2]);
+      expect(printButton().disabled).toBe(false);
+    });
+
+    it('keeps "In" disabled, names the signer and offers a reload when an image fails', () => {
+      renderDocument('proposal', 'sub-2');
+      const [board, manager] = screen.getAllByRole('img');
+      fireEvent.load(manager);
+      fireEvent.error(board);
+      expect(printButton().disabled).toBe(true);
+      expect(screen.getByText('Không tải được chữ ký của Bùi Hải Yến. Tải lại trang để in đủ chữ ký.')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Tải lại' })).toBeTruthy();
+      expect(screen.getByText('Không tải được ảnh chữ ký')).toBeTruthy();
+      expect(screen.queryByAltText('Chữ ký của Bùi Hải Yến')).toBeNull();
+      expect(sheetText()).toContain('Bùi Hải Yến');
+    });
+
+    it('allows printing a document without any signature', () => {
+      const unsigned = { ...settlement, signatureDataUrl: null };
+      const detail = completedDetail({ paymentHistory: { approvedAmountVnd: '10000000', transferredTotalVnd: '10000000', draft: null, payments: [advance, unsigned] } });
+      renderDocument('payment', unsigned.id, detail);
+      expect(screen.queryAllByRole('img')).toHaveLength(0);
+      expect(printButton().disabled).toBe(false);
+    });
   });
 });
