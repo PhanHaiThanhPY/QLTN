@@ -5,6 +5,10 @@ import { BuildingConfig } from '../modules/buildings/entities/building-config.en
 import { Building } from '../modules/buildings/entities/building.entity';
 import { Location } from '../modules/buildings/entities/location.entity';
 import { MaintenanceItem } from '../modules/maintenance/entities/maintenance-item.entity';
+import { MaintenanceOccurrence } from '../modules/maintenance/entities/maintenance-occurrence.entity';
+import { MaintenancePlan } from '../modules/maintenance/entities/maintenance-plan.entity';
+import { MaintenanceScheduleVersion } from '../modules/maintenance/entities/maintenance-schedule-version.entity';
+import { MaintenanceSkippedPeriod } from '../modules/maintenance/entities/maintenance-skipped-period.entity';
 import { Department } from '../modules/organization/entities/department.entity';
 import { RoleDefinition } from '../modules/roles/entities/role-definition.entity';
 import { Notification } from '../modules/notifications/entities/notification.entity';
@@ -45,4 +49,8 @@ export const ALL_ENTITIES = [
   RepairPayment,
   RepairPaymentDecision,
   MaintenanceItem,
+  MaintenancePlan,
+  MaintenanceScheduleVersion,
+  MaintenanceOccurrence,
+  MaintenanceSkippedPeriod,
 ];

@@ -18,6 +18,7 @@ import type {
   UpdateMaintenanceItemDto,
 } from './dto/maintenance-item.dto';
 import { MaintenanceItem } from './entities/maintenance-item.entity';
+import { MaintenancePlan } from './entities/maintenance-plan.entity';
 import {
   itemDetailOf,
   repairStatsOf,
@@ -151,6 +152,17 @@ export class MaintenanceItemsService {
       const item = await this.loadForWrite(manager, actor, id, dto.version, 'MAINTENANCE_MANAGE');
       if (!item.active) throw conflictWithReason('item_inactive', 'Thiết bị đã ngừng dùng.');
       this.assertReason('reason', 'Lý do', dto.reason);
+      // MT-S2 BR-MT2-09: only once every plan of the item is a draft or ended.
+      const running = await manager.getRepository(MaintenancePlan).find({
+        where: { itemId: item.id, status: In(['ACTIVE', 'PAUSED']) },
+        order: { code: 'ASC' },
+      });
+      if (running.length > 0) {
+        throw conflictWithReason(
+          'item_has_running_plans',
+          `Kết thúc các kế hoạch bảo trì của thiết bị trước khi ngừng dùng. (${running.map((plan) => plan.code).join(', ')})`,
+        );
+      }
       item.active = false;
       item.deactivatedAt = new Date();
       item.deactivationReason = dto.reason;
