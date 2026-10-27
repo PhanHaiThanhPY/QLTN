@@ -184,3 +184,4 @@ Chỉ chạy các test liên quan.
 |---|---|
 | 27/10/2026 | Viết từ phân tích maintenance (PD-24). |
 | 27/10/2026 | Chủ dự án duyệt (PD-25), gồm D-MT-1 đến D-MT-5, và cho giao dev-build. |
+| 27/10/2026 | Review PASS WITH RESIDUE trên `0202f29`; PM/BA đóng slice. Chờ chủ dự án cho merge (migration `2026-10-27c-maintenance-items.sql`). |
