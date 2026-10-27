@@ -47,6 +47,7 @@ import {
   isActiveUserInRole,
   loadAssignmentContext,
 } from './record-assignment';
+import { resolveItemChoice, recordItemSummary, validateItemOnSubmit, type RecordItemSummary } from './record-item-link';
 import { loadRecordForAction, validateText } from './record-loader';
 import { applyRecordScope, isOutOfScope, NO_BUILDING } from './record-scope-query';
 import { RECORD_FINAL_STATUSES, RECORD_NEEDS_UPDATE_STATUSES } from './record-status-groups';
@@ -135,6 +136,8 @@ export interface RecordDetailView {
    * manager cannot read the building configuration itself (DF-11). A started emergency keeps its own snapshot.
    */
   emergencyPolicy: { limitVnd: string; docHours: number } | null;
+  /** The record's equipment for the detail line and its link (MT-S1 BR-MT-10); null for "no specific equipment". */
+  maintenanceItem: RecordItemSummary | null;
   audit: AuditEventView[];
 }
 
@@ -225,8 +228,16 @@ export class RecordsService {
     return this.dataSource.transaction(async (manager) => {
       const config = await this.loadConfig(manager, dto.buildingId);
       const assignment = await loadAssignmentContext(manager, dto.buildingId);
-      const locationId = dto.locationId ?? null;
       const errors = new FieldErrors();
+      const itemChoice = await resolveItemChoice(
+        manager,
+        errors,
+        dto.buildingId,
+        { maintenanceItemId: null, noMaintenanceItem: false },
+        dto,
+      );
+      // BR-MT-09: an item chosen without a location gives the record the item's location.
+      const locationId = dto.locationId ?? itemChoice.itemLocationId;
       await this.validateLocation(manager, errors, dto.buildingId, locationId, null);
       this.validateManager(assignment, errors, actor.id, dto.buildingId, locationId);
 
@@ -248,7 +259,8 @@ export class RecordsService {
         code: await this.codes.next(manager, CODE_PREFIX, CODE_WIDTH),
         buildingId: dto.buildingId,
         locationId,
-        noMaintenanceItem: dto.noMaintenanceItem === true,
+        noMaintenanceItem: itemChoice.noMaintenanceItem,
+        maintenanceItemId: itemChoice.maintenanceItemId,
         title: dto.title ?? '',
         description: dto.description ?? '',
         priority: dto.priority ?? 'NORMAL',
@@ -518,6 +530,7 @@ export class RecordsService {
       emergencyPolicy: config
         ? { limitVnd: String(config.emergencyLimitVnd), docHours: config.emergencyDocHours }
         : null,
+      maintenanceItem: await recordItemSummary(this.dataSource.manager, record.maintenanceItemId),
       audit: audit.data,
     };
   }
@@ -532,10 +545,13 @@ export class RecordsService {
     record: RepairRecord,
     dto: UpdateRecordDraftDto,
   ): Promise<void> {
-    const locationId = dto.locationId !== undefined ? dto.locationId : record.locationId;
+    const errors = new FieldErrors();
+    const itemChoice = await resolveItemChoice(manager, errors, record.buildingId, record, dto);
+    const requestedLocation = dto.locationId !== undefined ? dto.locationId : record.locationId;
+    // BR-MT-09: an item chosen without a location gives the record the item's location.
+    const locationId = requestedLocation ?? itemChoice.itemLocationId;
     const confirmationUserId =
       dto.confirmationUserId !== undefined ? dto.confirmationUserId : record.confirmationUserId;
-    const errors = new FieldErrors();
     await this.validateLocation(manager, errors, record.buildingId, locationId, record.locationId);
     this.validateManager(assignment, errors, record.managerUserId, record.buildingId, locationId);
     const intakeStep = intakeStepOf(record.workflowStageApprovalStepKeys, record.workflowApprovalSteps);
@@ -556,10 +572,10 @@ export class RecordsService {
     if (dto.title !== undefined) record.title = dto.title;
     if (dto.description !== undefined) record.description = dto.description;
     if (dto.priority !== undefined) record.priority = dto.priority;
-    if (dto.noMaintenanceItem !== undefined) record.noMaintenanceItem = dto.noMaintenanceItem;
+    record.noMaintenanceItem = itemChoice.noMaintenanceItem;
+    record.maintenanceItemId = itemChoice.maintenanceItemId;
   }
 
-  /** Mirrors web `assertSubmittable`; T3 only supports "no specific equipment" (maintenance items are Đợt 3). */
   /** T01 eligibility (title, description, location, active manager and confirmer); also checked by E-T1 from DRAFT. */
   async assertSubmittable(manager: EntityManager, ctx: AssignmentContext, record: RepairRecord): Promise<void> {
     const errors = new FieldErrors();
@@ -585,11 +601,7 @@ export class RecordsService {
       'Người xác nhận đã ngừng hoạt động, sai khu vực hoặc không hợp lệ. Cần phân công lại.',
     );
     // BR-07a: only the INTAKE holder matters here; proposal-chain holders are checked when the proposal is submitted.
-    errors.when(
-      record.noMaintenanceItem !== true,
-      'maintenanceItemId',
-      'Chọn thiết bị/hạng mục, hoặc chọn “Không thuộc thiết bị cụ thể”.',
-    );
+    await validateItemOnSubmit(manager, errors, record);
     errors.when(
       Boolean(record.confirmationUserId) && record.confirmationUserId === record.managerUserId,
       'confirmationUserId',

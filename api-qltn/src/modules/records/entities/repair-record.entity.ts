@@ -13,6 +13,7 @@ import type { ProposalDraft } from '../proposal.types';
 @Index('IDX_repair_records_building_created', ['buildingId', 'createdAt'])
 @Index('IDX_repair_records_scope_updated', ['buildingId', 'updatedAt'])
 @Index('IDX_repair_records_status', ['status'])
+@Index('IDX_repair_records_maintenance_item', ['maintenanceItemId'])
 export class RepairRecord extends BaseEntity {
   @Index('UQ_repair_records_code', { unique: true })
   @Column({ type: 'varchar', length: 20 })
@@ -34,6 +35,10 @@ export class RepairRecord extends BaseEntity {
 
   @Column({ name: 'no_maintenance_item', type: 'boolean', default: false })
   noMaintenanceItem: boolean;
+
+  /** Equipment the repair is about (MT-S1 BR-MT-09); null with `noMaintenanceItem` or before it is chosen. */
+  @Column({ name: 'maintenance_item_id', type: 'uuid', nullable: true })
+  maintenanceItemId: string | null;
 
   @Column({ type: 'varchar', length: 120, default: '' })
   title: string;

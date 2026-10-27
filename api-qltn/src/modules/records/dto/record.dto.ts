@@ -45,6 +45,15 @@ class RecordDraftFieldsDto {
   @IsOptional()
   @IsBoolean()
   noMaintenanceItem?: boolean;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Thiết bị đang dùng của cùng tòa (MT-S1); null bỏ chọn. Không gửi kèm noMaintenanceItem = true.',
+  })
+  @IsOptional()
+  @TrimToNull()
+  @IsUUID()
+  maintenanceItemId?: string | null;
 }
 
 export class CreateRecordDto extends RecordDraftFieldsDto {

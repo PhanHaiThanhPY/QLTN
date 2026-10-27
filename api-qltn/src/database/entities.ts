@@ -4,6 +4,7 @@ import { RefreshToken } from '../modules/auth/entities/refresh-token.entity';
 import { BuildingConfig } from '../modules/buildings/entities/building-config.entity';
 import { Building } from '../modules/buildings/entities/building.entity';
 import { Location } from '../modules/buildings/entities/location.entity';
+import { MaintenanceItem } from '../modules/maintenance/entities/maintenance-item.entity';
 import { Department } from '../modules/organization/entities/department.entity';
 import { RoleDefinition } from '../modules/roles/entities/role-definition.entity';
 import { Notification } from '../modules/notifications/entities/notification.entity';
@@ -43,4 +44,5 @@ export const ALL_ENTITIES = [
   Notification,
   RepairPayment,
   RepairPaymentDecision,
+  MaintenanceItem,
 ];

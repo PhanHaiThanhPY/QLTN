@@ -1,13 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
-import { DataSource } from 'typeorm';
+import { DataSource, EntityManager } from 'typeorm';
 import type { AuthenticatedUser } from '../../common/auth/authenticated-user';
 import { hasCapability } from '../../common/auth/scope';
 import { badRequestWithReason, forbidden, forbiddenWithReason, notFound } from '../../common/errors';
 import { FieldErrors, fieldError } from '../../common/validation/field-errors';
-import { SUBJECT_TYPE } from '../audit/entities/audit-event.entity';
+import { SUBJECT_TYPE, type SubjectType } from '../audit/entities/audit-event.entity';
 import { AuditService } from '../audit/audit.service';
+import { MaintenanceItem } from '../maintenance/entities/maintenance-item.entity';
 import { RepairRecord } from '../records/entities/repair-record.entity';
 import {
   ADVANCE_FOLLOW_UP_STATUSES,
@@ -35,8 +36,8 @@ const MAGIC_BYTES: Record<AllowedMimeType, readonly (number | null)[]> = {
 };
 const MAGIC_LENGTH = 12;
 
-/** Repair-record files only; the table stays general (subject type + subject id + purpose) for later modules. */
-const SUPPORTED_SUBJECT_TYPES = [SUBJECT_TYPE.REPAIR_RECORD] as const;
+/** The equipment document purpose (MT-S1 BR-MT-05), the only purpose of a MAINTENANCE_ITEM subject. */
+const ITEM_DOCUMENT = 'ITEM_DOCUMENT';
 
 const isManagerAt = (actor: AuthenticatedUser, record: RepairRecord, statuses: readonly string[]): boolean =>
   record.managerUserId === actor.id && hasCapability(actor, 'RECORD_EDIT') && statuses.includes(record.status);
@@ -76,7 +77,7 @@ const PURPOSE_RULES: Readonly<Record<string, (actor: AuthenticatedUser, record: 
     isManagerAt(actor, record, EXECUTION_STATUSES) ||
     (record.status === 'PENDING_ACCEPTANCE' && acceptanceStepsHeldBy(record, actor.id).length > 0),
 };
-const SUPPORTED_PURPOSES = Object.keys(PURPOSE_RULES);
+const RECORD_PURPOSES = Object.keys(PURPOSE_RULES);
 
 export const PURPOSE_LABEL: Readonly<Record<string, string>> = {
   SITE_PHOTO: 'Ảnh hiện trường',
@@ -89,7 +90,16 @@ export const PURPOSE_LABEL: Readonly<Record<string, string>> = {
   PAYMENT_REQUEST: 'Đề nghị thanh toán',
   INVOICE: 'Hóa đơn GTGT',
   PAYMENT_PROOF: 'Chứng từ chuyển khoản',
+  ITEM_DOCUMENT: 'Tài liệu thiết bị',
 };
+
+/** The subject a file is stored against: its id, building (scope) and version (audit). */
+interface UploadSubject {
+  subjectType: SubjectType;
+  id: string;
+  buildingId: string;
+  version: number;
+}
 
 const STEP_DENIED = 'Bước hiện tại không cho bạn tải loại tệp này.';
 const OUT_OF_LOCATION = 'Ngoài phạm vi khu vực của bạn.';
@@ -130,18 +140,18 @@ export class AttachmentsService {
     const key = randomUUID();
     try {
       return await this.dataSource.transaction(async (manager) => {
-        const repo = manager.getRepository(RepairRecord);
-        const record = await repo.findOne({ where: { id: dto.subjectId }, lock: { mode: 'pessimistic_read' } });
-        if (!record || !actor.buildingIds.includes(record.buildingId)) throw notFound('Không tìm thấy hồ sơ.');
-        this.assertCanUpload(actor, record, dto.purpose);
+        const subject =
+          dto.subjectType === SUBJECT_TYPE.MAINTENANCE_ITEM
+            ? await this.itemSubject(manager, actor, dto.subjectId)
+            : await this.recordSubject(manager, actor, dto.subjectId, dto.purpose);
 
         const attachmentRepo = manager.getRepository(Attachment);
         await this.storage.save(key, content);
         const saved = await attachmentRepo.save(
           attachmentRepo.create({
-            subjectType: SUBJECT_TYPE.REPAIR_RECORD,
-            subjectId: record.id,
-            buildingId: record.buildingId,
+            subjectType: subject.subjectType,
+            subjectId: subject.id,
+            buildingId: subject.buildingId,
             purpose: dto.purpose,
             fileName: (file?.originalname ?? '').slice(0, MAX_FILE_NAME_LENGTH) || 'tep',
             mimeType: file?.mimetype ?? '',
@@ -151,12 +161,12 @@ export class AttachmentsService {
           }),
         );
         await this.audit.record(manager, {
-          subjectType: SUBJECT_TYPE.REPAIR_RECORD,
-          subjectId: record.id,
-          buildingId: record.buildingId,
+          subjectType: subject.subjectType,
+          subjectId: subject.id,
+          buildingId: subject.buildingId,
           action: 'uploadAttachment',
           actorId: actor.id,
-          entityVersion: record.version,
+          entityVersion: subject.version,
           reason: PURPOSE_LABEL[dto.purpose] ?? dto.purpose,
         });
         return toAttachmentView(saved);
@@ -183,11 +193,12 @@ export class AttachmentsService {
     }
   }
 
-  /** Request targets outside T2's single supported combination answer a stable reason. */
+  /** Repair records take the record purposes, equipment only ITEM_DOCUMENT; anything else answers a stable reason. */
   private assertSupported(dto: UploadAttachmentDto): void {
-    const supportedSubject = (SUPPORTED_SUBJECT_TYPES as readonly string[]).includes(dto.subjectType);
-    const supportedPurpose = (SUPPORTED_PURPOSES as readonly string[]).includes(dto.purpose);
-    if (!supportedSubject || !supportedPurpose) {
+    const supported =
+      (dto.subjectType === SUBJECT_TYPE.REPAIR_RECORD && RECORD_PURPOSES.includes(dto.purpose)) ||
+      (dto.subjectType === SUBJECT_TYPE.MAINTENANCE_ITEM && dto.purpose === ITEM_DOCUMENT);
+    if (!supported) {
       throw badRequestWithReason('attachment_purpose_not_supported', 'Mục đích tệp chưa được hỗ trợ.');
     }
   }
@@ -206,6 +217,44 @@ export class AttachmentsService {
       throw fieldError('file', 'Nội dung tệp không đúng định dạng JPEG/PNG/WebP/PDF đã khai báo.');
     }
     return file.buffer;
+  }
+
+  /** A repair record in scope whose current step lets the caller add this purpose. */
+  private async recordSubject(
+    manager: EntityManager,
+    actor: AuthenticatedUser,
+    id: string,
+    purpose: string,
+  ): Promise<UploadSubject> {
+    const record = await manager
+      .getRepository(RepairRecord)
+      .findOne({ where: { id }, lock: { mode: 'pessimistic_read' } });
+    if (!record || !actor.buildingIds.includes(record.buildingId)) throw notFound('Không tìm thấy hồ sơ.');
+    this.assertCanUpload(actor, record, purpose);
+    return {
+      subjectType: SUBJECT_TYPE.REPAIR_RECORD,
+      id: record.id,
+      buildingId: record.buildingId,
+      version: record.version,
+    };
+  }
+
+  /** BR-MT-05: a BQL with MAINTENANCE_MANAGE, in the item's building and location scope, while the item is in use. */
+  private async itemSubject(manager: EntityManager, actor: AuthenticatedUser, id: string): Promise<UploadSubject> {
+    const item = await manager
+      .getRepository(MaintenanceItem)
+      .findOne({ where: { id }, lock: { mode: 'pessimistic_read' } });
+    if (!item || !actor.buildingIds.includes(item.buildingId)) throw notFound('Không tìm thấy thiết bị.');
+    if (actor.locationIds.length > 0 && !actor.locationIds.includes(item.locationId)) throw forbidden(OUT_OF_LOCATION);
+    if (!hasCapability(actor, 'MAINTENANCE_MANAGE') || !item.active) {
+      throw forbiddenWithReason('attachment_step_denied', STEP_DENIED);
+    }
+    return {
+      subjectType: SUBJECT_TYPE.MAINTENANCE_ITEM,
+      id: item.id,
+      buildingId: item.buildingId,
+      version: item.version,
+    };
   }
 
   /** Mirrors demo `assertCanUpload`: building → location → the purpose's step and actor rule. */
