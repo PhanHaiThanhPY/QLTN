@@ -102,7 +102,8 @@ export const WorkItemCard = ({ index, item, draft, occurrenceId, files, onChange
               </label>
               <Textarea id={`note-${item.id}`} rows={2} className="mt-1" value={draft.note} disabled={disabled} onChange={(event) => onChange({ note: event.target.value })} />
             </div>
-            <div className="space-y-1.5">
+            {/* Shared file controls get 44px targets here (ui-brief §4: gloves, one hand). */}
+            <div className="space-y-1.5 [&_button]:min-h-11 [&_button]:min-w-11">
               <span className="text-sm font-medium text-ink">
                 Ảnh{result === 'FAIL' || item.photoRequired ? <span className="text-crit"> *</span> : null}
               </span>

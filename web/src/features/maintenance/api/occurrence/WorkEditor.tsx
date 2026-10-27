@@ -133,7 +133,7 @@ export const WorkEditor = ({ detail, onCreateRepair, onReload }: WorkEditorProps
         <Field label="Người làm thực tế" htmlFor="work-worker" error={errors.actualWorker} hint="Ví dụ: thợ của nhà thầu.">
           <Input id="work-worker" className="min-h-11" maxLength={120} value={draft.actualWorker} disabled={busy} onChange={(event) => setDraft({ ...draft, actualWorker: event.target.value })} />
         </Field>
-        <div id="work-attachmentIds" tabIndex={-1} className="space-y-1.5">
+        <div id="work-attachmentIds" tabIndex={-1} className="space-y-1.5 [&_button]:min-h-11 [&_button]:min-w-11">
           <span className="text-sm font-medium text-ink">
             Ảnh chung <span className="text-crit">*</span>
           </span>
