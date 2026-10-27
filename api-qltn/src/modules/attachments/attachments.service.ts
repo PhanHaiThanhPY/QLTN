@@ -12,7 +12,12 @@ import { Clock } from '../../common/services/clock.service';
 import { ExploitationBidItem } from '../exploitation/entities/exploitation-bid-item.entity';
 import { ExploitationBid } from '../exploitation/entities/exploitation-bid.entity';
 import { ExploitationPackage } from '../exploitation/entities/exploitation-package.entity';
-import { BID_FILE_PURPOSE, PACKAGE_FILE_PURPOSE } from '../exploitation/exploitation-files';
+import {
+  BID_FILE_PURPOSE,
+  CONTRACT_FILE_PURPOSE,
+  PACKAGE_FILE_PURPOSE,
+  PACKAGE_PURPOSE_STATUSES,
+} from '../exploitation/exploitation-files';
 import { MaintenanceItem } from '../maintenance/entities/maintenance-item.entity';
 import { RepairRecord } from '../records/entities/repair-record.entity';
 import {
@@ -106,6 +111,9 @@ export const PURPOSE_LABEL: Readonly<Record<string, string>> = {
   ITEM_DOCUMENT: 'Tài liệu thiết bị',
   EXPLOITATION_DOCUMENT: 'Tài liệu mời thầu khai thác',
   BID_DOCUMENT: 'Tài liệu dự thầu',
+  SELECTION_MINUTES: 'Biên bản đánh giá',
+  ASSEMBLY_DOCUMENT: 'Tài liệu hội nghị',
+  CONTRACT_DOCUMENT: 'Tài liệu hợp đồng',
 };
 
 /** The subject a file is stored against: its id, building (scope) and version (audit). */
@@ -196,7 +204,14 @@ export class AttachmentsService {
     if (!attachment || !actor.buildingIds.includes(attachment.buildingId)) {
       throw notFound('Không tìm thấy tệp hoặc tệp ngoài phạm vi.');
     }
-    if (EXPLOITATION_SUBJECTS.includes(attachment.subjectType) && !hasCapability(actor, 'EXPLOITATION_VIEW')) {
+    // F-S2 D-F2-6: contract documents are for contract readers too (Kế toán); the rest is bid material.
+    const contractFile =
+      attachment.purpose === CONTRACT_FILE_PURPOSE && hasCapability(actor, 'EXPLOITATION_CONTRACT_VIEW');
+    if (
+      EXPLOITATION_SUBJECTS.includes(attachment.subjectType) &&
+      !hasCapability(actor, 'EXPLOITATION_VIEW') &&
+      !contractFile
+    ) {
       throw forbidden('Vai trò của bạn không xem được tài liệu khai thác.');
     }
     try {
@@ -213,7 +228,8 @@ export class AttachmentsService {
   private assertSupported(dto: UploadAttachmentDto): void {
     const supported =
       (dto.subjectType === SUBJECT_TYPE.REPAIR_RECORD && RECORD_PURPOSES.includes(dto.purpose)) ||
-      SUBJECT_PURPOSE[dto.subjectType] === dto.purpose;
+      SUBJECT_PURPOSE[dto.subjectType] === dto.purpose ||
+      (dto.subjectType === SUBJECT_TYPE.EXPLOITATION_PACKAGE && Object.hasOwn(PACKAGE_PURPOSE_STATUSES, dto.purpose));
     if (!supported) {
       throw badRequestWithReason('attachment_purpose_not_supported', 'Mục đích tệp chưa được hỗ trợ.');
     }
@@ -244,7 +260,7 @@ export class AttachmentsService {
       case SUBJECT_TYPE.MAINTENANCE_ITEM:
         return this.itemSubject(manager, actor, dto.subjectId);
       case SUBJECT_TYPE.EXPLOITATION_PACKAGE:
-        return this.packageSubject(manager, actor, dto.subjectId);
+        return this.packageSubject(manager, actor, dto.subjectId, dto.purpose);
       case SUBJECT_TYPE.EXPLOITATION_BID:
         return this.bidSubject(manager, actor, dto.subjectId);
       default:
@@ -253,12 +269,20 @@ export class AttachmentsService {
   }
 
   /** F-S1: a BQL of the package's building, while it is a draft or open (a corrected issue). */
-  private async packageSubject(manager: EntityManager, actor: AuthenticatedUser, id: string): Promise<UploadSubject> {
+  private async packageSubject(
+    manager: EntityManager,
+    actor: AuthenticatedUser,
+    id: string,
+    purpose: string,
+  ): Promise<UploadSubject> {
     const pkg = await manager
       .getRepository(ExploitationPackage)
       .findOne({ where: { id }, lock: { mode: 'pessimistic_read' } });
     if (!pkg || !actor.buildingIds.includes(pkg.buildingId)) throw notFound('Không tìm thấy gói khai thác.');
-    if (!hasCapability(actor, 'EXPLOITATION_MANAGE') || (pkg.status !== 'DRAFT' && pkg.status !== 'OPEN')) {
+    if (
+      !hasCapability(actor, 'EXPLOITATION_MANAGE') ||
+      !(PACKAGE_PURPOSE_STATUSES[purpose] ?? []).includes(pkg.status)
+    ) {
       throw forbiddenWithReason('attachment_step_denied', STEP_DENIED);
     }
     return {
