@@ -1,7 +1,7 @@
 ---
 id: B07.S1
 title: Bản xem và in theo mẫu D5
-status: Chờ duyệt
+status: Đã duyệt
 owner: PM/BA
 intent: "Mỗi tờ trình, biên bản nghiệm thu và thư đề nghị thanh toán có bản A4 in được theo đúng mẫu khách đang dùng, lấy từ dữ liệu và chữ ký đã có."
 depends_on: []
@@ -9,7 +9,7 @@ depends_on: []
 
 # SPEC: Bản xem và in theo mẫu D5 (B7-S1)
 
-**Chủ sở hữu:** PM/BA · **Cập nhật:** 27/10/2026 · **Trạng thái:** `Chờ duyệt`
+**Chủ sở hữu:** PM/BA · **Cập nhật:** 27/10/2026 · **Trạng thái:** `Đã duyệt`, chủ dự án duyệt ngày 27/10/2026 (PD-20), gồm 3 lựa chọn: không in chức danh; "Kính gửi" tự điền BQT tòa; đợt quyết toán 0 đồng không có thư đề nghị
 
 **Nguồn:**
 - Phân tích [B07-ky-va-bieu-mau.md](../../modules/B07-ky-va-bieu-mau.md), đã duyệt (PD-18): B7G-01, B7G-02, B7G-07; các mặc định B7Q-01, B7Q-04.
@@ -170,4 +170,5 @@ Chỉ chạy các test liên quan.
 
 | Ngày | Thay đổi |
 |---|---|
-| 27/10/2026 | Viết từ phân tích B07 (PD-18). Chờ chủ dự án duyệt (PD-08). |
+| 27/10/2026 | Viết từ phân tích B07 (PD-18). |
+| 27/10/2026 | Chủ dự án duyệt (PD-20) và cho giao dev-build. |
