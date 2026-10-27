@@ -76,6 +76,9 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     setupFiles: ['./src/test/setup.ts'],
+    // Tests never read a developer's web/.env.local: the demo (mock) source is the default under test, and tests that
+    // need api mode mock '@/config/data-source' themselves. The dev-only login prefill stays off.
+    env: { VITE_DATA_SOURCE: 'mock', VITE_DEV_LOGIN_USERNAME: '', VITE_DEV_LOGIN_PASSWORD: '' },
     // Service tests intentionally share a replaceable IndexedDB/session singleton.
     // Running files in parallel lets one test replace another test's active database.
     fileParallelism: false,
