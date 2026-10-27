@@ -32,6 +32,8 @@ const ExploitationPackagesPage = lazy(() => import('@/features/exploitation/Pack
 const ExploitationPackagePage = lazy(() => import('@/features/exploitation/PackageDetailPage'));
 const ExploitationBidPage = lazy(() => import('@/features/exploitation/BidPage'));
 const ExploitationPartnersPage = lazy(() => import('@/features/exploitation/PartnersPage'));
+const ExploitationContractsPage = lazy(() => import('@/features/exploitation/ContractsPage'));
+const ExploitationContractPage = lazy(() => import('@/features/exploitation/ContractPage'));
 const OccurrenceDetailPage = lazy(() => import('@/features/maintenance/OccurrenceDetailPage'));
 const ReportsPage = lazy(() => import('@/features/reports'));
 const AuditLogPage = lazy(() => import('@/features/audit'));
@@ -81,6 +83,8 @@ export const router = createBrowserRouter([
       { path: 'exploitation/packages/:packageId', element: apiConnected(page(<ExploitationPackagePage />)) },
       { path: 'exploitation/packages/:packageId/bids/:bidId', element: apiConnected(page(<ExploitationBidPage />)) },
       { path: 'exploitation/partners', element: apiConnected(page(<ExploitationPartnersPage />)) },
+      { path: 'exploitation/contracts', element: apiConnected(page(<ExploitationContractsPage />)) },
+      { path: 'exploitation/contracts/:contractId', element: apiConnected(page(<ExploitationContractPage />)) },
       { path: 'maintenance/occurrences/:occurrenceId', element: connected(page(<OccurrenceDetailPage />)) },
       { path: 'reports', element: connected(page(<ReportsPage />)) },
       { path: 'audit', element: apiConnected(page(<AuditLogPage />)) },

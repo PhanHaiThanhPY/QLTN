@@ -69,8 +69,14 @@ describe('Quỹ khai thác (SPEC F-S1 ui-brief §0, AC-F1.14)', () => {
     expect(visibleNavItems(userOf(role), true).map((item) => item.label)).toEqual(expect.arrayContaining(GROUP));
   });
 
-  it.each(['TECH_CONFIRMER', 'ACCOUNTANT', 'ADMIN'] as const)('hides it from %s', (role) => {
+  it.each(['TECH_CONFIRMER', 'ACCOUNTANT', 'ADMIN'] as const)('hides the bid entries from %s', (role) => {
     const labels = visibleNavItems(userOf(role), true).map((item) => item.label);
+    for (const label of GROUP) expect(labels).not.toContain(label);
+  });
+
+  it('shows "Hợp đồng khai thác" to Kế toán without the bid entries (F-S2 D-F2-6)', () => {
+    const labels = visibleNavItems(userOf('ACCOUNTANT'), true).map((item) => item.label);
+    expect(labels).toContain('Hợp đồng khai thác');
     for (const label of GROUP) expect(labels).not.toContain(label);
   });
 
