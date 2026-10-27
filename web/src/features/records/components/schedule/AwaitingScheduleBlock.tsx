@@ -45,7 +45,7 @@ export const AwaitingScheduleBlock = ({ filters }: AwaitingScheduleBlockProps) =
             <li key={record.id}>
               <Link to={`/records/${record.id}`} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-2 text-sm hover:text-accent">
                 <span className="font-medium text-accent">{record.code}</span>
-                <span className="min-w-0 flex-1 font-medium text-ink">{record.title || '(Chưa đặt tên)'}</span>
+                <span className="min-w-48 flex-1 font-medium text-ink">{record.title || '(Chưa đặt tên)'}</span>
                 <MaintenanceLocationTrail data={data} buildingId={record.buildingId} locationId={record.locationId} compact />
                 <span className="text-xs text-ink-2">
                   {readySince ? `Duyệt xong ${formatDate(toVnDate(readySince)).slice(0, 5)}` : null}
@@ -73,10 +73,10 @@ export const AwaitingScheduleBlock = ({ filters }: AwaitingScheduleBlockProps) =
         aria-expanded={isOpen}
         aria-controls={BODY_ID}
         onClick={() => setExpanded(!isOpen)}
-        className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm"
+        className="flex w-full flex-wrap items-center gap-x-2 gap-y-0.5 px-4 py-3 text-left text-sm"
       >
         <Chevron className="size-4 text-ink-3" aria-hidden />
-        <span className="font-semibold text-ink">Chờ xếp lịch ({total})</span>
+        <span className="whitespace-nowrap font-semibold text-ink">Chờ xếp lịch ({total})</span>
         <span className="text-ink-3">— đã duyệt, chưa bắt đầu thi công</span>
       </button>
       {isOpen ? <div id={BODY_ID} className="border-t border-line px-4 py-2">{renderBody()}</div> : null}
