@@ -66,6 +66,8 @@ export const CAPABILITY = {
   FUND_VIEW: 'FUND_VIEW',
   /** Approve payment vouchers, a paid voucher's cancellation and a change of the opening balance (F-S3, BQT). */
   FUND_APPROVE: 'FUND_APPROVE',
+  /** See and export the fund report (F-S5 BR-F5-15: BQT and Kế toán, never BQL, D-F5-5). */
+  FUND_REPORT: 'FUND_REPORT',
 } as const;
 export type Capability = (typeof CAPABILITY)[keyof typeof CAPABILITY];
 export const CAPABILITIES = Object.values(CAPABILITY);
@@ -121,9 +123,18 @@ const ROLE_CAPABILITIES: Readonly<Record<Role, readonly Capability[]>> = {
     'EXPLOITATION_CONTRACT_VIEW',
     'FUND_VIEW',
     'FUND_APPROVE',
+    'FUND_REPORT',
   ],
   // Kế toán on the BQT side: confirms transfers and runs fund money operations (DF-10).
-  ACCOUNTANT: ['VIEW', 'PAYMENT_CONFIRM', 'FUND_OPERATE', 'FUND_VIEW', 'REPORT_VIEW', 'EXPLOITATION_CONTRACT_VIEW'],
+  ACCOUNTANT: [
+    'VIEW',
+    'PAYMENT_CONFIRM',
+    'FUND_OPERATE',
+    'FUND_VIEW',
+    'FUND_REPORT',
+    'REPORT_VIEW',
+    'EXPLOITATION_CONTRACT_VIEW',
+  ],
 };
 
 export const isRole = (value: unknown): value is Role => typeof value === 'string' && ROLES.includes(value as Role);

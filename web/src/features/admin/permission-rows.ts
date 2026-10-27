@@ -50,6 +50,7 @@ export const PERMISSION_ROWS: readonly PermissionRow[] = [
   { group: 'Quỹ', label: 'Xem hợp đồng khai thác và lịch phải thu (không xem giá chào)', capability: 'EXPLOITATION_CONTRACT_VIEW' },
   { group: 'Quỹ', label: 'Xem sổ quỹ, thuế và phiếu chi', capability: 'FUND_VIEW' },
   { group: 'Quỹ', label: 'Duyệt phiếu chi, hủy phiếu đã chi và đổi số dư đầu của quỹ', capability: 'FUND_APPROVE' },
+  { group: 'Quỹ', label: 'Xem và xuất báo cáo thu chi quỹ khai thác', capability: 'FUND_REPORT' },
   { group: 'Bảo trì', label: 'Tạo/sửa/vô hiệu hóa hạng mục bảo trì', capability: 'MAINTENANCE_MANAGE' },
   { group: 'Bảo trì', label: 'Tạo/sửa/kích hoạt/tạm dừng/đổi lịch kế hoạch', capability: 'MAINTENANCE_MANAGE' },
   { group: 'Bảo trì', label: 'Kích hoạt sinh lịch tự động khi mở màn hình (chạy dưới danh nghĩa SYSTEM)', capability: 'ALL' },

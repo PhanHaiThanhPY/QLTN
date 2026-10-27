@@ -93,6 +93,7 @@ describe('Role matrix v2, RM-S1 (e2e)', () => {
     expect([...accountant.capabilities].sort()).toEqual([
       'EXPLOITATION_CONTRACT_VIEW',
       'FUND_OPERATE',
+      'FUND_REPORT',
       'FUND_VIEW',
       'PAYMENT_CONFIRM',
       'REPORT_VIEW',
@@ -186,6 +187,7 @@ describe('Role matrix v2, RM-S1 (e2e)', () => {
       'EXPLOITATION_CONTRACT_VIEW',
       'FUND_VIEW',
       'FUND_APPROVE',
+      'FUND_REPORT',
     ];
     expect(legacy.newBaseCapabilities).toEqual(gained);
     const holder = await accountWith('BQT-CU', legacy.id, 'BQT');
