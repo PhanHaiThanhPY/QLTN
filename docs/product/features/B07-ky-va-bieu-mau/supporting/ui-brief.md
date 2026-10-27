@@ -169,11 +169,12 @@ screens: [documents-tab, print-preview-proposal, print-preview-minutes, print-pr
 | Trạng thái | Hành vi |
 |---|---|
 | Loading | Tab: 3 dòng khung xương. Trang xem: khung xương hình tờ A4; nút In bị khóa đến khi có dữ liệu **và** mọi ảnh chữ ký đã tải xong (để bản in không thiếu chữ ký) |
+| Lỗi tải ảnh chữ ký | Nút In vẫn bị khóa. Trên tờ giấy hiện `Notice` tone danger: "Không tải được chữ ký của «họ tên». Tải lại trang để in đủ chữ ký.", kèm nút "Tải lại". Ô ký lỗi hiện họ tên và dòng "Không tải được ảnh chữ ký". Không bao giờ in một tài liệu mà chữ ký đã có lại bị thiếu (làm rõ 27/10 khi review B7-S1) |
 | Rỗng | Tab: "Chưa có tài liệu nào để in. Tài liệu xuất hiện khi hồ sơ được trình, nghiệm thu hoặc đề nghị thanh toán." |
 | Lỗi 404 / ngoài phạm vi | Trang xem: "Không tìm thấy hồ sơ hoặc tài liệu" kèm nút "Về danh sách hồ sơ". Không hiện bất kỳ dữ liệu nào |
 | Lỗi mạng / 5xx | Tab và trang xem: `Notice` lỗi kèm nút "Thử lại". Toast theo cách chung của ứng dụng |
 | Offline | Trang đã tải xong vẫn xem và in được, vì không cần gọi thêm API. Nếu chưa tải xong: "Đang mất kết nối — không tải được tài liệu." |
-| Accessibility | Trang xem có `<main>` với tiêu đề `h1` là tên tài liệu. Bảng có `<th scope>`. Ảnh chữ ký có `alt="Chữ ký của «họ tên»"`. Chữ chìm có `aria-hidden`, còn trạng thái chưa duyệt được đọc qua một dòng ẩn chỉ dành cho trình đọc màn hình ("Bản chưa phê duyệt"). Nút In và liên kết "Về hồ sơ" dùng được bằng bàn phím. Độ tương phản chữ trên tờ giấy là đen trên trắng |
+| Accessibility | Trang xem có `<main>` với tiêu đề `h1` là tên tài liệu. Bảng có `<th scope>`. Ảnh chữ ký có `alt="Chữ ký của «họ tên»"`. Chữ chìm có `aria-hidden`, còn trạng thái được đọc qua một dòng ẩn chỉ dành cho trình đọc màn hình, khớp đúng chữ chìm đang hiện ("Bản chưa phê duyệt" hoặc "Bản chưa hoàn tất"). Nút In và liên kết "Về hồ sơ" dùng được bằng bàn phím. Độ tương phản chữ trên tờ giấy là đen trên trắng |
 
 ## 5. Phân biệt thật và mock
 
