@@ -132,7 +132,10 @@ describe('Repair records (e2e)', () => {
     expect(created.managerUserId).toBeTruthy();
     expect(created.confirmationUserId).toBe(userOfA('KT-A').id);
     expect(created.approvalStepKeys).toEqual(['TECH', 'BOARD']);
-    expect(created.workflowApprovalSteps.map((step) => step.key)).toEqual(['TECH', 'BOARD']);
+    // FX-S3 BR-FX3-01: the record snapshots the steps of every stage, not only the proposal chain, so the INTAKE and
+    // ACCEPTANCE step TECH_CONFIRM of the default stages is kept too (each step once).
+    expect(created.workflowApprovalSteps.map((step) => step.key)).toEqual(['TECH', 'BOARD', 'TECH_CONFIRM']);
+    expect(created.approvalAssigneeUserIds.TECH_CONFIRM).toBe(userOfA('KT-A').id);
     expect(created.approvalAssigneeUserIds.TECH).toBe(userOfA('TVKT').id);
     expect(created.approvalAssigneeUserIds.BOARD).toBe(userOfA('BQT').id);
     expect(created.dueDays).toEqual(configA.taskDueDays);
