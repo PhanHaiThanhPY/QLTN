@@ -11,6 +11,7 @@ import type { Department, RoleDefinition, User } from '@/domain/types';
 import { useCommand } from '@/hooks/useCommand';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useReferenceData } from '@/hooks/useReferenceData';
+import { isOutsideViewerScope } from '../account-scope';
 import { PASSWORD_LIMITS, passwordError } from '@/services/http/mappers';
 import { AccountHistory, accountHistoryKey } from './AccountHistory';
 import { ResetPasswordDialog } from './ResetPasswordDialog';
@@ -67,7 +68,7 @@ export const UserDialog = ({ user, departments, roles, onClose }: UserDialogProp
   const viewerCan = (capability: 'ACCOUNT_MANAGE' | 'ADMIN_VIEW'): boolean => Boolean(viewer && hasCapability(viewer, capability));
   const isOtherAccount = Boolean(user && viewer && user.id !== viewer.id);
   // FX-S1 BR-FX1-04: an account with a building outside the viewer's scope is read-only (the API refuses writes).
-  const isReadOnly = Boolean(user && viewer && user.buildingIds.some((id) => !viewer.buildingIds.includes(id)));
+  const isReadOnly = Boolean(user && isOutsideViewerScope(user, viewer));
   const canResetPassword = IS_API_MODE && isOtherAccount && !isReadOnly && viewerCan('ACCOUNT_MANAGE');
   const canSeeHistory = IS_API_MODE && Boolean(user) && viewerCan('ADMIN_VIEW');
   const submit = () => {

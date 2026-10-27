@@ -6,6 +6,8 @@ import { Input, NativeSelect } from '@/components/ui/input';
 import { Table, Td, Th, Tr } from '@/components/ui/table';
 import { ROLE_LABEL } from '@/domain/constants';
 import type { Building, Department, RoleDefinition, User } from '@/domain/types';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { isOutsideViewerScope } from '../account-scope';
 import { UserDialog } from './UserDialog';
 import { useOpenFromQuery } from '../hooks/useOpenFromQuery';
 
@@ -19,6 +21,7 @@ interface AccountsCardProps {
 
 /** Employee directory: role, department and operational scope used by workflow rules. */
 export const AccountsCard = ({ users, departments, roles, buildings, buildingCode }: AccountsCardProps) => {
+  const viewer = useCurrentUser();
   const [editing, setEditing] = useState<User | 'new' | null>(null);
   useOpenFromQuery(users, setEditing);
   const [query, setQuery] = useState('');
@@ -27,6 +30,11 @@ export const AccountsCard = ({ users, departments, roles, buildings, buildingCod
   const [buildingFilter, setBuildingFilter] = useState('');
   const roleName = (user: User) => roles.find((role) => role.id === user.roleDefId)?.name ?? ROLE_LABEL[user.role];
   const departmentName = (user: User) => departments.find((department) => department.id === user.departmentId)?.name ?? 'Chưa gán bộ phận';
+  // FX-S1 BR-FX1-04: an account wider than the viewer opens read-only ("Xem"), administrators included.
+  const rowActionLabel = (user: User): string | null => {
+    if (isOutsideViewerScope(user, viewer)) return 'Xem';
+    return user.role === 'ADMIN' ? null : 'Sửa';
+  };
   const buildingsOf = (user: User) => `Tòa ${user.buildingIds.map((id) => buildingCode(id)).join(', ')}`;
   const systemRoles = useMemo(() => roles.filter((role) => role.isSystem), [roles]);
   const filteredUsers = useMemo(() => {
@@ -88,11 +96,11 @@ export const AccountsCard = ({ users, departments, roles, buildings, buildingCod
                 <Td>{roleName(user)}</Td>
                 <Td className="text-ink-2">{buildingsOf(user)}</Td>
                 <Td className="text-right">
-                  {user.role === 'ADMIN' ? null : (
+                  {rowActionLabel(user) ? (
                     <Button size="xs" variant="ghost" onClick={() => setEditing(user)}>
-                      Sửa
+                      {rowActionLabel(user)}
                     </Button>
-                  )}
+                  ) : null}
                 </Td>
               </Tr>
             ))}
