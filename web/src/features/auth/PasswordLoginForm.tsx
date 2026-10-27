@@ -10,6 +10,7 @@ import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { isAppError, toErrorMessage } from '@/domain/errors';
 import { useSessionStore } from '@/store/session-store';
+import { loginDefaults } from './dev-login-defaults';
 
 const loginSchema = z.object({
   username: z.string().trim().min(1, 'Vui lòng nhập tên đăng nhập.').max(100, 'Tên đăng nhập tối đa 100 ký tự.'),
@@ -26,7 +27,7 @@ export const PasswordLoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const { register, handleSubmit, setError, formState } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { username: '', password: '' },
+    defaultValues: loginDefaults(),
   });
   const errors = formState.errors;
 
