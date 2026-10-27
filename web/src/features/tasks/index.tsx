@@ -121,10 +121,10 @@ const TasksPage = () => {
       />
       {online ? null : <p className="mb-3 text-xs text-ink-3">Đang mất kết nối, danh sách có thể chưa mới nhất.</p>}
       <div className="mb-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <TaskMetricCard icon={ClipboardList} label="Đang mở" value={counts.open} hint="Việc đang chờ bạn" tone="neutral" pressed={tab === 'open' && filters.due === 'ALL'} onSelect={() => showDue('ALL')} />
+        <TaskMetricCard icon={ClipboardList} label="Đang mở" shortLabel="Đang mở" value={counts.open} hint="Việc đang chờ bạn" tone="neutral" pressed={tab === 'open' && filters.due === 'ALL'} onSelect={() => showDue('ALL')} />
         <TaskMetricCard icon={AlertCircle} label="Quá hạn" value={counts.overdue} hint="Cần làm trước" tone="crit" pressed={tab === 'open' && filters.due === 'OVERDUE'} onSelect={() => showDue('OVERDUE')} />
-        <TaskMetricCard icon={CalendarClock} label="Đến hạn hôm nay" value={counts.dueToday} hint="Chưa quá hạn" tone="warn" pressed={tab === 'open' && filters.due === 'TODAY'} onSelect={() => showDue('TODAY')} />
-        <TaskMetricCard icon={CheckCircle2} label="Đã hoàn thành (30 ngày)" value={counts.done} hint="Việc bạn đã làm" tone="good" pressed={tab === 'done'} onSelect={() => setTab('done')} />
+        <TaskMetricCard icon={CalendarClock} label="Đến hạn hôm nay" shortLabel="Hôm nay" value={counts.dueToday} hint="Chưa quá hạn" tone="warn" pressed={tab === 'open' && filters.due === 'TODAY'} onSelect={() => showDue('TODAY')} />
+        <TaskMetricCard icon={CheckCircle2} label="Đã hoàn thành (30 ngày)" shortLabel="Đã xong" value={counts.done} hint="Việc bạn đã làm" tone="good" pressed={tab === 'done'} onSelect={() => setTab('done')} />
       </div>
       <div className="mb-4">
         <AssistantInsight

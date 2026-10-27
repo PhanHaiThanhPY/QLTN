@@ -6,6 +6,7 @@ import { hasCapability } from '../../common/auth/scope';
 import { vnDate } from '../../common/utils/vn-date';
 import { AuditEvent, SUBJECT_TYPE } from '../audit/entities/audit-event.entity';
 import { RepairRecord } from '../records/entities/repair-record.entity';
+import { NO_BUILDING } from '../records/record-scope-query';
 import { RECORD_FINAL_STATUSES } from '../records/record-status-groups';
 import { loadTaskFacts } from './task-facts';
 import { COMPLETED_ACTIONS, REPAIR_TASK_KINDS, type RepairTaskKind } from './task-kinds';
@@ -101,11 +102,15 @@ export class TasksService {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
   async mine(actor: AuthenticatedUser, now = new Date()): Promise<MyTasksView> {
-    const [open, done] = await Promise.all([this.openTasks(actor, now), this.doneTasks(actor, now)]);
+    const [open, done, doneCount] = await Promise.all([
+      this.openTasks(actor, now),
+      this.doneTasks(actor, now),
+      this.doneQuery(actor, now).getCount(),
+    ]);
     const today = vnDate(now);
     const overdue = open.filter((task) => task.isOverdue).length;
     const dueToday = open.filter((task) => !task.isOverdue && task.dueAt && vnDate(task.dueAt) === today).length;
-    return { asOf: now, today, open, done, counts: { open: open.length, overdue, dueToday, done: done.length } };
+    return { asOf: now, today, open, done, counts: { open: open.length, overdue, dueToday, done: doneCount } };
   }
 
   /** BR-TK-01..03 over every open record of the viewer's buildings; nobody else's tasks are reachable (BR-TK-09). */
@@ -137,20 +142,27 @@ export class TasksService {
       .sort(compareTasks);
   }
 
-  /** BR-TK-06: the viewer's own moves of the last 30 days, from the audit trail, newest first. */
-  private async doneTasks(actor: AuthenticatedUser, now: Date): Promise<DoneTaskView[]> {
-    if (actor.buildingIds.length === 0) return [];
-    const rows = await this.dataSource
+  /** BR-TK-06: the viewer's own moves of the last 30 days, from the audit trail (its count is not capped). */
+  private doneQuery(actor: AuthenticatedUser, now: Date) {
+    return this.dataSource
       .getRepository(AuditEvent)
       .createQueryBuilder('a')
       .innerJoin(RepairRecord, 'r', 'r.id = a.subject_id')
-      .select(['a.id AS "id"', 'a.action AS "action"', 'a.created_at AS "at"'])
-      .addSelect(['r.id AS "recordId"', 'r.code AS "code"', 'r.title AS "title"', 'r.building_id AS "buildingId"'])
       .where('a.subject_type = :type', { type: SUBJECT_TYPE.REPAIR_RECORD })
       .andWhere('a.actor_id = :actorId', { actorId: actor.id })
       .andWhere('a.action IN (:...actions)', { actions: Object.keys(COMPLETED_ACTIONS) })
       .andWhere('a.created_at >= :since', { since: new Date(now.getTime() - DONE_DAYS * DAY_MS) })
-      .andWhere('r.building_id IN (:...buildings)', { buildings: actor.buildingIds })
+      .andWhere('r.building_id IN (:...buildings)', {
+        buildings: actor.buildingIds.length ? actor.buildingIds : [NO_BUILDING],
+      });
+  }
+
+  /** The newest done tasks, at most DONE_LIMIT rows. */
+  private async doneTasks(actor: AuthenticatedUser, now: Date): Promise<DoneTaskView[]> {
+    if (actor.buildingIds.length === 0) return [];
+    const rows = await this.doneQuery(actor, now)
+      .select(['a.id AS "id"', 'a.action AS "action"', 'a.created_at AS "at"'])
+      .addSelect(['r.id AS "recordId"', 'r.code AS "code"', 'r.title AS "title"', 'r.building_id AS "buildingId"'])
       .orderBy('a.created_at', 'DESC')
       .limit(DONE_LIMIT)
       .getRawMany<{
