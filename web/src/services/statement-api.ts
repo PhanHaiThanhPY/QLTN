@@ -27,6 +27,7 @@ export interface LedgerSide {
   sourceId: string;
   sourceCode: string;
   description: string;
+  internal: boolean;
 }
 
 export interface ReconciliationMonth {

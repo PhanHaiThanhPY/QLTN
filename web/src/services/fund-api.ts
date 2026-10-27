@@ -5,9 +5,19 @@ import type { ApiAttachment, ApiAuditEvent } from './http/mappers';
 
 /** SPEC F-S3 shapes as the API answers them (api mode only). Money is integer VND as a string; the server sums it. */
 /** F-S4 adds BANK_FEE and INTEREST, recorded from the bank statement. */
-export type LedgerCategory = 'CONTRACT_RECEIPT' | 'DEPOSIT' | 'TAX' | 'SERVICE' | 'TRANSFER' | 'OTHER' | 'BANK_FEE' | 'INTEREST';
+export type LedgerCategory =
+  | 'CONTRACT_RECEIPT'
+  | 'DEPOSIT'
+  | 'TAX'
+  | 'SERVICE'
+  | 'TRANSFER'
+  | 'OTHER'
+  | 'BANK_FEE'
+  | 'INTEREST'
+  | 'DEPOSIT_REFUND';
 export type LedgerDirection = 'IN' | 'OUT';
-export type VoucherCategory = 'SERVICE' | 'TRANSFER' | 'OTHER';
+/** F-S5 adds DEPOSIT_REFUND ("Hoàn cọc"), naming its contract. */
+export type VoucherCategory = 'SERVICE' | 'TRANSFER' | 'OTHER' | 'DEPOSIT_REFUND';
 export type VoucherStatus = 'DRAFT' | 'PENDING' | 'NEEDS_CHANGES' | 'APPROVED' | 'REJECTED' | 'PAID' | 'CANCELLED';
 
 export interface Fund {
@@ -32,7 +42,7 @@ export interface LedgerRow {
   direction: LedgerDirection;
   amountVnd: string;
   category: LedgerCategory;
-  sourceType: 'RECEIPT' | 'DEPOSIT' | 'TAX_PAYMENT' | 'VOUCHER' | 'STATEMENT';
+  sourceType: 'RECEIPT' | 'DEPOSIT' | 'TAX_PAYMENT' | 'VOUCHER' | 'STATEMENT' | 'DEPOSIT_OFFSET';
   sourceId: string;
   sourceCode: string;
   description: string;
@@ -42,6 +52,8 @@ export interface LedgerRow {
   contractId: string | null;
   /** F-S4 BR-F4-11: the bank line it is matched with. */
   statementCode: string | null;
+  /** F-S5: a deposit offset's line ("Nội bộ"). */
+  internal: boolean;
   createdBy: string;
   createdAt: string;
 }
@@ -109,6 +121,8 @@ export interface Voucher {
   buildingId: string;
   category: VoucherCategory;
   targetFundKind: 'BAO_TRI' | null;
+  /** F-S5: the contract a refund pays back. */
+  contractId: string | null;
   content: string;
   payeeName: string;
   payeeAccount: string | null;

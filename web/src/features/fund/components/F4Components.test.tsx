@@ -28,6 +28,7 @@ const entry = (sourceCode: string, entryDate: string, amountVnd: string, directi
   sourceId: sourceCode,
   sourceCode,
   description: sourceCode,
+  internal: false,
 });
 
 const view = (patch: Partial<ReconciliationMonth> = {}): ReconciliationMonth => ({

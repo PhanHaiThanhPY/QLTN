@@ -13,6 +13,7 @@ export const CATEGORY_TEXT: Readonly<Record<LedgerCategory, string>> = {
   OTHER: 'Chi khác',
   BANK_FEE: 'Phí ngân hàng',
   INTEREST: 'Lãi không kỳ hạn',
+  DEPOSIT_REFUND: 'Hoàn cọc',
 } as const;
 
 /** Short names for the ledger's "Nhóm" column (ui-brief §2.1). */
@@ -25,6 +26,7 @@ export const CATEGORY_SHORT: Readonly<Record<LedgerCategory, string>> = {
   OTHER: 'Chi khác',
   BANK_FEE: 'Phí NH',
   INTEREST: 'Lãi',
+  DEPOSIT_REFUND: 'Hoàn cọc',
 } as const;
 
 export const DIRECTION_TEXT: Readonly<Record<LedgerDirection, string>> = { IN: 'Thu', OUT: 'Chi' } as const;
@@ -33,6 +35,7 @@ export const VOUCHER_CATEGORY_TEXT: Readonly<Record<VoucherCategory, string>> = 
   SERVICE: 'Chi dịch vụ',
   TRANSFER: 'Chuyển sang quỹ khác',
   OTHER: 'Chi khác',
+  DEPOSIT_REFUND: 'Hoàn cọc',
 } as const;
 
 /** D-F3-4: until group T exists, the maintenance fund is the only receiving fund. */

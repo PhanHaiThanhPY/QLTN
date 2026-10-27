@@ -38,6 +38,8 @@ export interface LedgerRow {
   contractId: string | null;
   /** F-S4 BR-F4-11: the bank line (GD-…) it is matched with. */
   statementCode: string | null;
+  /** F-S5 BR-F5-10: a deposit offset's line ("Nội bộ"). */
+  internal: boolean;
   createdBy: string;
   createdAt: Date;
 }
@@ -87,6 +89,7 @@ export const ledgerRow = (
   reconciliation: entry.reconciliation,
   contractId,
   statementCode,
+  internal: entry.internal,
   createdBy: entry.createdBy,
   createdAt: entry.createdAt,
 });

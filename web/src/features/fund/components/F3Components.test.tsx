@@ -29,6 +29,7 @@ const period = (n: number, dueDate: string): Receivable => ({
   revision: 1,
   status: 'NOT_DUE',
   paidVnd: '0',
+  writtenOffVnd: '0',
   remainingVnd: '20000000',
   overdueVnd: '0',
   receipts: [],
@@ -57,6 +58,7 @@ describe('F-S3 components', () => {
     const collection: Collection = {
       dueVnd: '20000000',
       paidVnd: '15000000',
+      writtenOffVnd: '0',
       remainingVnd: '5000000',
       overdueVnd: '0',
       current: { receivableId: 'k1', periodNo: 1, percentPaid: 75 },
@@ -87,6 +89,7 @@ describe('F-S3 components', () => {
       reconciliation: 'UNRECONCILED' as const,
       contractId: 'c1',
       statementCode: null,
+      internal: false,
       createdBy: 'u1',
       createdAt: '2026-11-18T02:00:00Z',
       ...extra,

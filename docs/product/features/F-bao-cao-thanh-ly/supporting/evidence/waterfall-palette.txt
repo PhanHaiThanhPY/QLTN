@@ -1,0 +1,57 @@
+# Màu thác nước F-S5 (BR-F5-02, ui-brief §0): kiểm bằng dataviz validate_palette.js, --pairs all
+# Đầu kỳ/Cuối kỳ = --series-1 · +Thu = --series-2 · −Chi = --series-3. Bề mặt: sáng #ffffff, tối #102f41.
+# Hai bộ đã thử và bị loại (thu xanh dương): xem cuối tệp.
+
+$ node validate_palette.js "#00929b,#6a4fd6,#eb6834" --mode light --surface "#ffffff" --pairs all
+
+Palette (light, surface #ffffff, categorical): 3 slots
+  [PASS] Lightness band         all 3 inside L 0.43–0.77
+  [PASS] Chroma floor           all 3 >= 0.1
+  [PASS] CVD separation         worst all-pairs #eb6834↔#00929b ΔE 13.6 (protan) · tritan 11.9
+  [PASS] Normal-vision floor    worst all-pairs #6a4fd6↔#00929b ΔE 22.4 (normal)
+  [PASS] Contrast vs surface    all 3 >= 3:1
+
+  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check text contrast with this script's apca() or contrast(); for a sequential ramp, lightness monotonicity.
+
+
+$ node validate_palette.js "#1ba59f,#8f78ec,#d95926" --mode dark --surface "#102f41" --pairs all
+
+Palette (dark, surface #102f41, categorical): 3 slots
+  [PASS] Lightness band         all 3 inside L 0.48–0.67
+  [PASS] Chroma floor           all 3 >= 0.1
+  [PASS] CVD separation         worst all-pairs #8f78ec↔#1ba59f ΔE 13.5 (deutan) · tritan 10.0
+  [PASS] Normal-vision floor    worst all-pairs #8f78ec↔#1ba59f ΔE 21.5 (normal)
+  [PASS] Contrast vs surface    all 3 >= 3:1
+
+  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check text contrast with this script's apca() or contrast(); for a sequential ramp, lightness monotonicity.
+
+
+# --- Đã loại ---
+$ node validate_palette.js "#00929b,#2a78d6,#6a4fd6" --mode light --surface "#ffffff" --pairs all
+
+Palette (light, surface #ffffff, categorical): 3 slots
+  [PASS] Lightness band         all 3 inside L 0.43–0.77
+  [PASS] Chroma floor           all 3 >= 0.1
+  [FAIL] CVD separation         worst all-pairs #6a4fd6↔#2a78d6 ΔE 4.1 (deutan) · tritan 3.6
+  [FAIL] Normal-vision floor    worst all-pairs #6a4fd6↔#2a78d6 ΔE 11.1 (normal) — below 15, hard to tell apart even with full color vision
+  [PASS] Contrast vs surface    all 3 >= 3:1
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check text contrast with this script's apca() or contrast(); for a sequential ramp, lightness monotonicity.
+
+
+$ node validate_palette.js "#00929b,#2a78d6,#eb6834" --mode light --surface "#ffffff" --pairs all
+
+Palette (light, surface #ffffff, categorical): 3 slots
+  [PASS] Lightness band         all 3 inside L 0.43–0.77
+  [PASS] Chroma floor           all 3 >= 0.1
+  [PASS] CVD separation         worst all-pairs #2a78d6↔#00929b ΔE 12.8 (protan) · tritan 3.6
+  [FAIL] Normal-vision floor    worst all-pairs #2a78d6↔#00929b ΔE 13.2 (normal) — below 15, hard to tell apart even with full color vision
+  [PASS] Contrast vs surface    all 3 >= 3:1
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check text contrast with this script's apca() or contrast(); for a sequential ramp, lightness monotonicity.
+
+

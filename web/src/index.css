@@ -30,6 +30,8 @@
   /* Chart series (B01 §5.3): never mixed with status colours in one chart. */
   --series-1: #00929b;
   --series-2: #6a4fd6;
+  /* F-S5 waterfall "−Chi" (validated with --series-1/-2, light and dark: supporting/evidence/waterfall-palette.txt). */
+  --series-3: #eb6834;
   --info-soft: rgba(37, 136, 196, 0.1);
   --good: #12826e;
   --good-soft: rgba(18, 130, 110, 0.1);
@@ -63,6 +65,7 @@
   --info: #74c7ee;
   --series-1: #1ba59f;
   --series-2: #8f78ec;
+  --series-3: #d95926;
   --info-soft: rgba(116, 199, 238, 0.16);
   --good: #55c9af;
   --good-soft: rgba(85, 201, 175, 0.15);
@@ -98,6 +101,7 @@
   --color-info: var(--info);
   --color-series-1: var(--series-1);
   --color-series-2: var(--series-2);
+  --color-series-3: var(--series-3);
   --color-info-soft: var(--info-soft);
   --color-good: var(--good);
   --color-good-soft: var(--good-soft);
