@@ -152,19 +152,20 @@ describe('review fixes (14/10)', () => {
     );
   });
 
-  it('should preserve buildings outside the administrator scope when editing an account', async () => {
+  it('should refuse edits to an account with buildings outside the administrator scope (FX-S1 BR-FX1-02)', async () => {
     asUser(USER_ID.ADMIN);
     const admin = await run('createUser', 'ACCOUNT', undefined, { code: 'ADMIN-A', fullName: 'Quản trị tòa A', departmentId: 'dep-admin', roleDefId: 'role-admin', buildingIds: ['bld-a'] });
     asUser(admin.subjectId as string);
-    await run('updateUser', 'ACCOUNT', USER_ID.TVKT, { fullName: 'Võ Thanh Tâm (A)', roleDefId: 'role-tech_consultant', buildingIds: ['bld-a'] });
-    expect((await getDb().users.get(USER_ID.TVKT))?.buildingIds.sort()).toEqual(['bld-a', 'bld-b', 'bld-c', 'bld-d']);
-    // Sending the out-of-scope buildings back (as a form showing them would) is accepted, not a scope error.
-    await run('updateUser', 'ACCOUNT', USER_ID.TVKT, { fullName: 'Võ Thanh Tâm', roleDefId: 'role-tech_consultant', buildingIds: ['bld-a', 'bld-b', 'bld-c', 'bld-d'] });
+    const before = await getDb().users.get(USER_ID.TVKT);
+    await expectCode(run('updateUser', 'ACCOUNT', USER_ID.TVKT, { fullName: 'Võ Thanh Tâm (A)', roleDefId: 'role-tech_consultant', buildingIds: ['bld-a'] }), 'FORBIDDEN');
+    expect(await getDb().users.get(USER_ID.TVKT)).toEqual(before);
+    // An account of building A only stays editable; a building outside the scope is still a field error.
     const invalid = await expectCode(
-      run('updateUser', 'ACCOUNT', USER_ID.BQL_B, { fullName: 'Đặng Ngọc Lan', roleDefId: 'role-bql', buildingIds: ['bld-b', 'bld-a', 'bld-x'] }),
+      run('updateUser', 'ACCOUNT', USER_ID.KT_A, { fullName: 'Trần Minh Khoa', roleDefId: 'role-tech_confirmer', buildingIds: ['bld-a', 'bld-b'] }),
       'VALIDATION_ERROR',
     );
     expect(invalid.fieldErrors?.buildingIds).toBeDefined();
+    await run('updateUser', 'ACCOUNT', USER_ID.KT_A, { fullName: 'Trần Minh Khoa', roleDefId: 'role-tech_confirmer', buildingIds: ['bld-a'] });
   });
 
   it('should require RECORD_EDIT to create a repair record from maintenance', async () => {

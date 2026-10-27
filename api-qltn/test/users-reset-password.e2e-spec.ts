@@ -17,9 +17,20 @@ interface UserRow {
   version: number;
 }
 
+interface Profile extends UserRow {
+  fullName: string;
+  role: string;
+  roleDefId: string | null;
+  departmentId: string | null;
+  buildingIds: string[];
+  locationIds: string[];
+  isActive: boolean;
+}
+
 interface RoleRow {
   id: string;
   code: string;
+  baseRole: string;
   isSystem: boolean;
 }
 
@@ -114,6 +125,95 @@ describe('Account password reset and history, US-S1 (e2e)', () => {
     expect(reasonOf(res)).toBe('self_reset_denied');
     expect(errorOf(res).message).toBe('Dùng chức năng Đổi mật khẩu cho tài khoản của bạn.');
     await login('admin-demo', PASSWORD).expect(200);
+  });
+
+  describe('FX-S1: writes need every building of the account in scope', () => {
+    const profileOf = async (session: Session, id: string): Promise<Profile> =>
+      dataOf<Profile>(await session.get(`/api/users/${id}`).expect(200));
+
+    /** PATCH body rebuilt from a profile: a system role is sent by its system role definition. */
+    const patchBody = async (profile: Profile, changes: object) => {
+      const roles = dataOf<RoleRow[]>(await admin.get('/api/roles'));
+      const systemRole = roles.find((row) => row.baseRole === profile.role && row.isSystem) as RoleRow;
+      return {
+        fullName: profile.fullName,
+        roleDefId: profile.roleDefId ?? systemRole.id,
+        departmentId: profile.departmentId,
+        buildingIds: profile.buildingIds,
+        locationIds: profile.locationIds,
+        version: profile.version,
+        ...changes,
+      };
+    };
+
+    const auditCount = async (id: string): Promise<number> =>
+      dataOf<Page<AuditRow>>(await admin.get(`/api/users/${id}/audit`).expect(200)).meta.total;
+
+    it('AC-FX1.1: a building-A administrator cannot reset the password of an all-building administrator', async () => {
+      const target = userByCode('ADMIN-DEMO');
+      const before = await auditCount(target.id);
+      // Login is limited to 10 per minute in this suite, so one login proves both the password and the session.
+      const session = (await login('admin-demo', PASSWORD).expect(200)).body as { data: { refreshToken: string } };
+
+      const res = await adminA
+        .post(`/api/users/${target.id}/reset-password`, { password: 'Chiem-quyen-1' })
+        .expect(403);
+
+      expect(reasonOf(res)).toBe('account_scope_exceeded');
+      expect(errorOf(res).message).toBe('Tài khoản này có tòa ngoài phạm vi của bạn nên bạn không sửa được.');
+      await request(server).post('/api/auth/refresh').send({ refreshToken: session.data.refreshToken }).expect(200);
+      expect(await auditCount(target.id)).toBe(before);
+    });
+
+    it('AC-FX1.2: PATCH on that account (rename or deactivate) answers 403 and changes nothing', async () => {
+      const target = userByCode('ADMIN-DEMO');
+      const before = await profileOf(admin, target.id);
+      const audits = await auditCount(target.id);
+
+      const renamed = await adminA.patch(`/api/users/${target.id}`, await patchBody(before, { fullName: 'Đã bị đổi' }));
+      expect(renamed.status).toBe(403);
+      expect(reasonOf(renamed)).toBe('account_scope_exceeded');
+      const deactivated = await adminA.patch(`/api/users/${target.id}`, await patchBody(before, { active: false }));
+      expect(deactivated.status).toBe(403);
+      // The scope check comes before the version check (404 → 403 → 409 → 400).
+      const stale = await adminA.patch(
+        `/api/users/${target.id}`,
+        await patchBody(before, { version: before.version + 9 }),
+      );
+      expect(stale.status).toBe(403);
+
+      const after = await profileOf(admin, target.id);
+      expect(after).toMatchObject({ fullName: before.fullName, isActive: true, version: before.version });
+      expect(await auditCount(target.id)).toBe(audits);
+    });
+
+    it('AC-FX1.3: the same administrator still edits and resets an account of building A only', async () => {
+      const target = userByCode('KT-A');
+      const before = await profileOf(admin, target.id);
+      expect(before.buildingIds).toEqual([buildingA.id]);
+
+      const saved = dataOf<Profile>(
+        await adminA
+          .patch(`/api/users/${target.id}`, await patchBody(before, { jobTitle: 'Kỹ thuật tòa A' }))
+          .expect(200),
+      );
+      expect(saved.version).toBe(before.version + 1);
+      await adminA.post(`/api/users/${target.id}/reset-password`, { password: 'Dat-lai-FX1-kt' }).expect(200);
+      const history = dataOf<Page<AuditRow>>(await admin.get(`/api/users/${target.id}/audit`).expect(200));
+      expect(history.data.slice(0, 2).map((row) => [row.action, row.actorName])).toEqual([
+        ['resetPassword', 'Quản trị Tòa A'],
+        ['updateUser', 'Quản trị Tòa A'],
+      ]);
+      // Put the demo password back for the suites that sign in as kt-a.
+      await admin.post(`/api/users/${target.id}/reset-password`, { password: PASSWORD }).expect(200);
+    });
+
+    it('AC-FX1.4: the account stays visible in the list and in its detail (BR-FX1-01)', async () => {
+      const target = userByCode('ADMIN-DEMO');
+      const listed = dataOf<Page<UserRow>>(await adminA.get('/api/users?limit=100').expect(200)).data;
+      expect(listed.map((row) => row.code)).toContain('ADMIN-DEMO');
+      await adminA.get(`/api/users/${target.id}`).expect(200);
+    });
   });
 
   it('AC-4: the history of a created, updated and reset account lists 3 rows, newest first, with actorName', async () => {

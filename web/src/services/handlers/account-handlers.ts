@@ -152,25 +152,21 @@ interface UserFields {
 }
 
 /**
- * Buildings must stay inside the administrator's own scope (no access to other buildings is granted).
- * `keptBuildingIds` are buildings the account already has outside that scope: they are preserved as is.
- */
+ * Buildings must stay inside the administrator's own scope (no access to other buildings is granted). */
 const parseUserFields = async (
   ctx: CommandContext,
   payload: Record<string, unknown>,
   requireDepartment: boolean,
-  keptBuildingIds: readonly string[] = [],
 ): Promise<UserFields> => {
   const fullName = asString(payload.fullName);
-  const picked = asStringArray(payload.buildingIds).filter((id) => !keptBuildingIds.includes(id));
-  const buildingIds = [...new Set([...keptBuildingIds, ...picked])];
+  const buildingIds = [...new Set(asStringArray(payload.buildingIds))];
   const locationIds = [...new Set(asStringArray(payload.locationIds))];
   const departmentId = asOptionalString(payload.departmentId);
   const department = departmentId ? await ctx.db.departments.get(departmentId) : undefined;
   const locations = await ctx.db.locations.bulkGet(locationIds);
   const errors = new FieldErrorCollector().text('fullName', 'Họ tên', fullName, 3, 80);
   errors.when(buildingIds.length === 0, 'buildingIds', 'Chọn ít nhất một tòa nhà.');
-  errors.when(picked.some((id) => !ctx.actor.buildingIds.includes(id)), 'buildingIds', 'Chỉ gán tòa trong phạm vi của bạn.');
+  errors.when(buildingIds.some((id) => !ctx.actor.buildingIds.includes(id)), 'buildingIds', 'Chỉ gán tòa trong phạm vi của bạn.');
   errors.when(requireDepartment && !departmentId, 'departmentId', 'Cần chọn bộ phận.');
   errors.when(Boolean(departmentId) && !department, 'departmentId', 'Bộ phận không tồn tại.');
   errors.when(Boolean(department && department.buildingIds.length > 0 && !buildingIds.every((id) => department.buildingIds.includes(id))), 'departmentId', 'Bộ phận không phụ trách toàn bộ tòa nhà đã chọn.');
@@ -245,11 +241,14 @@ const updateUser: CommandHandler = async (ctx, command: Command) => {
   requireAccountManager(ctx);
   const user = await ctx.db.users.get(command.subjectId ?? '');
   if (!user) throw notFound('Không tìm thấy tài khoản.');
+  // FX-S1 BR-FX1-02: only an account whose buildings all lie inside the administrator's scope can be changed.
+  if (user.buildingIds.some((id) => !ctx.actor.buildingIds.includes(id))) {
+    throw forbidden('Tài khoản này có tòa ngoài phạm vi của bạn nên bạn không sửa được.');
+  }
   if (command.expectedVersion === undefined) throw conflict('Thiếu phiên bản dữ liệu (expectedVersion). Vui lòng tải lại.');
   if (command.expectedVersion !== user.version) throw conflict();
   const payload = asRecord(command.payload);
-  const outsideScope = user.buildingIds.filter((id) => !ctx.actor.buildingIds.includes(id));
-  const fields = await parseUserFields(ctx, payload, false, outsideScope);
+  const fields = await parseUserFields(ctx, payload, false);
   const active = typeof payload.active === 'boolean' ? payload.active : user.active;
   const errors = new FieldErrorCollector();
   errors.when(fields.role.baseRole !== user.role, 'roleDefId', `Chỉ đổi sang vai trò cùng gốc “${ROLE_LABEL[user.role]}”; muốn đổi vai trò gốc hãy tạo tài khoản mới.`);

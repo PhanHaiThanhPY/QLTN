@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { Brackets, DataSource, EntityManager, In, IsNull } from 'typeorm';
 import type { AuthenticatedUser } from '../../common/auth/authenticated-user';
-import { assertVersion, badRequestWithReason, notFound } from '../../common/errors';
+import { assertVersion, badRequestWithReason, forbiddenWithReason, notFound } from '../../common/errors';
 import type { PaginatedResult } from '../../common/interfaces/paginated.interface';
 import { pageWindow, toPaginated } from '../../common/utils/pagination';
 import { FieldErrors, fieldError } from '../../common/validation/field-errors';
@@ -18,6 +18,19 @@ import { RoleDefinition } from '../roles/entities/role-definition.entity';
 import type { CreateUserDto, ListUsersQueryDto, ResetPasswordDto, UpdateUserDto } from './dto/user.dto';
 import { User } from './entities/user.entity';
 import { toUserProfile, USER_PROFILE_RELATIONS, type UserProfile } from './users.service';
+
+/**
+ * FX-S1 BR-FX1-02: an administrator may read an account that shares one building with them (BR-FX1-01), but writes
+ * only to an account whose buildings all lie inside their scope; otherwise a narrow administrator could take over a
+ * wider account by resetting its password.
+ */
+const assertWritableScope = (actor: AuthenticatedUser, user: User): void => {
+  if (user.buildings.every((b) => actor.buildingIds.includes(b.id))) return;
+  throw forbiddenWithReason(
+    'account_scope_exceeded',
+    'Tài khoản này có tòa ngoài phạm vi của bạn nên bạn không sửa được.',
+  );
+};
 
 interface ResolvedFields {
   role: RoleDefinition;
@@ -91,7 +104,7 @@ export class UserAdminService {
       errors.when(!dto.departmentId, 'departmentId', 'Cần chọn bộ phận.');
       errors.throwIfAny();
 
-      const fields = await this.resolveFields(manager, actor, dto, []);
+      const fields = await this.resolveFields(manager, actor, dto);
       const user = await repo.save(
         repo.create({
           code: dto.code,
@@ -116,10 +129,7 @@ export class UserAdminService {
     return this.get(actor, id);
   }
 
-  /**
-   * The system role cannot change (only custom roles of the same system role). Buildings outside the
-   * administrator's scope that the account already has are kept as they are.
-   */
+  /** The system role cannot change (only custom roles of the same system role). Order: 404 → 403 → 409 → 400. */
   async update(actor: AuthenticatedUser, id: string, dto: UpdateUserDto): Promise<UserProfile> {
     await this.dataSource.transaction(async (manager) => {
       const repo = manager.getRepository(User);
@@ -127,10 +137,10 @@ export class UserAdminService {
       if (!user) throw notFound('Không tìm thấy tài khoản.');
       const current = await repo.findOneOrFail({ where: { id }, relations: USER_PROFILE_RELATIONS });
       if (!current.buildings.some((b) => actor.buildingIds.includes(b.id))) throw notFound('Không tìm thấy tài khoản.');
+      assertWritableScope(actor, current);
       assertVersion(user.version, dto.version);
 
-      const keptOutside = current.buildings.map((b) => b.id).filter((bid) => !actor.buildingIds.includes(bid));
-      const fields = await this.resolveFields(manager, actor, dto, keptOutside);
+      const fields = await this.resolveFields(manager, actor, dto);
       const active = dto.active ?? current.isActive;
       const errors = new FieldErrors();
       errors.merge((await this.uniquenessErrors(manager, { email: dto.email }, id)).list);
@@ -182,6 +192,7 @@ export class UserAdminService {
       if (!user || !user.buildings.some((b) => actor.buildingIds.includes(b.id))) {
         throw notFound('Không tìm thấy tài khoản.');
       }
+      assertWritableScope(actor, user);
       await manager.getRepository(User).update({ id }, { passwordHash });
       await this.revokeSessions(manager, id);
       await this.recordAudit(manager, actor, user, 'resetPassword', user.code);
@@ -220,10 +231,8 @@ export class UserAdminService {
     manager: EntityManager,
     actor: AuthenticatedUser,
     dto: CreateUserDto | UpdateUserDto,
-    keptOutside: readonly string[],
   ): Promise<ResolvedFields> {
-    const picked = dto.buildingIds.filter((bid) => !keptOutside.includes(bid));
-    const buildingIds = [...new Set([...keptOutside, ...picked])];
+    const buildingIds = [...new Set(dto.buildingIds)];
     const locationIds = dto.locationIds ?? [];
     const [role, buildings, locations, department] = await Promise.all([
       manager.getRepository(RoleDefinition).findOneBy({ id: dto.roleDefId }),
@@ -239,7 +248,7 @@ export class UserAdminService {
     errors.when(buildingIds.length === 0, 'buildingIds', 'Chọn ít nhất một tòa nhà.');
     errors.when(buildings.length !== buildingIds.length, 'buildingIds', 'Tòa nhà được chọn không tồn tại.');
     errors.when(
-      picked.some((bid) => !actor.buildingIds.includes(bid)),
+      buildingIds.some((bid) => !actor.buildingIds.includes(bid)),
       'buildingIds',
       'Chỉ gán tòa trong phạm vi của bạn.',
     );
