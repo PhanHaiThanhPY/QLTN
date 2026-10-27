@@ -109,3 +109,4 @@ Chỉ chạy các test liên quan, không chạy toàn bộ suite.
 | 26/10/2026 | PD-13: BQL được **xem** lịch sử tòa như ADMIN, dùng màn lịch sử hiện có (BR-03a, AC-1.3 sửa, thêm AC-1.3a). Thay đổi này đến khi RM-S1 đang review, nên đưa vào vòng sửa của RM-S1. |
 | 26/10/2026 | Lúc đóng RM-S1: AC-1.3 sửa mã trả về của `apply-template` thành 201, theo hành vi hiện có. |
 | 26/10/2026 | BR-07a: làm rõ Q-RM2-1 của dev-build, suy ra từ AC-2.3 đã duyệt; không đổi phạm vi. |
+| 27/10/2026 | F-S1 (BR-F1-11, dev-build) thêm 2 quyền: `EXPLOITATION_VIEW` (BQL, BQT) xem gói khai thác, đơn vị, hồ sơ dự thầu kèm giá chào và tài liệu; `EXPLOITATION_MANAGE` (BQL) lập, phát hành, ghi nhận, yêu cầu bổ sung, đóng, hủy. KT, TVKT, kế toán, ADMIN không có. Ma trận ở ADR-0001 §3 đã cập nhật. Vai trò tùy chỉnh dựa trên BQL/BQT nhận các quyền này dưới dạng "Có quyền mới chưa bật". |

@@ -32,6 +32,10 @@ export const CAPABILITY = {
   EMERGENCY_START: 'EMERGENCY_START',
   /** Read the operation log of the buildings in scope (AD-S1 BR-01); system-wide rows stay ADMIN only. */
   AUDIT_VIEW: 'AUDIT_VIEW',
+  /** See exploitation packages, partners, bids with their offered prices and documents (F-S1 BR-F1-11). */
+  EXPLOITATION_VIEW: 'EXPLOITATION_VIEW',
+  /** Create and issue packages, record bids, request supplements, close and cancel (F-S1 BR-F1-11). */
+  EXPLOITATION_MANAGE: 'EXPLOITATION_MANAGE',
 } as const;
 export type Capability = (typeof CAPABILITY)[keyof typeof CAPABILITY];
 
@@ -63,6 +67,8 @@ const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
     'LOCATION_MANAGE',
     'EMERGENCY_START',
     'AUDIT_VIEW',
+    'EXPLOITATION_VIEW',
+    'EXPLOITATION_MANAGE',
   ],
   // KT changes item condition only while confirming an occurrence.
   TECH_CONFIRMER: ['VIEW', 'RECORD_CONFIRM', 'PROPOSAL_DECIDE', 'ACCEPTANCE_DECIDE', 'MAINTENANCE_REVIEW'],
@@ -78,6 +84,7 @@ const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
     'PAYMENT_CONFIRM',
     'REPORT_VIEW',
     'AUDIT_VIEW',
+    'EXPLOITATION_VIEW',
   ],
   // Kế toán on the BQT side: confirms transfers and runs fund money operations (DF-10).
   ACCOUNTANT: ['VIEW', 'PAYMENT_CONFIRM', 'FUND_OPERATE', 'REPORT_VIEW'],
