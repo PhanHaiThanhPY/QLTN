@@ -25,6 +25,7 @@ import { StatementImports } from './components/StatementImports';
 import { StatementStatus } from './components/StatementStatus';
 import { UnmatchedBlock } from './components/UnmatchedBlock';
 import { accountText, monthText } from './fund-ui';
+import { monthBoundsLast } from './reconciliation-dates';
 import { useFundScope } from './useFundScope';
 
 type Matching = { line?: StatementLine; entry?: LedgerSide } | null;
@@ -106,20 +107,25 @@ const ReconciliationPage = () => {
             { label: 'Đầu kỳ', value: figure(view.statement.openingVnd) },
             { label: 'Thu', value: figure(view.statement.inVnd) },
             { label: 'Chi', value: figure(view.statement.outVnd) },
-            { label: 'Cuối kỳ', value: figure(view.statement.closingVnd), hint: 'theo sao kê' },
+            {
+              label: 'Cuối kỳ',
+              value: figure(view.statement.closingVnd),
+              hint: view.asOf && view.asOf !== monthBoundsLast(scope.month) ? `theo sao kê, đến ${formatDate(view.asOf)}` : 'theo sao kê',
+            },
           ]}
         />
         <StatementStatus view={view} />
-        {noStatement ? (
+        {noStatement && view.pairs.length === 0 ? (
           <Card>
             <CardBody className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm text-ink-2">Nhập sao kê {monthText(scope.month).toLowerCase()} để đối soát.</p>
               {canWrite ? <Button onClick={() => setImporting(true)}>Nhập sao kê</Button> : null}
             </CardBody>
           </Card>
-        ) : (
+        ) : null}
+        {view.pairs.length ? (
           <MatchedPairs pairs={view.pairs} accountLabel={fund.accountMasked ?? ''} canOperate={canWrite} onUnmatch={setUnmatching} />
-        )}
+        ) : null}
         <UnmatchedBlock
           view={view}
           hidden={skipped}

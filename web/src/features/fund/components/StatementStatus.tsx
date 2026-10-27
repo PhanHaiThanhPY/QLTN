@@ -19,7 +19,7 @@ export const StatementStatus = ({ view }: { view: ReconciliationMonth }) => {
     return view.matchedMonth ? <Badge tone="good">✓ Đã khớp</Badge> : <Badge tone="warn">Còn lệch</Badge>;
   };
   return (
-    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
       <p className="flex flex-wrap items-center gap-2 text-sm" aria-live="polite">
         {badge()}
         <span className="tabular-nums">
@@ -40,8 +40,8 @@ export const StatementStatus = ({ view }: { view: ReconciliationMonth }) => {
       </p>
       <p className="text-xs text-ink-3">Chỉ tính giao dịch thực nhận, thực chi.</p>
       {differs && view.ledgerClosingVnd !== null && view.statement.closingVnd !== null ? (
-        <p className="text-sm text-crit sm:basis-full">
-          Tại {formatDate(monthBoundsLast(view.month))}: Theo sổ {formatVndText(view.ledgerClosingVnd)} · Theo sao kê{' '}
+        <p className="w-full text-sm text-crit">
+          Tại {formatDate(view.asOf ?? monthBoundsLast(view.month))}: Theo sổ {formatVndText(view.ledgerClosingVnd)} · Theo sao kê{' '}
           {formatVndText(view.statement.closingVnd)} · Chênh lệch {signed(view.differenceVnd as string)}
         </p>
       ) : null}

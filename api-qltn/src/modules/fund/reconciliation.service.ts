@@ -73,7 +73,9 @@ export interface ReconciliationMonth {
   month: string;
   /** BR-F4-09: by the statement; each null means "Chưa có sao kê", never 0. */
   statement: { openingVnd: string | null; inVnd: string | null; outVnd: string | null; closingVnd: string | null };
-  /** The month's last day: by the ledger, and ledger − statement (null without a statement). */
+  /** The day the month is read on: its last day, or the last day a statement covers while the month runs. */
+  asOf: string | null;
+  /** On `asOf`: by the ledger, and ledger − statement (null without a statement). */
   ledgerClosingVnd: string | null;
   differenceVnd: string | null;
   /** BR-F4-10: k/n, gaps a (statement lines unmatched + ledger lines unreconciled), duplicates b. */
@@ -196,10 +198,17 @@ export class ReconciliationService {
         .filter((row) => row.direction === direction)
         .reduce((total, row) => total + BigInt(row.amountVnd), 0n)
         .toString();
-    const closing = statementBalanceAt(periods, matchable, last);
+    // The month is read on its last day; a month still running (its statement ends before) on the last day covered.
+    const asOf =
+      periods
+        .filter((period) => period.periodFrom <= last && period.periodTo >= first)
+        .map((period) => (period.periodTo < last ? period.periodTo : last))
+        .sort()
+        .at(-1) ?? null;
+    const closing = asOf ? statementBalanceAt(periods, matchable, asOf) : null;
     const ledgerClosing =
-      fund.openingDate && fund.openingBalanceVnd && fund.openingDate <= last
-        ? balanceAt({ openingDate: fund.openingDate, openingBalanceVnd: fund.openingBalanceVnd }, book.entries, last)
+      asOf && fund.openingDate && fund.openingBalanceVnd && fund.openingDate <= asOf
+        ? balanceAt({ openingDate: fund.openingDate, openingBalanceVnd: fund.openingBalanceVnd }, book.entries, asOf)
         : null;
     const difference =
       closing !== null && ledgerClosing !== null ? (BigInt(ledgerClosing) - BigInt(closing)).toString() : null;
@@ -257,6 +266,7 @@ export class ReconciliationService {
         outVnd: covered ? sum('OUT') : null,
         closingVnd: closing,
       },
+      asOf,
       ledgerClosingVnd: ledgerClosing,
       differenceVnd: difference,
       counts: {

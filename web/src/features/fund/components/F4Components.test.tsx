@@ -34,6 +34,7 @@ const view = (patch: Partial<ReconciliationMonth> = {}): ReconciliationMonth => 
   fund: { id: 'f1', buildingId: 'b1', accountNo: null, accountMasked: '****0001', openingDate: '2026-11-01' },
   month: '2026-11',
   statement: { openingVnd: '50000000', inVnd: '15000000', outVnd: '5000000', closingVnd: '60000000' },
+  asOf: '2026-11-30',
   ledgerClosingVnd: '60000000',
   differenceVnd: '0',
   counts: { lines: 4, matched: 4, unmatchedLines: 0, unreconciledEntries: 0, gaps: 0, duplicates: 0 },

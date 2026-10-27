@@ -31,6 +31,7 @@ interface Entry {
 }
 interface Month {
   statement: { openingVnd: string | null; inVnd: string | null; outVnd: string | null; closingVnd: string | null };
+  asOf: string | null;
   ledgerClosingVnd: string | null;
   differenceVnd: string | null;
   counts: { lines: number; matched: number; gaps: number; duplicates: number };
@@ -495,6 +496,13 @@ describe('Fund statements and reconciliation, F-S4 (e2e)', () => {
       statementVnd: '49000000',
       ledgerVnd: '50000000',
     });
+    // A month still running is read on the last day its statement covers.
+    await importLines(fundC.id, fieldsOf('2026-12-01', '2026-12-04', '49001000', '48990000'), [
+      { date: '03/12/2026', debit: '11000', description: 'Phi SMS' },
+    ]).expect(201);
+    const running = await month(fundC.id, '2026-12');
+    expect(running).toMatchObject({ asOf: '2026-12-04', ledgerClosingVnd: '50000000', differenceVnd: '1010000' });
+    expect(running.statement.closingVnd).toBe('48990000');
   });
 
   it('AC-F4.15: BQT reads but cannot write; BQL and KT get 403; another building answers 404', async () => {

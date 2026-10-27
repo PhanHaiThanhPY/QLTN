@@ -34,6 +34,8 @@ export interface ReconciliationMonth {
   month: string;
   /** By the statement; null means "Chưa có sao kê", never 0. */
   statement: { openingVnd: string | null; inVnd: string | null; outVnd: string | null; closingVnd: string | null };
+  /** The day the month is read on: its last day, or the last day a statement covers while the month runs. */
+  asOf: string | null;
   ledgerClosingVnd: string | null;
   differenceVnd: string | null;
   counts: { lines: number; matched: number; unmatchedLines: number; unreconciledEntries: number; gaps: number; duplicates: number };
