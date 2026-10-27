@@ -3,6 +3,7 @@ import type { Building, Department, Location, MaintenanceItem, User } from '@/do
 import { getDb } from '@/storage/db';
 import { apiRequest } from './http/client';
 import { mapBuilding, mapLocation, mapReferenceDepartment, mapReferenceUser } from './http/mappers';
+import { mapReferenceItem } from './http/maintenance-item-mappers';
 import type { ApiReference } from './http/mappers';
 import { requireViewer } from './viewer';
 
@@ -18,7 +19,7 @@ export interface ReferenceData {
 /** Lookup lists limited to the viewer's buildings. */
 export const getReferenceData = async (): Promise<ReferenceData> => {
   const viewer = await requireViewer();
-  // The backend already filters by the caller's building scope; maintenance items have no API yet (T2c).
+  // The backend already filters by the caller's building scope (items since MT-S1).
   if (IS_API_MODE) {
     const data = await apiRequest<ApiReference>('GET', '/reference');
     return {
@@ -27,7 +28,7 @@ export const getReferenceData = async (): Promise<ReferenceData> => {
       departments: data.departments.map(mapReferenceDepartment),
       locations: data.locations.map(mapLocation),
       users: data.users.map(mapReferenceUser),
-      items: [],
+      items: (data.items ?? []).map(mapReferenceItem),
     };
   }
   const db = getDb();

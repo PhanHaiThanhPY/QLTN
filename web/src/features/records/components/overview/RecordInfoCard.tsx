@@ -21,7 +21,9 @@ const NO_ITEM_TEXT: Record<RecordItemLink, string> = {
 export const RecordInfoCard = () => {
   const { detail } = useRecordContext();
   const { buildingName, locationName, userName } = useReferenceData();
-  const { record, item, sourceOccurrence } = detail;
+  const { record, sourceOccurrence } = detail;
+  // Mock mode loads the whole item; api mode (MT-S1) sends the short line the detail needs.
+  const item = detail.item ?? detail.itemSummary;
   const items: InfoItem[] = [
     { label: 'Mã hồ sơ', value: record.code },
     { label: 'Mức ưu tiên', value: PRIORITY_LABEL[record.priority] },

@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { Notice } from '@/components/common/Notice';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Input, NativeSelect, Textarea } from '@/components/ui/input';
 import { LIMITS } from '@/domain/constants';
+import { ERROR_CODE } from '@/domain/errors';
 import type { MaintenanceItem, User } from '@/domain/types';
 import { useCommand } from '@/hooks/useCommand';
 import { useReferenceData } from '@/hooks/useReferenceData';
@@ -48,6 +51,7 @@ export const ItemFormDialog = ({ item, viewer, onClose }: ItemFormDialogProps) =
   const { data } = useReferenceData();
   const [draft, setDraft] = useState<ItemDraft>(() => initialDraft(item, viewer));
   const command = useCommand({ successMessage: item ? 'Đã lưu thiết bị.' : 'Đã tạo thiết bị.' });
+  const queryClient = useQueryClient();
   const errors = command.fieldErrors;
   const set = (key: keyof ItemDraft, value: string) => setDraft((prev) => ({ ...prev, [key]: value }));
   const locations = (data?.locations ?? []).filter(
@@ -55,6 +59,15 @@ export const ItemFormDialog = ({ item, viewer, onClose }: ItemFormDialogProps) =
   );
   const owners = activeUsersInRole(data?.users, 'BQL', draft.buildingId);
   const buildings = (data?.buildings ?? []).filter((row) => viewer.buildingIds.includes(row.id));
+  const types = useMemo(
+    () => [...new Set((data?.items ?? []).filter((row) => row.buildingId === draft.buildingId).map((row) => row.type))].sort((a, b) => a.localeCompare(b, 'vi')),
+    [data?.items, draft.buildingId],
+  );
+  const isConflict = command.errorCode === ERROR_CODE.CONFLICT;
+  const reload = () => {
+    void queryClient.invalidateQueries();
+    onClose();
+  };
 
   const handleSubmit = async () => {
     const fields = {
@@ -101,8 +114,27 @@ export const ItemFormDialog = ({ item, viewer, onClose }: ItemFormDialogProps) =
         </>
       }
     >
+      {isConflict ? (
+        <Notice tone="warning" className="mb-4" title="Thiết bị vừa được người khác cập nhật. Tải lại để xem bản mới.">
+          <Button size="sm" variant="secondary" className="mt-2" onClick={reload}>Tải lại</Button>
+        </Notice>
+      ) : null}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Tòa nhà" htmlFor="it-building" required error={errors.buildingId} hint={item ? 'Không đổi tòa nhà của hạng mục.' : undefined}>
+        <Field label="Mã thiết bị" htmlFor="it-code" required error={errors.code} hint={item ? 'Mã không đổi sau khi tạo.' : 'Duy nhất trong tòa nhà.'}>
+          <Input id="it-code" maxLength={30} placeholder="VD: TM-A01" value={draft.code} disabled={Boolean(item)} onChange={(event) => set('code', event.target.value.toUpperCase())} />
+        </Field>
+        <Field label="Tên thiết bị" htmlFor="it-name" required error={errors.name}>
+          <Input id="it-name" maxLength={120} placeholder="VD: Thang máy số 1" value={draft.name} onChange={(event) => set('name', event.target.value)} />
+        </Field>
+        <Field label="Loại" htmlFor="it-type" required error={errors.type} hint="Chọn loại đã có trong tòa hoặc gõ loại mới.">
+          <Input id="it-type" list="it-type-options" maxLength={60} placeholder="VD: Thang máy, PCCC" value={draft.type} onChange={(event) => set('type', event.target.value)} />
+          <datalist id="it-type-options">
+            {types.map((type) => (
+              <option key={type} value={type} />
+            ))}
+          </datalist>
+        </Field>
+        <Field label="Tòa nhà" htmlFor="it-building" required error={errors.buildingId} hint={item ? 'Tòa không đổi sau khi tạo.' : undefined}>
           <NativeSelect
             id="it-building"
             value={draft.buildingId}
@@ -117,15 +149,6 @@ export const ItemFormDialog = ({ item, viewer, onClose }: ItemFormDialogProps) =
             ))}
           </NativeSelect>
         </Field>
-        <Field label="Mã thiết bị" htmlFor="it-code" required error={errors.code} hint={item ? 'Mã không đổi sau khi tạo.' : 'Duy nhất trong tòa nhà.'}>
-          <Input id="it-code" maxLength={30} placeholder="VD: TM-A01" value={draft.code} disabled={Boolean(item)} onChange={(event) => set('code', event.target.value.toUpperCase())} />
-        </Field>
-        <Field label="Tên thiết bị" htmlFor="it-name" required error={errors.name}>
-          <Input id="it-name" maxLength={120} placeholder="VD: Thang máy số 1" value={draft.name} onChange={(event) => set('name', event.target.value)} />
-        </Field>
-        <Field label="Loại" htmlFor="it-type" required error={errors.type}>
-          <Input id="it-type" maxLength={60} placeholder="VD: Thang máy, PCCC" value={draft.type} onChange={(event) => set('type', event.target.value)} />
-        </Field>
         <Field label="Vị trí" htmlFor="it-location" required error={errors.locationId}>
           <NativeSelect id="it-location" value={draft.locationId} disabled={!draft.buildingId} onChange={(event) => set('locationId', event.target.value)}>
             <option value="">— Chọn vị trí —</option>
@@ -136,9 +159,9 @@ export const ItemFormDialog = ({ item, viewer, onClose }: ItemFormDialogProps) =
             ))}
           </NativeSelect>
         </Field>
-        <Field label="Đầu mối (BQL)" htmlFor="it-owner" required error={errors.ownerUserId}>
+        <Field label="Người phụ trách (BQL)" htmlFor="it-owner" required error={errors.ownerUserId}>
           <NativeSelect id="it-owner" value={draft.ownerUserId} disabled={!draft.buildingId} onChange={(event) => set('ownerUserId', event.target.value)}>
-            <option value="">— Chọn đầu mối —</option>
+            <option value="">— Chọn người phụ trách —</option>
             {owners.map((user) => (
               <option key={user.id} value={user.id}>
                 {userOptionLabel(user)}
@@ -158,8 +181,8 @@ export const ItemFormDialog = ({ item, viewer, onClose }: ItemFormDialogProps) =
         <Field label="Hạn bảo hành" htmlFor="it-warranty" error={errors.warrantyUntil} hint="Hồ sơ sửa chữa của thiết bị còn bảo hành sẽ được cảnh báo.">
           <Input id="it-warranty" type="date" value={draft.warrantyUntil} onChange={(event) => set('warrantyUntil', event.target.value)} />
         </Field>
-        <Field label="Mô tả" htmlFor="it-description" className="sm:col-span-2" error={errors.description}>
-          <Textarea id="it-description" rows={3} maxLength={2000} placeholder="Mô tả ngắn về thiết bị..." value={draft.description} onChange={(event) => set('description', event.target.value)} />
+        <Field label="Thông tin kỹ thuật" htmlFor="it-description" className="sm:col-span-2" error={errors.description}>
+          <Textarea id="it-description" rows={3} maxLength={2000} placeholder="Công suất, thông số, ghi chú kỹ thuật..." value={draft.description} onChange={(event) => set('description', event.target.value)} />
         </Field>
       </div>
     </Dialog>

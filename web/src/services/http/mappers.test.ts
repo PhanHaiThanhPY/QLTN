@@ -1067,6 +1067,8 @@ describe('repair record mappers', () => {
       locationId: null,
       confirmationUserId: null,
       noMaintenanceItem: false,
+      // MT-S1: the chosen item is sent now that the API stores it.
+      maintenanceItemId: 'item-1',
       attachmentIds: ['att-1'],
     });
 

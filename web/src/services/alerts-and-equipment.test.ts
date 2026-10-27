@@ -54,6 +54,17 @@ describe('rule-based alerts, equipment data and cost dashboard', () => {
     await expectCode(uploadAttachment({ subjectType: 'MAINTENANCE_ITEM', subjectId: id, purpose: 'ITEM_DOCUMENT', file: makeSamplePdf('x'), fileName: 'x.pdf' }), 'FORBIDDEN');
   });
 
+  it('should keep the code when an edit sends another one (MT-S1 AC-MT.3, MD-06)', async () => {
+    asUser(USER_ID.BQL_A);
+    const item = await getDb().maintenanceItems.where('code').equals('TM-A01').first();
+    const id = item?.id ?? '';
+    const base = { name: 'Thang máy số 1 (đã đổi tên)', type: item?.type, locationId: item?.locationId, ownerUserId: item?.ownerUserId };
+    await run('updateMaintenanceItem', 'MAINTENANCE_ITEM', id, { ...base, code: 'TM-X99' });
+    const saved = await getDb().maintenanceItems.get(id);
+    expect(saved?.code).toBe('TM-A01');
+    expect(saved?.name).toBe('Thang máy số 1 (đã đổi tên)');
+  });
+
   it('should show pending approvals and costs on the dashboard', async () => {
     asUser(USER_ID.ADMIN);
     const dashboard = await getDashboard();

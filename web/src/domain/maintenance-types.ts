@@ -19,6 +19,9 @@ export interface MaintenanceItem extends Versioned {
   condition: ItemCondition;
   conditionNote?: string;
   active: boolean;
+  /** api mode (MT-S1): when and why the item was taken out of use. */
+  deactivatedAt?: string;
+  deactivationReason?: string;
 }
 export interface ScheduleVersion {
   revision: number;

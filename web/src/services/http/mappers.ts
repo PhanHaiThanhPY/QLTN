@@ -259,6 +259,18 @@ export interface ApiReference {
   departments: Array<{ id: string; code: string; name: string; buildingIds: string[] }>;
   locations: ApiReferenceLocation[];
   users: ApiReferenceUser[];
+  /** MT-S1: equipment of the buildings for pickers and names (absent before MT-S1). */
+  items?: ApiReferenceItem[];
+}
+
+export interface ApiReferenceItem {
+  id: string;
+  code: string;
+  name: string;
+  type: string;
+  buildingId: string;
+  locationId: string;
+  active: boolean;
 }
 
 /** `GET /reference` departments omit description/version/memberCount. */
@@ -286,7 +298,7 @@ const stageKeyOf = (value: string): WorkflowStageKey => {
 };
 
 /** Custom steps carry `PENDING_CUSTOM_APPROVAL`; any unknown backend status falls back to it. */
-const repairStatusOf = (value: string): RepairStatus =>
+export const repairStatusOf = (value: string): RepairStatus =>
   REPAIR_STATUSES.has(value) ? (value as RepairStatus) : 'PENDING_CUSTOM_APPROVAL';
 
 const subjectTypeOf = (value: string): SubjectType => {
@@ -966,6 +978,8 @@ export interface ApiRepairRecord {
   buildingId: string;
   locationId: string | null;
   noMaintenanceItem: boolean;
+  /** MT-S1: the record's equipment, or null. */
+  maintenanceItemId?: string | null;
   title: string;
   description: string;
   priority: string;
@@ -1011,6 +1025,7 @@ export const mapRepairRecord = (row: ApiRepairRecord): RepairRecord => {
     buildingId: row.buildingId,
     locationId: row.locationId ?? '',
     ...(row.noMaintenanceItem ? { noMaintenanceItem: true } : {}),
+    ...(row.maintenanceItemId ? { maintenanceItemId: row.maintenanceItemId } : {}),
     title: row.title,
     description: row.description,
     priority: priorityOf(row.priority),
@@ -1096,6 +1111,8 @@ export interface ApiRecordDetail {
   payment?: PaymentHistory;
   /** B06-S1: the building's current emergency limit and hours. */
   emergencyPolicy?: ApiEmergencyPolicy | null;
+  /** MT-S1: the record's equipment line, null for "no specific equipment". */
+  maintenanceItem?: { id: string; code: string; name: string; active: boolean } | null;
   audit?: readonly ApiAuditEvent[];
 }
 
@@ -1112,6 +1129,7 @@ export const mapRecordDetail = (row: ApiRecordDetail): RecordDetail => ({
   execution: mapExecution(row.execution),
   paymentHistory: mapPaymentHistory(row.payment),
   emergencyPolicy: mapEmergencyPolicy(row.emergencyPolicy),
+  ...(row.maintenanceItem ? { itemSummary: { ...row.maintenanceItem } } : {}),
   signatures: [],
   acceptances: [],
   paymentRequests: [],
@@ -1131,12 +1149,10 @@ export interface ApiCreateRecordBody {
   locationId?: string;
   confirmationUserId?: string;
   noMaintenanceItem?: boolean;
+  maintenanceItemId?: string;
 }
 
-/**
- * Web `createRecord` payload → `CreateRecordDto`. T1 does not accept equipment or files yet, so
- * `maintenanceItemId` / `attachmentIds` are dropped instead of being sent as unknown fields.
- */
+/** Web `createRecord` payload → `CreateRecordDto`; files are attached on the next draft save, so `attachmentIds` is dropped. */
 export const toCreateRecordBody = (payload: unknown): ApiCreateRecordBody => {
   const row = asRecord(payload);
   const body: ApiCreateRecordBody = {
@@ -1151,6 +1167,8 @@ export const toCreateRecordBody = (payload: unknown): ApiCreateRecordBody => {
   const confirmationUserId = asOptionalString(row.confirmationUserId);
   if (confirmationUserId) body.confirmationUserId = confirmationUserId;
   if (row.noMaintenanceItem === true) body.noMaintenanceItem = true;
+  const maintenanceItemId = asOptionalString(row.maintenanceItemId);
+  if (maintenanceItemId) body.maintenanceItemId = maintenanceItemId;
   return body;
 };
 
@@ -1162,6 +1180,8 @@ export interface ApiUpdateRecordDraftBody {
   locationId?: string | null;
   confirmationUserId?: string | null;
   noMaintenanceItem?: boolean;
+  /** MT-S1: the chosen item; null clears it. */
+  maintenanceItemId?: string | null;
   /** Present = replace the record's file list (an empty array detaches every file). */
   attachmentIds?: string[];
 }
@@ -1184,6 +1204,8 @@ export const toUpdateRecordDraftBody = (
     body.confirmationUserId = asOptionalString(row.confirmationUserId) ?? null;
   }
   if (row.noMaintenanceItem !== undefined) body.noMaintenanceItem = row.noMaintenanceItem === true;
+  // An empty choice clears the item ("no specific equipment" is carried by noMaintenanceItem).
+  if (row.maintenanceItemId !== undefined) body.maintenanceItemId = asOptionalString(row.maintenanceItemId) ?? null;
   if (row.attachmentIds !== undefined) body.attachmentIds = asStringArray(row.attachmentIds);
   return body;
 };

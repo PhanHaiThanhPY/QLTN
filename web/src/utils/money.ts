@@ -2,6 +2,10 @@ const vndFormatter = new Intl.NumberFormat('vi-VN');
 
 export const formatVnd = (amount?: number): string => (amount === undefined ? '—' : `${vndFormatter.format(amount)} ₫`);
 
+/** Integer VND sent by the API as a string ("16500000" → "16.500.000 ₫"), formatted through BigInt, never a float. */
+export const formatVndText = (amount: string | null | undefined): string =>
+  amount && /^-?\d+$/.test(amount) ? `${vndFormatter.format(BigInt(amount))} ₫` : '—';
+
 export const isValidVndAmount = (value: unknown): value is number =>
   typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
 
