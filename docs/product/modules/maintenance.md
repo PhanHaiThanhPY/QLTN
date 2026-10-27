@@ -121,7 +121,7 @@ Có 10 file test; file chính là `acceptance-maintenance.test.ts` với 11 ca.
 - **sinh lượt bằng lịch chạy hằng ngày ở máy chủ** (MG-05);
 - sửa MD-02, MD-03, MD-04, MD-10.
 
-**MT-S3 Thực hiện** (sau MT-S2). API và web `api` cho B13:
+**MT-S3 Thực hiện** ([SPEC](../features/MT-thuc-hien-bao-tri/SPEC.md), đã duyệt PD-27; sau MT-S2). API và web `api` cho B13:
 - bắt đầu, lưu, gửi, làm lại, xác nhận, đổi lịch, hủy, giao lại;
 - việc và nhắc hạn theo hạn của tòa (sửa MD-01);
 - tạo hồ sơ sửa chữa từ **từng** mục lỗi (MQ-03, sửa MD-07);
