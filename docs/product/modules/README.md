@@ -33,8 +33,8 @@ Mỗi module code có một file `<module>.md`. Mẫu tham chiếu: [auth.md](au
 | 7 | records | `records` | `records` | B03–B09 | [SPEC](../features/B03-B09-luong-sua-chua/SPEC.md) | **B03, B05, B08, B09 đã triển khai** (SPEC v2, 26/10; FX-S1–S3 đã triển khai 27/10). Phân tích lần 1 đã duyệt (PD-18): [B04 lịch](B04-lich-sua-chua.md) (B4-S1 đã triển khai), [B06 khẩn cấp](B06-xu-ly-khan-cap.md) (B06-S1 đã triển khai), [B07 ký và biểu mẫu](B07-ky-va-bieu-mau.md) (B7-S1 đã triển khai) |
 | 8 | attachments | `attachments` | `components/common/FileUploader` | B03, B07 | [attachments.md](attachments.md) | Xong lần 1 (27/10), duyệt PD-22; AT-S1 đã triển khai 27/10 |
 | 9 | maintenance | — | `maintenance` | B10–B13 | [maintenance.md](maintenance.md) | Xong lần 1 (27/10), duyệt PD-24; MT-S1 đã duyệt (PD-25), đang build; MT-S2 đã duyệt (PD-26), chờ MT-S1; MT-S3 đã duyệt (PD-27), chờ MT-S2 |
-| 10 | notifications | (S3 làm phần tối thiểu, BR-S3-01a) | `notifications` | B14 | — | Chưa phân tích; S3 làm phần tối thiểu. Còn thiếu: nhãn loại thông báo riêng (hiện mặc định "Công việc mới") |
-| 11 | tasks | — | `tasks` | B02 | — | Chưa |
+| 10 | notifications | (S3 làm phần tối thiểu, BR-S3-01a) | `notifications` | B14 | — | Chưa phân tích; chủ dự án chốt làm sau, một lần, khi các module khác xong (27/10). S3 làm phần tối thiểu. Còn thiếu: nhãn loại thông báo riêng (hiện mặc định "Công việc mới") |
+| 11 | tasks | — | `tasks` | B02 | [tasks.md](tasks.md) | Xong lần 1 (27/10), duyệt PD-28; TK-S1 đã duyệt (PD-29), đang build |
 | 12 | dashboard | — | `dashboard` | B01 | — | Chưa |
 | 13 | reports | — | `reports` | B18 | — | Chưa |
 | 14 | space | — | `space` | S01 | — | Chưa |
