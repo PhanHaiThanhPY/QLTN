@@ -5,6 +5,7 @@ import type { AuthenticatedUser } from '../../common/auth/authenticated-user';
 import { conflict, conflictWithReason, forbiddenWithReason } from '../../common/errors';
 import { vnDate } from '../../common/utils/vn-date';
 import { FieldErrors } from '../../common/validation/field-errors';
+import { settlementInstalment } from '../../domain/payment-settlement';
 import { VND_PATTERN } from '../../domain/proposal-quote';
 import { AuditService } from '../audit/audit.service';
 import { SUBJECT_TYPE } from '../audit/entities/audit-event.entity';
@@ -41,6 +42,12 @@ const OPEN_STATUSES: readonly PaymentStatus[] = ['PENDING_APPROVAL', 'NEEDS_UPDA
 const SUBMITTED: PaymentStatus = 'PENDING_APPROVAL';
 const vndFormatter = new Intl.NumberFormat('vi-VN');
 const vnd = (value: bigint | string): string => `${vndFormatter.format(BigInt(value))} ₫`;
+/** FX-S2 BR-FX2-04: audit reason when the last PAYMENT step approves a 0-đồng settlement instalment. */
+const NO_TRANSFER_REASON = 'Không cần chuyển khoản: số của đợt bằng 0';
+
+/** A well-formed positive amount, or null. */
+const positiveAmount = (value: string | undefined): bigint | null =>
+  value && VND_PATTERN.test(value) && BigInt(value) > 0n ? BigInt(value) : null;
 
 export interface PaymentDecisionView {
   id: string;
@@ -139,7 +146,10 @@ export class PaymentsService {
     });
   }
 
-  /** T18: the settlement instalment = settled total − transferred advances (BR-S4-01…03). */
+  /**
+   * T18: the settlement instalment = settled total − transferred advances (BR-S4-01…03), which may be 0 (FX-S2
+   * BR-FX2-01). A 0-đồng instalment still needs both files, the signature and the PAYMENT chain, but no payee.
+   */
   async submitSettlement(actor: AuthenticatedUser, id: string, dto: SubmitPaymentDto): Promise<RepairRecordView> {
     return this.dataSource.transaction(async (manager) => {
       const record = await loadRecordForAction(manager, actor, id, dto.version, 'submitPaymentRequest');
@@ -155,15 +165,17 @@ export class PaymentsService {
       const errors = new FieldErrors();
       const passed = await manager.getRepository(RepairAcceptance).existsBy({ recordId: record.id, outcome: 'PASSED' });
       errors.when(!passed, 'acceptance', 'Quyết toán chỉ gửi được khi đã có lượt nghiệm thu đạt.');
-      const settlement = this.checkSubmission(errors, fields);
       const approved = BigInt(record.approvedAmountVnd ?? '0');
       const advances = sum(payments.filter((row) => row.kind === 'TAM_UNG' && row.status === 'TRANSFERRED'));
-      if (settlement !== null) {
+      const noTransfer = positiveAmount(fields.amountVnd) === advances;
+      const settlement = this.checkSubmission(errors, fields, !noTransfer);
+      const instalment = settlement === null ? null : settlementInstalment(settlement, advances);
+      if (settlement !== null && instalment !== null) {
         errors.when(settlement > approved, 'amountVnd', 'Số quyết toán không được vượt số được duyệt.');
         errors.when(
-          settlement <= advances,
+          !instalment.ok,
           'amountVnd',
-          `Số quyết toán phải lớn hơn tổng tạm ứng đã chuyển khoản (${vnd(advances)}).`,
+          `Số quyết toán nhỏ hơn tổng tạm ứng đã chuyển khoản (${vnd(advances)}). Hệ thống chưa hỗ trợ trường hợp nhà thầu hoàn lại tiền.`,
         );
       }
       await this.checkFiles(
@@ -187,12 +199,12 @@ export class PaymentsService {
       const signed = checkSignature(dto.signature);
       if (!signed.ok) errors.add('signature', signed.message);
       errors.throwIfAny();
-      if (settlement === null || !signed.ok) return toRecordView(record);
+      if (settlement === null || !instalment?.ok || !signed.ok) return toRecordView(record);
 
       const existing = payments.find((row) => row.kind === 'QUYET_TOAN');
       const payment = await this.savePayment(manager, actor, record, existing, payments.length, {
         kind: 'QUYET_TOAN',
-        amountVnd: (settlement - advances).toString(),
+        amountVnd: instalment.amount.toString(),
         settlementAmountVnd: settlement.toString(),
         fields,
         transferContent: fields.transferContent || (await this.defaultContent(manager, record)),
@@ -223,7 +235,11 @@ export class PaymentsService {
       let toStatus = record.status;
       if (outcome === 'NEEDS_UPDATE') toStatus = 'NEEDS_PAYMENT_UPDATE';
       else if (!next) toStatus = 'PENDING_PAYMENT';
-      return this.commit(manager, actor, record, action, toStatus, this.decisionReason(payment, dto.reason));
+      const decided = this.decisionReason(payment, dto.reason);
+      // BR-FX2-04: the 0-đồng instalment went straight to TRANSFERRED in decide().
+      const reason =
+        toStatus === 'PENDING_PAYMENT' && payment.amountVnd === '0' ? `${decided}. ${NO_TRANSFER_REASON}` : decided;
+      return this.commit(manager, actor, record, action, toStatus, reason);
     });
   }
 
@@ -460,7 +476,8 @@ export class PaymentsService {
     } else if (next) {
       payment.currentStepKey = next;
     } else {
-      payment.status = 'PENDING_TRANSFER';
+      // FX-S2 BR-FX2-04: nothing to transfer for a 0-đồng settlement instalment; confirmedBy/At stay empty.
+      payment.status = payment.amountVnd === '0' ? 'TRANSFERRED' : 'PENDING_TRANSFER';
       payment.currentStepKey = null;
     }
     await manager.getRepository(RepairPayment).save(payment);
@@ -538,15 +555,19 @@ export class PaymentsService {
     );
   }
 
-  /** Completeness of a submission; returns the amount, or null when it is missing or invalid. */
-  private checkSubmission(errors: FieldErrors, fields: PaymentFields): bigint | null {
+  /**
+   * Completeness of a submission; returns the amount, or null when it is missing or invalid. The payee is optional
+   * only for a 0-đồng settlement instalment (FX-S2 BR-FX2-03); a value that is sent is still checked.
+   */
+  private checkSubmission(errors: FieldErrors, fields: PaymentFields, requirePayee = true): bigint | null {
     this.checkFormats(errors, fields);
     errors.when(!fields.amountVnd, 'amountVnd', 'Cần số tiền.');
-    errors.when(!fields.payeeName, 'payeeName', 'Cần tên tài khoản người hưởng.');
-    errors.when(!fields.accountNo, 'accountNo', 'Cần số tài khoản.');
-    errors.when(!fields.bankName, 'bankName', 'Cần ngân hàng.');
-    const valid = fields.amountVnd && VND_PATTERN.test(fields.amountVnd) && BigInt(fields.amountVnd) > 0n;
-    return valid ? BigInt(fields.amountVnd as string) : null;
+    if (requirePayee) {
+      errors.when(!fields.payeeName, 'payeeName', 'Cần tên tài khoản người hưởng.');
+      errors.when(!fields.accountNo, 'accountNo', 'Cần số tài khoản.');
+      errors.when(!fields.bankName, 'bankName', 'Cần ngân hàng.');
+    }
+    return positiveAmount(fields.amountVnd);
   }
 
   /** Each id must be a file of this record with the purpose; `required` asks for at least one. */

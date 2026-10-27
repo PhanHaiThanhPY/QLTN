@@ -27,6 +27,8 @@ interface Payment {
   transferContent: string;
   currentStepKey: string | null;
   confirmedBy: string | null;
+  confirmedAt: string | null;
+  payeeName: string;
   decisions: Array<{ stepKey: string; outcome: string; revisionNo: number }>;
   signatureDataUrl: string | null;
 }
@@ -34,7 +36,7 @@ interface Payment {
 interface Detail {
   record: FlowRecord & { approvedAmountVnd: string | null };
   payment: { approvedAmountVnd: string | null; transferredTotalVnd: string; payments: Payment[] };
-  audit: Array<{ action: string }>;
+  audit: Array<{ action: string; reason?: string | null }>;
 }
 
 /** 2 × 5 000 000 ₫: the approved amount of every record here is 10 million, as in SPEC §7 AC-4.x. */
@@ -291,6 +293,84 @@ describe('Repair payments in instalments, slice S4 (e2e)', () => {
     record = await ok(bqt, record, 'approve-payment');
     const notYet = await act(bqlA, record, 'complete').expect(400);
     expect(errorFields(notYet)).toEqual(['payment']);
+  });
+
+  describe('FX-S2: a settlement equal to the transferred advances', () => {
+    /** 10 M advance approved and transferred, then acceptance passed: PENDING_PAYMENT_REQUEST. */
+    const fullyAdvanced = async (): Promise<FlowRecord> => {
+      let record = await inConstruction();
+      record = await ok(bqlA, record, 'submit-advance-request', await advanceBody(record, '10000000'));
+      record = await ok(bqt, record, 'approve-advance');
+      record = await ok(ktoan, record, 'confirm-advance-transfer', await transferBody(ktoan, record, '10000000'));
+      return accept(record);
+    };
+
+    /** The settlement body without any payee field (BR-FX2-03). */
+    const withoutPayee = async (record: FlowRecord, amountVnd: string) => {
+      const { payeeName, accountNo, bankName, ...rest } = await settlementBody(record, amountVnd);
+      expect([payeeName, accountNo, bankName]).toHaveLength(3);
+      return rest;
+    };
+
+    it('AC-FX2.1/2.3: 10 M after 10 M advanced is a 0-đồng instalment that skips the transfer and closes', async () => {
+      let record = await fullyAdvanced();
+      // BR-FX2-03: both files and the signature are still required.
+      const { invoiceAttachmentIds, ...noInvoice } = await withoutPayee(record, '10000000');
+      expect(invoiceAttachmentIds).toHaveLength(1);
+      const missing = await act(bqlA, record, 'submit-payment-request', noInvoice).expect(400);
+      expect(errorFields(missing)).toEqual(['invoiceAttachmentIds']);
+      // A payee value that is sent must still be valid.
+      const badAccount = await act(bqlA, record, 'submit-payment-request', {
+        ...(await withoutPayee(record, '10000000')),
+        accountNo: '12',
+      }).expect(400);
+      expect(errorFields(badAccount)).toEqual(['accountNo']);
+
+      record = await ok(bqlA, record, 'submit-payment-request', await withoutPayee(record, '10000000'));
+      expect(record.status).toBe('PENDING_PAYMENT_APPROVAL');
+      let settlement = (await paymentsOf(record)).find((row) => row.kind === 'QUYET_TOAN') as Payment;
+      expect(settlement).toMatchObject({
+        amountVnd: '0',
+        settlementAmountVnd: '10000000',
+        status: 'PENDING_APPROVAL',
+        payeeName: '',
+      });
+
+      record = await ok(bqt, record, 'approve-payment');
+      expect(record.status).toBe('PENDING_PAYMENT');
+      settlement = (await paymentsOf(record)).find((row) => row.kind === 'QUYET_TOAN') as Payment;
+      expect(settlement).toMatchObject({ status: 'TRANSFERRED', confirmedBy: null, confirmedAt: null });
+      const approval = (await detailOf(record.id)).audit.find((row) => row.action === 'approvePayment');
+      expect(approval?.reason).toContain('Không cần chuyển khoản: số của đợt bằng 0');
+
+      // AC-FX2.3: no transfer to confirm; 409 and no audit (the proof upload is audited before counting).
+      const proof = await transferBody(bqt, record, '0');
+      const audits = (await detailOf(record.id)).audit.length;
+      const confirm = await act(bqt, record, 'confirm-payment-transfer', proof).expect(409);
+      expect(reasonOf(confirm)).toBe('payment_already_confirmed');
+      expect((await detailOf(record.id)).audit).toHaveLength(audits);
+
+      record = await ok(bqlA, record, 'complete');
+      expect(record.status).toBe('COMPLETED');
+      expect((await detailOf(record.id)).payment.transferredTotalVnd).toBe('10000000');
+    });
+
+    it('AC-FX2.2: 9 M after 10 M advanced is refused on amountVnd', async () => {
+      const record = await fullyAdvanced();
+      const below = await act(bqlA, record, 'submit-payment-request', await settlementBody(record, '9000000')).expect(
+        400,
+      );
+      expect(errorFields(below)).toEqual(['amountVnd']);
+      expect(errorOf(below).message).toBe(
+        'Số quyết toán nhỏ hơn tổng tạm ứng đã chuyển khoản (10.000.000 ₫). Hệ thống chưa hỗ trợ trường hợp nhà thầu hoàn lại tiền.',
+      );
+    });
+
+    it('BR-FX2-03: the payee stays required when the instalment is above 0', async () => {
+      const record = await accept(await inConstruction());
+      const res = await act(bqlA, record, 'submit-payment-request', await withoutPayee(record, '10000000')).expect(400);
+      expect(errorFields(res).sort()).toEqual(['accountNo', 'bankName', 'payeeName']);
+    });
   });
 
   it('AC-0.1: a wrong source status answers 409 invalid_status_transition and writes no audit', async () => {

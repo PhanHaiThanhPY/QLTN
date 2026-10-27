@@ -13,7 +13,7 @@ export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
   'CHK_repair_payments_status',
   `status IN ('PENDING_APPROVAL', 'NEEDS_UPDATE', 'PENDING_TRANSFER', 'TRANSFERRED')`,
 )
-@Check('CHK_repair_payments_amount', 'amount_vnd > 0')
+@Check('CHK_repair_payments_amount', `amount_vnd > 0 OR (kind = 'QUYET_TOAN' AND amount_vnd = 0)`)
 export class RepairPayment {
   @PrimaryGeneratedColumn('uuid')
   id: string;

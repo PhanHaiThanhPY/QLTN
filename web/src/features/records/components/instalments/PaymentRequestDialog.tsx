@@ -3,7 +3,7 @@ import { SignaturePad } from '@/components/common/SignaturePad';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { formatVndInputString, formatVndString, vndDigits } from '@/domain/quote-proposal';
-import { vndInWords, type PaymentDraftFields } from '@/domain/payment';
+import { NO_TRANSFER_LABEL, vndInWords, type PaymentDraftFields } from '@/domain/payment';
 import { useAttachmentDraft } from '../../hooks/useAttachmentDraft';
 import { useKnownFiles } from '../../hooks/useKnownFiles';
 import { useRecordCommand } from '../../hooks/useRecordCommand';
@@ -30,6 +30,12 @@ const TITLE: Record<RequestAction, string> = {
 
 const SHOWN = ['amountVnd', 'payeeName', 'accountNo', 'bankName', 'transferContent', 'requestAttachmentIds', 'invoiceAttachmentIds', 'signature'] as const;
 
+/** "6.000.000 ₫"; 0 → "0 ₫ · Không cần chuyển khoản" (BR-FX2-06); below 0 is refused by the API (BR-FX2-02). */
+const instalmentText = (instalment: bigint): string => {
+  if (instalment > 0n) return formatVndString(instalment.toString());
+  return instalment === 0n ? `${formatVndString('0')} · ${NO_TRANSFER_LABEL}` : '—';
+};
+
 /** A1 / A1b / T18 (D5-TDN, SPEC §4.4): amount (also in words), payee, transfer content, files and the BQL signature. */
 export const PaymentRequestDialog = ({ action, initial, transferredAdvancesVnd = '0', onClose }: PaymentRequestDialogProps) => {
   const { detail } = useRecordContext();
@@ -46,6 +52,9 @@ export const PaymentRequestDialog = ({ action, initial, transferredAdvancesVnd =
   const command = useRecordCommand({ successMessage: `Đã gửi ${TITLE[action].toLowerCase()}.`, onSuccess: onClose });
   const errors = command.fieldErrors;
   const instalment = isSettlement && amount ? BigInt(amount) - BigInt(transferredAdvancesVnd) : null;
+  // FX-S2 BR-FX2-03: no transfer, so the payee is optional (a value that is typed is still checked by the API).
+  const payeeRequired = instalment !== 0n;
+  const optional = payeeRequired ? '' : ' (không bắt buộc)';
 
   return (
     <CommandDialog
@@ -75,21 +84,21 @@ export const PaymentRequestDialog = ({ action, initial, transferredAdvancesVnd =
       {instalment !== null ? (
         <p className="rounded-lg bg-surface-2 px-3 py-2 text-sm text-ink-2">
           {formatVndString(amount)} − tạm ứng đã chuyển {formatVndString(transferredAdvancesVnd)} ={' '}
-          <span className="font-semibold text-ink">{instalment > 0n ? formatVndString(instalment.toString()) : '—'}</span>
+          <span className="font-semibold text-ink">{instalmentText(instalment)}</span>
         </p>
       ) : null}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Field label="Tên tài khoản" htmlFor="pay-payee" required error={errors.payeeName}>
+        <Field label={`Tên tài khoản${optional}`} htmlFor="pay-payee" required={payeeRequired} error={errors.payeeName}>
           <Input id="pay-payee" maxLength={200} value={payeeName} onChange={(event) => setPayeeName(event.target.value)} />
         </Field>
-        <Field label="Số tài khoản" htmlFor="pay-account" required hint="6–20 chữ số." error={errors.accountNo}>
+        <Field label={`Số tài khoản${optional}`} htmlFor="pay-account" required={payeeRequired} hint="6–20 chữ số." error={errors.accountNo}>
           <Input id="pay-account" inputMode="numeric" maxLength={20} value={accountNo} onChange={(event) => setAccountNo(event.target.value.replace(/\D/g, ''))} />
         </Field>
-        <Field label="Ngân hàng" htmlFor="pay-bank" required error={errors.bankName}>
+        <Field label={`Ngân hàng${optional}`} htmlFor="pay-bank" required={payeeRequired} error={errors.bankName}>
           <Input id="pay-bank" maxLength={200} value={bankName} onChange={(event) => setBankName(event.target.value)} />
         </Field>
       </div>
-      <Field label="Nội dung chuyển khoản" htmlFor="pay-content" hint="Bỏ trống: “BQT «tòa» THANH TOAN CHI PHI «hồ sơ»”." error={errors.transferContent}>
+      <Field label={`Nội dung chuyển khoản${optional}`} htmlFor="pay-content" hint="Bỏ trống: “BQT «tòa» THANH TOAN CHI PHI «hồ sơ»”." error={errors.transferContent}>
         <Input id="pay-content" maxLength={210} value={transferContent} onChange={(event) => setTransferContent(event.target.value)} />
       </Field>
       <AttachmentField
