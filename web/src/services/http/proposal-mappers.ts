@@ -48,6 +48,8 @@ export interface ApiProposalBody {
   shortfallReason?: string;
   incidentAttachmentIds?: string[];
   signature?: string;
+  /** B06-S1 BR-E-05: first submission of an emergency record after its deadline. */
+  lateReason?: string;
 }
 
 const TEXT_KEYS = [
@@ -78,6 +80,7 @@ export const toProposalBody = (payload: unknown, expectedVersion: number | undef
   if (typeof row.proposedContractorIndex === 'number') body.proposedContractorIndex = row.proposedContractorIndex;
   if (row.incidentAttachmentIds !== undefined) body.incidentAttachmentIds = asStringArray(row.incidentAttachmentIds);
   if (row.signature !== undefined) body.signature = asString(row.signature);
+  if (typeof row.lateReason === 'string' && row.lateReason.trim() !== '') body.lateReason = row.lateReason;
   return body;
 };
 
@@ -89,6 +92,8 @@ export interface ApiProposalDecisionBody {
   boardMinutesAttachmentIds?: string[];
   selectedContractorIndex?: number;
   selectionReason?: string;
+  /** B06-S1 BR-E-07: the BOARD holder ends the post-review of an emergency record. */
+  finalPostReview?: boolean;
 }
 
 /** Web `approveProposal` / `requestProposalUpdate` / `rejectProposal` payload → the decision DTOs. */
@@ -106,5 +111,6 @@ export const toProposalDecisionBody = (
     body.boardMinutesAttachmentIds = asStringArray(row.boardMinutesAttachmentIds);
   }
   if (typeof row.selectedContractorIndex === 'number') body.selectedContractorIndex = row.selectedContractorIndex;
+  if (row.finalPostReview === true) body.finalPostReview = true;
   return body;
 };

@@ -7,8 +7,9 @@ import { PRIORITY_LABEL } from '@/domain/constants';
 import { useReferenceData } from '@/hooks/useReferenceData';
 import { formatDateTime } from '@/utils/date';
 import { useRecordContext } from '../../record-context';
-import { RecordFlags } from '../list/RecordFlags';
+import { isDocsOverdue, RecordFlags } from '../list/RecordFlags';
 import { EmergencyDialog } from '../emergency/EmergencyDialog';
+import { EmergencyStartButton } from '../emergency/EmergencyStartButton';
 import { DialogActionButton } from '../shared/DialogActionButton';
 import { ReasonActionButton } from '../shared/ReasonActionButton';
 import { EditRecordButton } from './EditRecordButton';
@@ -37,7 +38,7 @@ export const RecordDetailHeader = () => {
               <Tag>{record.code}</Tag>
               <RepairStatusBadge status={record.status} />
               {isHighPriority ? <Badge tone="warn">Ưu tiên {PRIORITY_LABEL[record.priority].toLowerCase()}</Badge> : null}
-              <RecordFlags isOverdue={detail.isOverdue} needsReassignment={detail.inactiveSlots.length > 0} isEmergency={Boolean(record.emergency)} />
+              <RecordFlags isOverdue={detail.isOverdue} needsReassignment={detail.inactiveSlots.length > 0} isEmergency={Boolean(record.emergency)} isDocsOverdue={isDocsOverdue(record)} />
             </div>
             <h2 className="break-words text-lg font-semibold tracking-tight text-ink">{name}</h2>
             <p className="text-sm text-ink-2">
@@ -46,7 +47,9 @@ export const RecordDetailHeader = () => {
             <p className="text-xs text-ink-3">Cập nhật {formatDateTime(record.updatedAt)}</p>
           </div>
           <div className="flex flex-wrap gap-2 lg:justify-end">
-            {IS_API_MODE ? null : (
+            {IS_API_MODE ? (
+              <EmergencyStartButton />
+            ) : (
               <DialogActionButton action="startEmergencyRepair" variant="danger" renderDialog={(close) => <EmergencyDialog onClose={close} />} />
             )}
             <EditRecordButton />

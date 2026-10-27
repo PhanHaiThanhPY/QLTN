@@ -1,3 +1,4 @@
+import { mapEmergency, mapEmergencyPolicy, type ApiEmergency, type ApiEmergencyPolicy } from './emergency-mappers';
 import { BUSINESS_WORKFLOW_STEPS, PRIORITY, REPAIR_STATUS, ROLE, SUBJECT_TYPE } from '@/domain/constants';
 import type { BusinessWorkflowStepKey, RepairStatus, Role, SubjectType, TaskKind } from '@/domain/constants';
 import { assignmentRulesOf, approvalStepKeysOf, CONFIG_DUE_KINDS, workflowApprovalDefinitionsOf, workflowStagesOf } from '@/domain/building-config';
@@ -985,6 +986,8 @@ export interface ApiRepairRecord {
   approvedSubmissionId?: string | null;
   approvedAmountVnd?: string | null;
   executingContractorName?: string | null;
+  /** B06-S1: emergency data, null for a regular record. */
+  emergency?: ApiEmergency | null;
   createdBy: string;
   version: number;
   createdAt: string;
@@ -1025,6 +1028,7 @@ export const mapRepairRecord = (row: ApiRepairRecord): RepairRecord => {
     ...(row.currentApprovalStepKey ? { currentApprovalStepKey: row.currentApprovalStepKey } : {}),
     ...(row.currentSubmissionId ? { currentSubmissionId: row.currentSubmissionId } : {}),
     ...(row.approvedSubmissionId ? { approvedSubmissionId: row.approvedSubmissionId } : {}),
+    ...(row.emergency ? { emergency: mapEmergency(row.emergency) } : {}),
     createdBy: row.createdBy,
     version: row.version,
     createdAt: row.createdAt,
@@ -1090,6 +1094,8 @@ export interface ApiRecordDetail {
   execution?: ExecutionHistory;
   /** S4: payment instalments. */
   payment?: PaymentHistory;
+  /** B06-S1: the building's current emergency limit and hours. */
+  emergencyPolicy?: ApiEmergencyPolicy | null;
   audit?: readonly ApiAuditEvent[];
 }
 
@@ -1105,6 +1111,7 @@ export const mapRecordDetail = (row: ApiRecordDetail): RecordDetail => ({
   quoteProposal: mapProposalHistory(row.proposal, row.record),
   execution: mapExecution(row.execution),
   paymentHistory: mapPaymentHistory(row.payment),
+  emergencyPolicy: mapEmergencyPolicy(row.emergencyPolicy),
   signatures: [],
   acceptances: [],
   paymentRequests: [],

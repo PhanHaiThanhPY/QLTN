@@ -263,6 +263,8 @@ export interface RecordDetail {
   alerts: RepairAlert[];
   /** Current configuration of the record's building (emergency limit and hours shown in the UI). */
   buildingConfig?: BuildingConfig;
+  /** api mode (B06-S1): the building's current emergency limit and document hours, for the E-T1 dialog. */
+  emergencyPolicy?: { limitVnd: number; docHours: number };
   construction?: Construction;
   acceptances: Acceptance[];
   paymentDraft?: PaymentDraft;

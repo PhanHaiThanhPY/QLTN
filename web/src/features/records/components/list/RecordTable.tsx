@@ -4,7 +4,7 @@ import { Table, Td, Th, Tr } from '@/components/ui/table';
 import { useReferenceData } from '@/hooks/useReferenceData';
 import type { RecordListItem } from '@/services/records-service';
 import { formatDateTime } from '@/utils/date';
-import { RecordFlags } from './RecordFlags';
+import { isDocsOverdue, RecordFlags } from './RecordFlags';
 
 /** Desktop table of records (hidden below md). */
 export const RecordTable = ({ items }: { items: RecordListItem[] }) => {
@@ -38,7 +38,7 @@ export const RecordTable = ({ items }: { items: RecordListItem[] }) => {
             <Td>
               <div className="flex flex-col items-start gap-1">
                 <RepairStatusBadge status={record.status} />
-                <RecordFlags isOverdue={isOverdue} needsReassignment={needsReassignment} isEmergency={Boolean(record.emergency)} />
+                <RecordFlags isOverdue={isOverdue} needsReassignment={needsReassignment} isEmergency={Boolean(record.emergency)} isDocsOverdue={isDocsOverdue(record)} />
               </div>
             </Td>
             <Td className="text-sm">{userName(record.managerUserId)}</Td>

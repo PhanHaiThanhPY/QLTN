@@ -15,12 +15,15 @@ import { useRecordCommand } from '../../hooks/useRecordCommand';
 import { useRepairAction } from '../../hooks/useRepairAction';
 import { useRecordContext } from '../../record-context';
 import { withPrecondition } from '../../record-utils';
+import { isDocsOverdue } from '../list/RecordFlags';
 import { AttachmentField } from '../shared/AttachmentField';
 import { FieldErrorList } from '../shared/FieldErrorList';
+import { LateReasonField } from '../emergency/LateReasonField';
 import { QuoteContractorFiles } from './QuoteContractorFiles';
 import { QuoteTableEditor } from './QuoteTableEditor';
 
 const SHOWN = [
+  'lateReason',
   'recipient',
   'preparedByName',
   'proposalType',
@@ -72,6 +75,9 @@ export const QuoteProposalEditor = ({ proposal }: { proposal: QuoteProposalHisto
   const form = useQuoteForm(editorSource(proposal));
   const files = useKnownFiles(detail.attachments);
   const [signature, setSignature] = useState<string | null>(null);
+  const [lateReason, setLateReason] = useState('');
+  // B06-S1 BR-E-05: the server says the emergency documents are overdue; only the first submission is measured.
+  const lateEmergency = isFirst && isDocsOverdue(record) ? record.emergency : undefined;
   const firstStep = approvalStepsFor(record.approvalStepKeys, record.workflowApprovalSteps)[0]?.label ?? 'bước đầu';
   const saveCommand = useRecordCommand({ successMessage: 'Đã lưu tờ trình nháp.' });
   const submitCommand = useRecordCommand({ successMessage: `Đã trình duyệt. Bước đầu: ${firstStep}.` });
@@ -92,7 +98,8 @@ export const QuoteProposalEditor = ({ proposal }: { proposal: QuoteProposalHisto
       <CardBody className="space-y-4">
         {attemptNo === LIMITS.MAX_SUBMISSION_ATTEMPTS ? (
           <Notice tone="warning" title="Đây sẽ là lần trình cuối cùng (3/3)">
-            Ở lần trình thứ 3 người duyệt chỉ được Duyệt hoặc Từ chối; bị từ chối thì hồ sơ chuyển sang “Chưa xử lý”.
+            Ở lần trình thứ 3 người duyệt chỉ được Duyệt hoặc Từ chối; bị từ chối thì hồ sơ chuyển sang{' '}
+            {record.emergency ? '“Không được duyệt hậu kiểm”' : '“Chưa xử lý”'}.
           </Notice>
         ) : null}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -165,6 +172,7 @@ export const QuoteProposalEditor = ({ proposal }: { proposal: QuoteProposalHisto
           }}
           onRemove={(id) => form.set.incidentAttachmentIds(values.incidentAttachmentIds.filter((item) => item !== id))}
         />
+        {lateEmergency ? <LateReasonField emergency={lateEmergency} value={lateReason} error={errors.lateReason} disabled={isReadOnly} onChange={setLateReason} /> : null}
         <Field label="Chữ ký người trình" required hint="Bắt buộc khi trình; mỗi lần trình ký lại." error={errors.signature}>
           <SignaturePad onChange={setSignature} disabled={isReadOnly} invalid={Boolean(errors.signature)} label="Chữ ký người trình tờ trình" />
         </Field>
@@ -176,7 +184,7 @@ export const QuoteProposalEditor = ({ proposal }: { proposal: QuoteProposalHisto
           <ActionButton
             state={withPrecondition(submit.state, Boolean(signature), 'Cần ký tên trước khi trình.')}
             isLoading={submitCommand.isPending}
-            onClick={() => void submitCommand.run(submitAction, { ...form.payload, signature })}
+            onClick={() => void submitCommand.run(submitAction, { ...form.payload, signature, ...(lateEmergency ? { lateReason: lateReason.trim() } : {}) })}
           >
             {REPAIR_ACTIONS[submitAction].label} (lần {attemptNo})
           </ActionButton>

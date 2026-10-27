@@ -306,6 +306,23 @@ export interface EmergencyInfo {
   docsSubmittedAt?: IsoDateTime;
   /** Required when the documents are submitted after docsDueAt. */
   lateReason?: string;
+  /** api mode (B06-S1): planned end date, server-computed deadline and post-review outcome. */
+  plannedEndDate?: IsoDate;
+  /** Whole hours left (negative when overdue), null once the documents are in; computed by api-qltn. */
+  hoursLeft?: number | null;
+  docsOverdue?: boolean;
+  /** The chosen quotation is above the limit applied at the start (BR-E-06). */
+  overEmergencyLimit?: boolean;
+  postReviewOutcome?: 'APPROVED' | 'REJECTED' | null;
+  postReviewRejection?: EmergencyDecision | null;
+  /** BQT decision on the cost when closing a record not accepted at post-review (BR-E-08). */
+  closeDecision?: (EmergencyDecision & { attachmentIds: string[] }) | null;
+}
+
+export interface EmergencyDecision {
+  reason: string;
+  decidedBy: string;
+  decidedAt: IsoDateTime;
 }
 
 export type RepairConfirmationOutcome = 'CONFIRMED' | 'NEEDS_UPDATE' | 'NO_REPAIR';

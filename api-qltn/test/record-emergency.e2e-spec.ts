@@ -44,6 +44,7 @@ interface Detail {
   proposal: { draft: { contractors?: Array<{ name: string }>; requestContent?: string } | null };
   execution: { construction: { startDate: string; plannedEndDate: string; progressPercent: number } | null };
   audit: Array<{ action: string; fromStatus: string | null; toStatus: string | null; reason: string | null }>;
+  emergencyPolicy: { limitVnd: string; docHours: number } | null;
 }
 
 interface Notice {
@@ -210,6 +211,7 @@ describe('Emergency repair, B06-S1 (e2e)', () => {
       expect(record.status).toBe('EMERGENCY_IN_PROGRESS');
       const detail = await detailOf(record.id);
       expect(detail.execution.construction).toMatchObject({ startDate: vnToday(), progressPercent: 0 });
+      expect(detail.emergencyPolicy).toEqual({ limitVnd: '15000000', docHours: 24 });
       expect(detail.proposal.draft?.contractors?.[0].name).toBe('Cty TNHH Bình An');
       expect(detail.proposal.draft?.requestContent).toBe(REASON);
       const emergency = detail.record.emergency as Emergency;
