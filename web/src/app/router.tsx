@@ -56,7 +56,7 @@ export const router = createBrowserRouter([
       { index: true, element: IS_API_MODE ? <HomeRedirect /> : page(<DashboardPage />) },
       { path: 'tasks', element: connected(page(<TasksPage />)) },
       { path: 'records', element: apiConnected(page(<RecordsPage />)) },
-      { path: 'records/schedule', element: connected(page(<RepairSchedulePage />)) },
+      { path: 'records/schedule', element: page(<RepairSchedulePage />) },
       { path: 'records/new', element: apiConnected(page(<RecordFormPage />)) },
       { path: 'records/:recordId', element: apiConnected(page(<RecordDetailPage />)) },
       { path: 'records/:recordId/edit', element: apiConnected(page(<RecordFormPage />)) },

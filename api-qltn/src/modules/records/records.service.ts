@@ -48,7 +48,8 @@ import {
   loadAssignmentContext,
 } from './record-assignment';
 import { loadRecordForAction, validateText } from './record-loader';
-import { RECORD_FINAL_STATUSES, RECORD_NEEDS_UPDATE_STATUSES, statusesOfGroup } from './record-status-groups';
+import { applyRecordScope, isOutOfScope, NO_BUILDING } from './record-scope-query';
+import { RECORD_FINAL_STATUSES, RECORD_NEEDS_UPDATE_STATUSES } from './record-status-groups';
 
 const CODE_PREFIX = 'SC';
 const CODE_WIDTH = 3;
@@ -85,9 +86,6 @@ const DESCRIPTION_MIN = 10;
 const DESCRIPTION_MAX = 2000;
 const REASON_MIN = 5;
 const REASON_MAX = 1000;
-
-/** Placeholder scope for an account without buildings, so `IN (:...scope)` stays valid SQL. */
-const NO_BUILDING = '00000000-0000-0000-0000-000000000000';
 
 /**
  * Diacritic folding for `search`: the database has no `unaccent` extension, so `translate()` maps Vietnamese
@@ -406,26 +404,16 @@ export class RecordsService {
    */
   async list(actor: AuthenticatedUser, query: ListRecordsQueryDto): Promise<PaginatedResult<RepairRecordView>> {
     const window = pageWindow(query);
-    if (query.buildingId && !actor.buildingIds.includes(query.buildingId)) return toPaginated([], 0, window);
+    if (isOutOfScope(actor, query.buildingId)) return toPaginated([], 0, window);
 
-    const qb = this.dataSource.getRepository(RepairRecord).createQueryBuilder('r');
-    qb.andWhere(
-      query.buildingId ? 'r.building_id = :buildingId' : 'r.building_id IN (:...scope)',
-      query.buildingId
-        ? { buildingId: query.buildingId }
-        : { scope: actor.buildingIds.length > 0 ? actor.buildingIds : [NO_BUILDING] },
-    );
+    const qb = applyRecordScope(this.dataSource.getRepository(RepairRecord).createQueryBuilder('r'), actor, query);
     if (query.status) qb.andWhere('r.status = :status', { status: query.status });
-    if (query.statusGroup) {
-      qb.andWhere('r.status IN (:...statuses)', { statuses: statusesOfGroup(query.statusGroup) });
-    }
     if (query.open) {
       qb.andWhere('r.status NOT IN (:...finalStatuses)', { finalStatuses: [...RECORD_FINAL_STATUSES] });
     }
     if (query.attention === 'needs_update') {
       qb.andWhere('r.status IN (:...needsStatuses)', { needsStatuses: [...RECORD_NEEDS_UPDATE_STATUSES] });
     }
-    if (query.locationId) qb.andWhere('r.location_id = :locationId', { locationId: query.locationId });
     if (query.assigneeId) {
       qb.andWhere(
         new Brackets((w) =>

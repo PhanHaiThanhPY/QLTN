@@ -9,15 +9,26 @@ import { ProposalsController } from './proposals.controller';
 import { ProposalsService } from './proposals.service';
 import { RecordsController } from './records.controller';
 import { RecordsService } from './records.service';
+import { ScheduleController } from './schedule.controller';
+import { ScheduleService } from './schedule.service';
 
 @Module({
   controllers: [
+    // Before RecordsController: `/records/schedule` must not be read as `/records/:id`.
+    ScheduleController,
     RecordsController,
     ProposalsController,
     ConstructionController,
     PaymentsController,
     EmergencyController,
   ],
-  providers: [RecordsService, ProposalsService, ConstructionService, PaymentsService, EmergencyService],
+  providers: [
+    RecordsService,
+    ProposalsService,
+    ConstructionService,
+    PaymentsService,
+    EmergencyService,
+    ScheduleService,
+  ],
 })
 export class RecordsModule {}
