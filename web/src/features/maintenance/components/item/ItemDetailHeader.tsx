@@ -71,9 +71,9 @@ export const ItemDetailHeader = ({
                 <dd className="truncate">{buildingLabel}</dd>
               </div>
               <div className="flex items-center gap-1.5">
-                <dt className="sr-only">Đầu mối</dt>
+                <dt className="sr-only">Người phụ trách</dt>
                 <UserRound className="size-3.5 text-ink-3" aria-hidden />
-                <dd>Đầu mối: {ownerLabel}</dd>
+                <dd>Phụ trách: {ownerLabel}</dd>
               </div>
             </dl>
           </div>

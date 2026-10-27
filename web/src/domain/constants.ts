@@ -243,7 +243,7 @@ export const FREQUENCY_LABEL: Record<Frequency, string> = {
 export const ITEM_CONDITION = { UNKNOWN: 'UNKNOWN', GOOD: 'GOOD', NEEDS_ATTENTION: 'NEEDS_ATTENTION' } as const;
 export type ItemCondition = (typeof ITEM_CONDITION)[keyof typeof ITEM_CONDITION];
 export const ITEM_CONDITION_LABEL: Record<ItemCondition, string> = {
-  UNKNOWN: 'Chưa đánh giá',
+  UNKNOWN: 'Chưa rõ',
   GOOD: 'Tốt',
   NEEDS_ATTENTION: 'Cần chú ý',
 };

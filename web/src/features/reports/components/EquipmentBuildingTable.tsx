@@ -18,7 +18,7 @@ export const EquipmentBuildingTable = ({ rows, selectedId, buildingName, onSelec
         <tr>
           <Th>Tòa nhà</Th>
           <Th className="text-right">Thiết bị</Th>
-          <Th>Tốt / Cần chú ý / Chưa đánh giá</Th>
+          <Th>Tốt / Cần chú ý / Chưa rõ</Th>
           <Th className="text-right">Lượt sửa</Th>
           <Th className="text-right">Chi phí sửa</Th>
           <Th className="text-right">Hỏng lặp lại</Th>
@@ -61,7 +61,7 @@ export const EquipmentBuildingTable = ({ rows, selectedId, buildingName, onSelec
               <span className="tnum text-sm font-semibold text-ink">{row.itemCount} thiết bị</span>
             </span>
             <span className="mt-1 block text-xs text-ink-2">
-              Tốt {row.byCondition.GOOD} · Cần chú ý {row.byCondition.NEEDS_ATTENTION} · Chưa đánh giá {row.byCondition.UNKNOWN}
+              Tốt {row.byCondition.GOOD} · Cần chú ý {row.byCondition.NEEDS_ATTENTION} · Chưa rõ {row.byCondition.UNKNOWN}
             </span>
             <span className="mt-1 block text-xs text-ink-2">
               {row.repairCount} lượt sửa · {row.cost > 0 ? formatVnd(row.cost) : 'chưa có chi phí'}

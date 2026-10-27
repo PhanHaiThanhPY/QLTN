@@ -22,7 +22,7 @@ export const ItemSpecCard = ({ item, ageLabel, ownerLabel, updatedByLabel }: Ite
     { label: 'Model', value: item.model ?? '—' },
     { label: 'Nhà cung cấp', value: item.supplier ?? '—' },
     { label: 'Ngày lắp / thay', value: formatDate(item.installDate), hint: ageLabel ? `Đã sử dụng ${ageLabel}` : undefined },
-    { label: 'Đầu mối (BQL)', value: ownerLabel },
+    { label: 'Người phụ trách (BQL)', value: ownerLabel },
   ];
   return (
     <Card>
@@ -41,7 +41,7 @@ export const ItemSpecCard = ({ item, ageLabel, ownerLabel, updatedByLabel }: Ite
         </dl>
         {item.description ? (
           <div className="mt-2 rounded-lg bg-surface-2 p-3 text-[0.8125rem] text-ink-2">
-            <p className="mb-1 text-[0.6875rem] font-semibold uppercase tracking-wide text-ink-3">Mô tả</p>
+            <p className="mb-1 text-[0.6875rem] font-semibold uppercase tracking-wide text-ink-3">Thông tin kỹ thuật</p>
             <p className="whitespace-pre-line text-xs leading-5">{item.description}</p>
           </div>
         ) : null}
