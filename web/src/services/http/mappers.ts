@@ -1113,6 +1113,8 @@ export interface ApiRecordDetail {
   emergencyPolicy?: ApiEmergencyPolicy | null;
   /** MT-S1: the record's equipment line, null for "no specific equipment". */
   maintenanceItem?: { id: string; code: string; name: string; active: boolean } | null;
+  /** MT-S3: "Từ lượt bảo trì BT-… · mục …". */
+  sourceOccurrence?: { id: string; code: string; itemId: string | null; itemLabel: string | null } | null;
   audit?: readonly ApiAuditEvent[];
 }
 
@@ -1130,6 +1132,7 @@ export const mapRecordDetail = (row: ApiRecordDetail): RecordDetail => ({
   paymentHistory: mapPaymentHistory(row.payment),
   emergencyPolicy: mapEmergencyPolicy(row.emergencyPolicy),
   ...(row.maintenanceItem ? { itemSummary: { ...row.maintenanceItem } } : {}),
+  ...(row.sourceOccurrence ? { sourceSummary: { id: row.sourceOccurrence.id, code: row.sourceOccurrence.code, itemLabel: row.sourceOccurrence.itemLabel } } : {}),
   signatures: [],
   acceptances: [],
   paymentRequests: [],

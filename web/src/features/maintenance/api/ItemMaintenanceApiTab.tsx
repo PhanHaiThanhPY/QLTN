@@ -53,7 +53,14 @@ export const ItemMaintenanceApiTab = ({ itemId, plans, today, canCreate, userNam
           <li key={occurrence.id} className="flex items-center justify-between gap-2 py-2 text-sm">
             <span className="min-w-0">
               <span className="font-medium text-ink">{formatDate(occurrence.scheduledDate)}</span>
-              <span className="text-ink-2"> · {occurrence.code} · {plan.code}</span>
+              <span className="text-ink-2">
+                {' '}
+                ·{' '}
+                <Link to={`/maintenance/occurrences/${occurrence.id}`} className="text-accent hover:underline">
+                  {occurrence.code}
+                </Link>{' '}
+                · {plan.code}
+              </span>
             </span>
             <span className="shrink-0 text-xs text-ink-2">{userName(occurrence.performerUserId)}</span>
           </li>
