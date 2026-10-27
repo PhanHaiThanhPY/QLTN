@@ -46,6 +46,8 @@ export const PERMISSION_ROWS: readonly PermissionRow[] = [
   },
   { group: 'Quỹ', label: 'Xem gói khai thác, đơn vị, hồ sơ dự thầu kèm giá chào và tài liệu', capability: 'EXPLOITATION_VIEW' },
   { group: 'Quỹ', label: 'Lập, phát hành, ghi nhận hồ sơ, yêu cầu bổ sung, đóng nhận, hủy gói khai thác', capability: 'EXPLOITATION_MANAGE' },
+  { group: 'Quỹ', label: 'Duyệt, yêu cầu sửa, từ chối kết quả chọn đơn vị khai thác', capability: 'EXPLOITATION_APPROVE' },
+  { group: 'Quỹ', label: 'Xem hợp đồng khai thác và lịch phải thu (không xem giá chào)', capability: 'EXPLOITATION_CONTRACT_VIEW' },
   { group: 'Bảo trì', label: 'Tạo/sửa/vô hiệu hóa hạng mục bảo trì', capability: 'MAINTENANCE_MANAGE' },
   { group: 'Bảo trì', label: 'Tạo/sửa/kích hoạt/tạm dừng/đổi lịch kế hoạch', capability: 'MAINTENANCE_MANAGE' },
   { group: 'Bảo trì', label: 'Kích hoạt sinh lịch tự động khi mở màn hình (chạy dưới danh nghĩa SYSTEM)', capability: 'ALL' },

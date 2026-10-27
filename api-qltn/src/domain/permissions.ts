@@ -58,6 +58,10 @@ export const CAPABILITY = {
   EXPLOITATION_VIEW: 'EXPLOITATION_VIEW',
   /** Create and issue packages, record bids, request supplements, close and cancel (F-S1 BR-F1-11). */
   EXPLOITATION_MANAGE: 'EXPLOITATION_MANAGE',
+  /** Approve, send back or reject the selected partner of a package (F-S2 BR-F2-02, BQT). */
+  EXPLOITATION_APPROVE: 'EXPLOITATION_APPROVE',
+  /** See exploitation contracts and their receivable schedule, not the bids (F-S2 BR-F2-13, D-F2-6). */
+  EXPLOITATION_CONTRACT_VIEW: 'EXPLOITATION_CONTRACT_VIEW',
 } as const;
 export type Capability = (typeof CAPABILITY)[keyof typeof CAPABILITY];
 export const CAPABILITIES = Object.values(CAPABILITY);
@@ -91,6 +95,7 @@ const ROLE_CAPABILITIES: Readonly<Record<Role, readonly Capability[]>> = {
     'EMERGENCY_START',
     'AUDIT_VIEW',
     'EXPLOITATION_VIEW',
+    'EXPLOITATION_CONTRACT_VIEW',
     'EXPLOITATION_MANAGE',
   ],
   // KT changes item condition only while confirming an occurrence.
@@ -108,9 +113,11 @@ const ROLE_CAPABILITIES: Readonly<Record<Role, readonly Capability[]>> = {
     'REPORT_VIEW',
     'AUDIT_VIEW',
     'EXPLOITATION_VIEW',
+    'EXPLOITATION_APPROVE',
+    'EXPLOITATION_CONTRACT_VIEW',
   ],
   // Kế toán on the BQT side: confirms transfers and runs fund money operations (DF-10).
-  ACCOUNTANT: ['VIEW', 'PAYMENT_CONFIRM', 'FUND_OPERATE', 'REPORT_VIEW'],
+  ACCOUNTANT: ['VIEW', 'PAYMENT_CONFIRM', 'FUND_OPERATE', 'REPORT_VIEW', 'EXPLOITATION_CONTRACT_VIEW'],
 };
 
 export const isRole = (value: unknown): value is Role => typeof value === 'string' && ROLES.includes(value as Role);

@@ -33,6 +33,17 @@ describe('permissions', () => {
     expect(ROLES.filter((role) => roleCapabilities(role).includes(CAPABILITY.EXPLOITATION_MANAGE))).toEqual(['BQL']);
   });
 
+  it('lets BQT approve selections and BQL, BQT and Kế toán see contracts (F-S2 BR-F2-13)', () => {
+    expect(ROLES.filter((role) => roleCapabilities(role).includes(CAPABILITY.EXPLOITATION_APPROVE))).toEqual([
+      'OWNERS_BOARD',
+    ]);
+    expect(ROLES.filter((role) => roleCapabilities(role).includes(CAPABILITY.EXPLOITATION_CONTRACT_VIEW))).toEqual([
+      'BQL',
+      'OWNERS_BOARD',
+      'ACCOUNTANT',
+    ]);
+  });
+
   describe('matrix v2 (ADR-0001, SPEC RM-S1)', () => {
     it('gives the building configuration to ADMIN only and the locations to ADMIN and BQL (DF-11)', () => {
       const withConfig = ROLES.filter((role) => roleCapabilities(role).includes(CAPABILITY.BUILDING_CONFIG));
@@ -41,9 +52,9 @@ describe('permissions', () => {
       expect(withLocations).toEqual(['ADMIN', 'BQL']);
     });
 
-    it('defines Kế toán with exactly VIEW, REPORT_VIEW, PAYMENT_CONFIRM and FUND_OPERATE (BR-02)', () => {
+    it('defines Kế toán with VIEW, REPORT_VIEW, PAYMENT_CONFIRM, FUND_OPERATE (BR-02) and contract reading (F-S2)', () => {
       expect([...roleCapabilities('ACCOUNTANT')].sort()).toEqual(
-        ['FUND_OPERATE', 'PAYMENT_CONFIRM', 'REPORT_VIEW', 'VIEW'].sort(),
+        ['EXPLOITATION_CONTRACT_VIEW', 'FUND_OPERATE', 'PAYMENT_CONFIRM', 'REPORT_VIEW', 'VIEW'].sort(),
       );
     });
 
