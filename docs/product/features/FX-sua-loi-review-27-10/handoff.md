@@ -92,6 +92,24 @@ Commit: `5bf84fc` (API + migration + web), `cd94906` (bằng chứng). Tách t�
 
 Test đã chạy: e2e `record-payments` 8/8; unit `src/domain` 34/34; web `tsc -b`; vitest `payment.test.ts` + `src/features/records` (9 file, 28 test); api `format:check`, eslint, `tsc --noEmit`.
 
+### Kết quả review độc lập — FX-S2 (dev-review, 27/10/2026)
+
+**Kết luận: PASS WITH RESIDUE → handoff PM/BA close.** Không phát hiện finding cần sửa.
+
+- API: `npm test` → 9 suites / 58 tests đạt; `E2E_POSTGRES_DB=qltn_review_fx_s2_e2e SEED_DEMO_PASSWORD='(đã cấp qua env)' npm run test:e2e -- --runTestsByPath test/record-payments.e2e-spec.ts` → 1 suite / 8 tests đạt.
+- Web: `npm test` → 56 files / 394 tests đạt; `npm run typecheck` → đạt.
+- Chất lượng: API `npm run format:check`, `npm run lint` đạt; `npx tsc --noEmit --incremental false` đạt do `npm run typecheck` mặc định không ghi được incremental cache trong worktree sibling; `git diff --check fb4fd7a..cd94906` và `node --check docs/product/features/FX-sua-loi-review-27-10/supporting/fx-s2-ui-check.mjs` đều đạt.
+- AC-FX2.1–2.5 được kiểm bằng e2e/unit: quyết toán bằng tạm ứng tạo đợt 0 đồng, vẫn bắt buộc file/chữ ký, payee trống được nhận, BQT duyệt sang `TRANSFERRED` không có confirmedBy/At, T21 trả `payment_already_confirmed` không ghi audit, T22 đóng hồ sơ; quyết toán thấp hơn bị chặn đúng lỗi; hồi quy 4/9/10 triệu vẫn đạt.
+- AC-FX2.6: đã xem độc lập 3 ảnh evidence; dialog hiển thị phép tính `10.000.000 ₫ − 10.000.000 ₫ = 0 ₫ · Không cần chuyển khoản`, nhãn người hưởng/nội dung là không bắt buộc; card sau duyệt không có nút xác nhận chuyển khoản, trạng thái và luồng đóng hồ sơ hiển thị đúng.
+- Residue: chưa rerun live browser trên đúng worktree FX-S2 vì `agent-browser` không có trong PATH; Chrome tab QLTN hiện đang trỏ server cây chung, không phải candidate. Ảnh evidence, script syntax và component tests đã được xem độc lập.
+
+### Đóng FX-S2 (PM/BA, 27/10/2026)
+
+- **FX-S2 đóng.** Review đạt (PASS WITH RESIDUE). Cả 6 AC (AC-FX2.1–2.6) đều có bằng chứng ở trên.
+- PM/BA đọc lại `domain/payment-settlement.ts`, phần sửa trong `payments.service.ts` và migration `2026-10-27a`; cả ba khớp BR-FX2-01 đến 05.
+- Residue được chấp nhận, giống FX-S1: chưa chạy lại trình duyệt trên đúng bản ứng viên.
+- Merge vào `main` theo yêu cầu của chủ dự án. **Phải chạy migration `2026-10-27a`** trên mọi DB trước khi chạy code này (`qltn_dev` đã chạy).
+
 ### FX-S3 — `fix/fx-s3-review-fixes` (worktree `../QLTN-fx-s3`)
 
 Commit: `b51fb9a` (R-05 + R-08), `46267c5` (R-04, web), `7765cd7` (R-03), `75251a6` (bằng chứng). Tách từ `main` `fb4fd7a`. Làm theo yêu cầu trực tiếp của chủ dự án; FX-S3 chưa có qitem riêng.
