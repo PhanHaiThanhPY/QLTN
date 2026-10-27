@@ -1,7 +1,7 @@
 ---
 id: B04.S1
 title: Lịch thi công đọc dữ liệu thật
-status: Đã duyệt
+status: Đã triển khai
 owner: PM/BA
 intent: "BQL và các bên xem được việc thi công nào đang chạy trong ngày, tuần, tháng của mỗi tòa từ dữ liệu thật, để điều phối và nhận ra việc trễ."
 depends_on: []
@@ -9,7 +9,7 @@ depends_on: []
 
 # SPEC: Lịch thi công đọc dữ liệu thật (B4-S1)
 
-**Chủ sở hữu:** PM/BA · **Cập nhật:** 27/10/2026 · **Trạng thái:** `Đã duyệt`, chủ dự án duyệt ngày 27/10/2026 (PD-21), gồm 4 mặc định D-B4-1 đến D-B4-4 ở §6
+**Chủ sở hữu:** PM/BA · **Cập nhật:** 27/10/2026 · **Trạng thái:** `Đã triển khai` (27/10/2026, merge vào `main`); trước đó `Đã duyệt`, chủ dự án duyệt ngày 27/10/2026 (PD-21), gồm 4 mặc định D-B4-1 đến D-B4-4 ở §6
 
 **Nguồn:**
 - Phân tích [B04-lich-sua-chua.md](../../modules/B04-lich-sua-chua.md), đã duyệt (PD-18): B4G-01 đến B4G-05, B4G-07; mặc định B4Q-01 đến B4Q-04 (OD-20).
@@ -159,3 +159,4 @@ Chỉ chạy các test liên quan.
 |---|---|
 | 27/10/2026 | Viết từ phân tích B04 (PD-18). |
 | 27/10/2026 | Chủ dự án duyệt (PD-21), gồm D-B4-1 đến D-B4-4, và cho giao dev-build. |
+| 27/10/2026 | Review PASS WITH RESIDUE, merge vào `main`; trạng thái `Đã triển khai`. |

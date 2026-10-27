@@ -30,9 +30,9 @@ Mỗi module code có một file `<module>.md`. Mẫu tham chiếu: [auth.md](au
 | 4 | organization (bộ phận) | `organization` | `admin` (bộ phận) | B17 | [organization.md](organization.md) | Xong lần 1 (26/10); không giao riêng, gom vào `buildings` và DF-14 |
 | 5 | buildings, locations, config | `buildings` | `buildings`, `workflow` | B15, B16 | [buildings.md](buildings.md) | Xong lần 1 (26/10); **BG-01 lỗi cao** chuyển vào ADR-0001; RM-S1 chờ ADR |
 | 6 | reference, audit, health | `reference`, `audit`, `health` | dùng chung | nền tảng (B18 nhật ký) | [platform-reference-audit-health.md](platform-reference-audit-health.md) | Xong lần 1 (26/10); AD-S1 đạt review và đóng (chưa merge); AU-S2 và ADR-0002 chưa chọn |
-| 7 | records | `records` | `records` | B03–B09 | [SPEC](../features/B03-B09-luong-sua-chua/SPEC.md) | **B03, B05, B08, B09 đã triển khai** (SPEC v2, 26/10; FX-S1–S3 đã triển khai 27/10). Phân tích lần 1 đã duyệt (PD-18): [B04 lịch](B04-lich-sua-chua.md) (B4-S1 đang build), [B06 khẩn cấp](B06-xu-ly-khan-cap.md) (B06-S1 đã triển khai), [B07 ký và biểu mẫu](B07-ky-va-bieu-mau.md) (B7-S1 đã triển khai) |
-| 8 | attachments | `attachments` | `components/common/FileUploader` | B03, B07 | [attachments.md](attachments.md) | Xong lần 1 (27/10), duyệt PD-22; AT-S1 đã duyệt (PD-23), đang build |
-| 9 | maintenance | — | `maintenance` | B10–B13 | — | Chưa |
+| 7 | records | `records` | `records` | B03–B09 | [SPEC](../features/B03-B09-luong-sua-chua/SPEC.md) | **B03, B05, B08, B09 đã triển khai** (SPEC v2, 26/10; FX-S1–S3 đã triển khai 27/10). Phân tích lần 1 đã duyệt (PD-18): [B04 lịch](B04-lich-sua-chua.md) (B4-S1 đã triển khai), [B06 khẩn cấp](B06-xu-ly-khan-cap.md) (B06-S1 đã triển khai), [B07 ký và biểu mẫu](B07-ky-va-bieu-mau.md) (B7-S1 đã triển khai) |
+| 8 | attachments | `attachments` | `components/common/FileUploader` | B03, B07 | [attachments.md](attachments.md) | Xong lần 1 (27/10), duyệt PD-22; AT-S1 đã triển khai 27/10 |
+| 9 | maintenance | — | `maintenance` | B10–B13 | [maintenance.md](maintenance.md) | Xong lần 1 (27/10), duyệt PD-24; MT-S1 đang viết SPEC |
 | 10 | notifications | (S3 làm phần tối thiểu, BR-S3-01a) | `notifications` | B14 | — | Chưa phân tích; S3 làm phần tối thiểu. Còn thiếu: nhãn loại thông báo riêng (hiện mặc định "Công việc mới") |
 | 11 | tasks | — | `tasks` | B02 | — | Chưa |
 | 12 | dashboard | — | `dashboard` | B01 | — | Chưa |

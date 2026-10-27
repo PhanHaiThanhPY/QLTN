@@ -74,7 +74,7 @@
 
 | Slice | Nội dung | Phụ thuộc |
 |---|---|---|
-| **AT-S1** ([SPEC](../features/AT-tep-dinh-kem/SPEC.md), đã duyệt PD-23) | Sửa trải nghiệm tải và xem: tải tiếp khi một tệp lỗi và báo kết quả từng tệp (ATG-01); nút "Tải xuống" (ATG-02); bỏ `pixelated` cho ảnh chụp (ATG-08); kiểm ảnh iPhone (HEIC) và ảnh lớn trên điện thoại thật, nén ảnh ở web nếu cần (ATG-04). Chỉ sửa web, không đổi API | Không |
+| **AT-S1** ([SPEC](../features/AT-tep-dinh-kem/SPEC.md), đã triển khai 27/10) | Sửa trải nghiệm tải và xem: tải tiếp khi một tệp lỗi và báo kết quả từng tệp (ATG-01); nút "Tải xuống" (ATG-02); bỏ `pixelated` cho ảnh chụp (ATG-08); kiểm ảnh iPhone (HEIC) và ảnh lớn trên điện thoại thật, nén ảnh ở web nếu cần (ATG-04). Chỉ sửa web, không đổi API | Không |
 | AT-S2 | Nhận Excel/Word chỉ để tải xuống (ATG-03) | ATQ-01: chỉ làm nếu khách cần |
 | AT-S3 | Dọn tệp mồ côi (ATG-05) | Sau khi có quy định lưu trữ (ATQ-04) |
 | — | Tệp cho bảo trì (ATG-10) | Làm trong slice của module maintenance |

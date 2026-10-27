@@ -90,7 +90,7 @@
 
 | Slice | Nội dung | Phụ thuộc |
 |---|---|---|
-| **B4-S1** ([SPEC](../features/B04-lich-sua-chua/SPEC.md), đã duyệt PD-21) | Lịch thi công đọc dữ liệu thật: endpoint lịch, lọc giao nhau theo khoảng ngày, danh sách / tuần / tháng, đợt nhiều ngày vẽ qua các ngày, cờ trễ đúng, danh sách "chưa xếp lịch" riêng | Không. Dùng dữ liệu S3 có sẵn |
+| **B4-S1** ([SPEC](../features/B04-lich-sua-chua/SPEC.md), đã triển khai 27/10) | Lịch thi công đọc dữ liệu thật: endpoint lịch, lọc giao nhau theo khoảng ngày, danh sách / tuần / tháng, đợt nhiều ngày vẽ qua các ngày, cờ trễ đúng, danh sách "chưa xếp lịch" riêng | Không. Dùng dữ liệu S3 có sẵn |
 | B4-S2 | Thẻ tổng (đang thi công, bắt đầu hôm nay, trễ thi công, chờ nghiệm thu) và mốc nghiệm thu trên lịch | B4-S1 |
 | B4-S3 | Xếp lịch theo giờ và người, phát hiện xung đột giờ, xuất PDF tuần | B4Q-01, B4G-08; chỉ làm nếu khách cần |
 

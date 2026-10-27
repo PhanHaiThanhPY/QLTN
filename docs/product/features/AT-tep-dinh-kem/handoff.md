@@ -102,3 +102,11 @@
 - Một số tệp tải lên trước khi sửa API có tên sai mã: `HD-0012 HÃ²a PhÃ¡t.pdf`.
 - Không đụng tòa, cấu hình hay mật khẩu nào.
 
+## Đóng AT-S1 (PM/BA, 27/10/2026)
+
+- **AT-S1 đóng.** Review trên đúng bản ứng viên `3f211e9`: PASS WITH RESIDUE, không có lỗi sản phẩm. AC-AT.1 đến 9, 11, 12 có bằng chứng ở trên.
+- **Thay đổi API duy nhất** là phần PM/BA duyệt khi đang build: đọc tên tệp theo UTF-8, kèm e2e tên tiếng Việt (SPEC §2). PM/BA đã kiểm diff.
+- **Residue được chấp nhận:**
+  - AC-AT.10 (iPhone thật hoặc iOS Safari) chưa kiểm; chuyển sang UAT.
+  - Chưa chạy lại trình duyệt trên đúng bản ứng viên, vì môi trường của seat review không có trình duyệt.
+- **Merge vào `main`** (`cbd02a9`) theo yêu cầu của chủ dự án. Kiểm trên bản đã merge: như ghi ở phần đóng B4-S1.

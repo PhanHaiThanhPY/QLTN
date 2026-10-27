@@ -104,3 +104,11 @@
 - Lần chạy cuối, kiểu Tuần của dev có 46 hồ sơ (do dữ liệu thử dồn lại). Lưới vẫn dưới mức trần 200, nên ảnh không cho thấy Notice cắt bớt. Notice này có test component.
 - Ảnh chỉ chụp phần trên của trang ở kích thước màn hình.
 
+## Đóng B4-S1 (PM/BA, 27/10/2026)
+
+- **B4-S1 đóng.** Review trên đúng bản ứng viên `aab8220`: PASS WITH RESIDUE, không có lỗi sản phẩm. Cả 12 AC có bằng chứng ở trên.
+- **Residue được chấp nhận:**
+  - Chưa chạy lại trình duyệt trên đúng bản ứng viên, vì môi trường của seat review không có trình duyệt.
+  - Ảnh `B4-4-week-375.png` chụp khối "Chờ xếp lịch" **trước** bản sửa `min-w-48` trong cùng commit, nên tên hồ sơ bị ép hẹp. PM/BA đã kiểm code; ảnh `B4-5-awaiting-375.png` cho thấy bố cục đã sửa. Kiểm lại ở 375px khi khách nghiệm thu (UAT).
+- **Merge vào `main`** (`300c39b`) theo yêu cầu của chủ dự án. Kiểm trên bản đã merge: typecheck API và web; unit API `schedule-span` 11/11; test web lịch, tệp và đăng nhập 50/50.
+- Không có migration. API có endpoint đọc mới, nên máy chủ đang chạy phải build lại.

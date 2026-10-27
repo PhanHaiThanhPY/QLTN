@@ -1,7 +1,7 @@
 ---
 id: AT.S1
 title: Tải và xem tệp đáng tin hơn
-status: Đã duyệt
+status: Đã triển khai
 owner: PM/BA
 intent: "Người dùng biết chắc tệp nào đã lên, tệp nào bị từ chối và vì sao; tải được tệp gốc về máy; ảnh chụp từ điện thoại tải lên được và xem rõ."
 depends_on: []
@@ -9,7 +9,7 @@ depends_on: []
 
 # SPEC: Tải và xem tệp đáng tin hơn (AT-S1)
 
-**Chủ sở hữu:** PM/BA · **Cập nhật:** 27/10/2026 · **Trạng thái:** `Đã duyệt`, chủ dự án duyệt ngày 27/10/2026 (PD-23), gồm 3 mặc định D-AT-1 đến D-AT-3 ở §6
+**Chủ sở hữu:** PM/BA · **Cập nhật:** 27/10/2026 · **Trạng thái:** `Đã triển khai` (27/10/2026, merge vào `main`); trước đó `Đã duyệt`, chủ dự án duyệt ngày 27/10/2026 (PD-23), gồm 3 mặc định D-AT-1 đến D-AT-3 ở §6
 
 **Nguồn:**
 - Phân tích [attachments.md](../../modules/attachments.md), đã duyệt (PD-22): ATG-01, ATG-02, ATG-04, ATG-08; mặc định ATQ-01 đến ATQ-04 (OD-22).
@@ -45,6 +45,7 @@ Ngoài ra, ảnh chụp thật bị răng cưa trong hộp xem (ATG-08). Ảnh t
 
 **Ngoài phạm vi:**
 - Đổi API: không đổi luật tải, giới hạn 10 MB hay định dạng nhận của máy chủ. Nếu thấy buộc phải đổi API, hỏi PM/BA trước.
+  - **Ngoại lệ duy nhất, PM/BA duyệt 27/10 khi đang build:** API đọc tên tệp multipart theo latin1, nên tên có dấu bị lưu sai (tải lên "HD-0012 Hòa Phát.pdf" thì lưu thành "HD-0012 HÃ²a PhÃ¡t.pdf"). Vì vậy AC-AT.5 không đạt được nếu chỉ sửa web. Được sửa: API đọc tên tệp theo UTF-8, kèm e2e tải lên tên tiếng Việt. Không sửa ngược các tên đã lưu sai, vì đó chỉ là dữ liệu dev.
 - Nhận Excel/Word: **AT-S2**, chỉ làm nếu khách cần (ATQ-01).
 - Xóa tệp, dọn tệp không dùng: **AT-S3** (ATG-05, ATQ-03, ATQ-04).
 - Tệp cho bảo trì ở chế độ `api` (ATG-10): làm cùng module maintenance.
@@ -128,3 +129,5 @@ Chỉ chạy các test liên quan.
 |---|---|
 | 27/10/2026 | Viết từ phân tích attachments (PD-22). |
 | 27/10/2026 | Chủ dự án duyệt (PD-23), gồm D-AT-1 đến D-AT-3, và cho giao dev-build. |
+| 27/10/2026 | Làm rõ khi build (PM/BA): cho sửa API để đọc tên tệp theo UTF-8 (§2 Ngoài phạm vi). |
+| 27/10/2026 | Review PASS WITH RESIDUE, merge vào `main`; trạng thái `Đã triển khai`. |
