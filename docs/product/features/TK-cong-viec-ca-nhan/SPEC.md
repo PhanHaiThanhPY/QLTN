@@ -182,3 +182,4 @@ Chỉ chạy các test liên quan.
 |---|---|
 | 27/10/2026 | Viết từ phân tích tasks (PD-28). |
 | 27/10/2026 | Chủ dự án duyệt (PD-29), gồm D-TK-1 đến D-TK-5, và cho giao dev-build. |
+| 27/10/2026 | Review lần 1 FAILED (F-TK-S1-01, đếm "Đã hoàn thành" theo số dòng); sửa `133fe8a`; review lần 2 PASS WITH RESIDUE trên `2621f92`. PM/BA đóng slice. Chờ chủ dự án cho merge. |
