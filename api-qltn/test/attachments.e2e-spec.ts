@@ -155,6 +155,24 @@ describe('Repair record attachments (e2e)', () => {
     expect(detail.audit[0]).toMatchObject({ action: 'uploadAttachment', reason: 'Ảnh hiện trường' });
   });
 
+  it('keeps a Vietnamese file name in the metadata and the download header (AT-S1 AC-AT.5)', async () => {
+    const name = 'HD-0012 Hòa Phát.pdf';
+    const pdf = Buffer.from('%PDF-1.4\n% hoa don\n', 'utf8');
+    const stored = dataOf<AttachmentView>(
+      await bqlA
+        .postMultipart('/api/attachments', fields(record.id), {
+          content: pdf,
+          filename: name,
+          contentType: 'application/pdf',
+        })
+        .expect(201),
+    );
+    expect(stored.fileName).toBe(name);
+    const content = await bqlA.getBinary(`/api/attachments/${stored.id}/content`).expect(200);
+    expect(content.headers['content-disposition']).toBe(`inline; filename*=UTF-8''${encodeURIComponent(name)}`);
+    expect(Buffer.compare(content.body as Buffer, pdf)).toBe(0);
+  });
+
   it('refuses an oversized, empty, wrong-type or disguised file on the file field', async () => {
     const oversized = await bqlA
       .postMultipart('/api/attachments', fields(record.id), {

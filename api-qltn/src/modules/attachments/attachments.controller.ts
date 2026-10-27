@@ -34,7 +34,8 @@ export class AttachmentsController {
   // minutes), so the per-purpose rule lives in the service; a refused step answers 403 `attachment_step_denied`.
   @Post()
   @RequireCapabilities('VIEW')
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MEMORY_FILE_LIMIT } }))
+  // Browsers send the file name as raw UTF-8; multer reads header parameters as latin1 unless told (AT-S1 AC-AT.5).
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MEMORY_FILE_LIMIT }, defParamCharset: 'utf8' }))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary:
