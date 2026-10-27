@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { toast } from 'sonner';
 import { LIMITS } from '@/domain/constants';
 import { USER_ID } from '@/mock/seed-reference';
@@ -47,7 +47,10 @@ describe('FileUploader', () => {
     const { container } = renderUploader();
     selectFile(container, new File(['hello'], 'note.txt', { type: 'text/plain' }));
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Chỉ hỗ trợ ảnh JPEG/PNG/WebP hoặc PDF.'));
+    // AT-S1 BR-AT-02: the refusal stays in the report under the button instead of a toast.
+    const report = await screen.findByRole('status');
+    expect(within(report).getByText('Chỉ hỗ trợ ảnh JPEG/PNG/WebP hoặc PDF.')).toBeTruthy();
+    expect(toast.error).not.toHaveBeenCalled();
     expect(onUploaded).not.toHaveBeenCalled();
   });
 
@@ -57,7 +60,8 @@ describe('FileUploader', () => {
     Object.defineProperty(file, 'size', { value: LIMITS.MAX_FILE_BYTES + 1 });
     selectFile(container, file);
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Tệp vượt quá 10 MB.'));
+    const report = await screen.findByRole('status');
+    expect(within(report).getByText('Tệp vượt quá 10 MB.')).toBeTruthy();
     expect(onUploaded).not.toHaveBeenCalled();
   });
 });
