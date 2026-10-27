@@ -53,6 +53,27 @@ describe('EmergencyDialog (api mode)', () => {
     expect(screen.getByText(/vượt hạn mức khẩn cấp của tòa \(15\.000\.000 ₫\)/)).toBeTruthy();
   });
 
+  it('F-B06-S1-01: every field with an error is invalid and described by its error line', () => {
+    command.fieldErrors = {
+      reason: 'Lý do phải xử lý ngay cần tối thiểu 5 ký tự.',
+      contractorName: 'Nhà thầu thực hiện cần tối thiểu 2 ký tự.',
+      estimatedAmountVnd: 'Chi phí dự kiến vượt hạn mức khẩn cấp của tòa (15.000.000 ₫).',
+      plannedEndDate: 'Ngày dự kiến xong không được trước hôm nay.',
+    };
+    renderDialog();
+    for (const [label, message] of [
+      [/Lý do phải xử lý ngay/, command.fieldErrors.reason],
+      [/Nhà thầu thực hiện/, command.fieldErrors.contractorName],
+      [/Chi phí dự kiến/, command.fieldErrors.estimatedAmountVnd],
+      [/Ngày dự kiến xong/, command.fieldErrors.plannedEndDate],
+    ] as const) {
+      const control = screen.getByLabelText(label);
+      expect(control.getAttribute('aria-invalid')).toBe('true');
+      const describedBy = control.getAttribute('aria-describedby') ?? '';
+      expect(document.getElementById(describedBy)?.textContent).toBe(message);
+    }
+  });
+
   it('keeps the button locked while the limit is loading', () => {
     renderDialog({ ...DETAIL, emergencyPolicy: undefined });
     fireEvent.change(screen.getByLabelText(/Lý do phải xử lý ngay/), { target: { value: 'Ống cấp chính vỡ, nước tràn hầm B1.' } });

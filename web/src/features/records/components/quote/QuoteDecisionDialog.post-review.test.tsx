@@ -61,4 +61,13 @@ describe('QuoteDecisionDialog post-review choice', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Từ chối tờ trình' }));
     expect(command.run.mock.calls[0][1]).not.toHaveProperty('finalPostReview');
   });
+
+  it('F-B06-S1-01: the reason error is announced with the reason field', () => {
+    command.fieldErrors = { reason: 'Lý do cần tối thiểu 5 ký tự.' };
+    renderDialog(BOARD);
+    const control = screen.getByLabelText(/Lý do/);
+    expect(control.getAttribute('aria-invalid')).toBe('true');
+    expect(document.getElementById(control.getAttribute('aria-describedby') ?? '')?.textContent).toBe('Lý do cần tối thiểu 5 ký tự.');
+    command.fieldErrors = {};
+  });
 });
