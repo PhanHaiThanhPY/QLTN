@@ -62,6 +62,12 @@ export const formDateLine = (iso: string): string => {
 /** BR-B7-05: replaces the form's "(Đã ký)". */
 export const signedAtLine = (iso: string): string => `Ký trên hệ thống QLTN lúc ${printDateTime(iso)}`;
 
+/**
+ * "tòa nhà «tên»" without doubling the word when the building name already starts with it
+ * ("Tòa A – An Khang" → "tòa nhà A – An Khang"), as api-qltn does for "Kính gửi".
+ */
+export const buildingPhrase = (buildingName: string): string => `tòa nhà ${buildingName.replace(/^tòa\s+(nhà\s+)?/i, '')}`;
+
 /** A signed box of a form: image, signer name and when (BR-B7-05). An unsigned box stays empty for a hand signature. */
 export interface PrintSignature {
   imageDataUrl: string;

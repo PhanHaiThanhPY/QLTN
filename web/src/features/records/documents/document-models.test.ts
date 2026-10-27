@@ -46,6 +46,7 @@ describe('proposal (§3.1, AC-B7.4–7.7)', () => {
     expect(model.boardOpinion).toBe(DOTS);
     expect(model.hasIncidentMinutes && model.hasQuotations).toBe(true);
     expect(model.desiredDate).toBe('30/10/2026');
+    expect(model.buildingLine).toBe('TÒA NHÀ A – AN KHANG RESIDENCE');
   });
 
   it('shows the refusal reason and the BQT signature of the refusal on attempt 1, unapproved', () => {
@@ -124,7 +125,7 @@ describe('payment letter (§3.3, AC-B7.10–7.12)', () => {
       amount: '6.000.000',
       amountInWords: 'Sáu triệu đồng',
       computation: '(Số quyết toán 10.000.000 − tạm ứng đã chuyển 4.000.000)',
-      recipient: 'Ban quản trị tòa nhà Tòa A – An Khang Residence',
+      recipient: 'Ban quản trị tòa nhà A – An Khang Residence',
       isApproved: true,
     });
     expect(model.attachments.map((row) => [row.label, row.isPresent])).toEqual([

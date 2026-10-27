@@ -1,6 +1,6 @@
 import { vndInWords, type PaymentInstalment } from '@/domain/payment';
 import type { RecordDetail } from '@/services/records-service';
-import { orDots, printVnd, type PrintNames, type PrintSignature } from './print-format';
+import { buildingPhrase, orDots, printVnd, type PrintNames, type PrintSignature } from './print-format';
 
 /** Opening sentence of the letter, with the organisation name replaced by "Ban Quản lý" (§3.3). */
 export const LETTER_OPENING = 'Ban Quản lý trân trọng đề nghị Quý Ban quản trị chuyển khoản thanh toán theo bộ hồ sơ đính kèm như sau:';
@@ -52,7 +52,7 @@ export const buildPaymentLetterModel = (detail: RecordDetail, payment: PaymentIn
   return {
     title: `Thư đề nghị thanh toán đợt ${payment.seqNo} ${payment.kind === 'TAM_UNG' ? 'tạm ứng' : 'quyết toán'}`,
     isApproved: APPROVED_STATUSES.includes(payment.status),
-    recipient: `Ban quản trị tòa nhà ${names.building(detail.record.buildingId)}`,
+    recipient: `Ban quản trị ${buildingPhrase(names.building(detail.record.buildingId))}`,
     payeeName: orDots(payment.payeeName),
     accountNo: orDots(payment.accountNo),
     bankName: orDots(payment.bankName),

@@ -1,7 +1,7 @@
 import { BUDGET_SOURCE_LABEL, PROPOSAL_TYPE_LABEL, type QuoteSubmission } from '@/domain/quote-proposal';
 import type { RecordDetail } from '@/services/records-service';
 import { boardDecisionOf, submissionStatus } from './document-list';
-import { formDateLine, orDots, printDate, printVnd, type PrintNames, type PrintSignature } from './print-format';
+import { buildingPhrase, formDateLine, orDots, printDate, printVnd, type PrintNames, type PrintSignature } from './print-format';
 
 /** The form's quotation table has 3 contractor columns; 4–5 contractors continue in a second table (§3.1). */
 export const CONTRACTORS_PER_TABLE = 3;
@@ -43,7 +43,8 @@ export interface ProposalPrintModel {
   assessment: string;
   desiredDate: string;
   boardOpinion: string;
-  buildingName: string;
+  /** "TÒA NHÀ «tên»" of the BQT signature block. */
+  buildingLine: string;
   boardSignature: PrintSignature | null;
   boardDateLine: string;
   managerSignature: PrintSignature | null;
@@ -116,7 +117,7 @@ export const buildProposalModel = (detail: RecordDetail, submission: QuoteSubmis
     assessment: orDots(content.assessment),
     desiredDate: printDate(content.desiredApprovalDate),
     boardOpinion: boardOpinionOf(submission),
-    buildingName: names.building(record.buildingId).toUpperCase(),
+    buildingLine: buildingPhrase(names.building(record.buildingId)).toUpperCase(),
     boardSignature,
     boardDateLine: boardSignature ? formDateLine(boardSignature.signedAt) : 'Ngày … tháng … năm …',
     managerSignature,

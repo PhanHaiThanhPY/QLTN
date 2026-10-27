@@ -113,14 +113,20 @@
     size: A4 portrait;
     margin: 20mm 15mm 20mm 25mm;
   }
+  /* The app shell makes the root as tall as the screen; on paper that adds an empty last page. */
   html,
-  body {
+  body,
+  #root {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
     background: #fff !important;
   }
   .d5-no-print {
     display: none !important;
   }
   .d5-page {
+    min-height: 0 !important;
     padding: 0 !important;
     background: #fff !important;
   }

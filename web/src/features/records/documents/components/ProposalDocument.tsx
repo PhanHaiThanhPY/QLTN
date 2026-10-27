@@ -55,7 +55,7 @@ export const ProposalDocument = ({ model }: { model: ProposalPrintModel }) => (
     <div className="d5-sign-row">
       <div>
         <p>{model.boardDateLine}</p>
-        <SignatureBox heading={['TM. Ban quản trị', `Tòa nhà ${model.buildingName}`]} titleLine={DOTS} signature={model.boardSignature} />
+        <SignatureBox heading={['TM. Ban quản trị', model.buildingLine]} titleLine={DOTS} signature={model.boardSignature} />
       </div>
       <div>
         <p>{model.managerDateLine}</p>
