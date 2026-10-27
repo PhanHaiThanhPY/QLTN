@@ -18,9 +18,11 @@ const RecordDetailPage = lazy(() => import('@/features/records/RecordDetailPage'
 const DocumentPrintPage = lazy(() => import('@/features/records/documents/DocumentPrintPage'));
 const RecordFormPage = lazy(() => import('@/features/records/RecordFormPage'));
 const SchedulePage = lazy(() => import('@/features/maintenance/SchedulePage'));
-const PlansPage = lazy(() => import('@/features/maintenance/PlansPage'));
-const PlanDetailPage = lazy(() => import('@/features/maintenance/PlanDetailPage'));
-const PlanFormPage = lazy(() => import('@/features/maintenance/PlanFormPage'));
+const PlansPage = lazy(() => (IS_API_MODE ? import('@/features/maintenance/api/PlansApiPage') : import('@/features/maintenance/PlansPage')));
+const PlanDetailPage = lazy(() =>
+  IS_API_MODE ? import('@/features/maintenance/api/PlanDetailApiPage') : import('@/features/maintenance/PlanDetailPage'),
+);
+const PlanFormPage = lazy(() => (IS_API_MODE ? import('@/features/maintenance/api/PlanFormApiPage') : import('@/features/maintenance/PlanFormPage')));
 // MT-S1: equipment reads api-qltn in api mode through its own screens built from the demo components.
 const ItemsPage = lazy(() => (IS_API_MODE ? import('@/features/maintenance/api/ItemsApiPage') : import('@/features/maintenance/ItemsPage')));
 const ItemDetailPage = lazy(() =>
@@ -64,10 +66,10 @@ export const router = createBrowserRouter([
       { path: 'records/:recordId', element: apiConnected(page(<RecordDetailPage />)) },
       { path: 'records/:recordId/edit', element: apiConnected(page(<RecordFormPage />)) },
       { path: 'maintenance/schedule', element: connected(page(<SchedulePage />)) },
-      { path: 'maintenance/plans', element: connected(page(<PlansPage />)) },
-      { path: 'maintenance/plans/new', element: connected(page(<PlanFormPage />)) },
-      { path: 'maintenance/plans/:planId', element: connected(page(<PlanDetailPage />)) },
-      { path: 'maintenance/plans/:planId/edit', element: connected(page(<PlanFormPage />)) },
+      { path: 'maintenance/plans', element: page(<PlansPage />) },
+      { path: 'maintenance/plans/new', element: page(<PlanFormPage />) },
+      { path: 'maintenance/plans/:planId', element: page(<PlanDetailPage />) },
+      { path: 'maintenance/plans/:planId/edit', element: page(<PlanFormPage />) },
       { path: 'maintenance/items', element: page(<ItemsPage />) },
       { path: 'maintenance/items/:itemId', element: page(<ItemDetailPage />) },
       { path: 'maintenance/occurrences/:occurrenceId', element: connected(page(<OccurrenceDetailPage />)) },

@@ -4,7 +4,7 @@ import type { Frequency } from '@/domain/constants';
 
 const FREQUENCIES = Object.keys(FREQUENCY_MONTHS) as [Frequency, ...Frequency[]];
 
-const checklistRowSchema = z.object({
+export const checklistRowSchema = z.object({
   id: z.string(),
   label: z
     .string()
@@ -16,6 +16,8 @@ const checklistRowSchema = z.object({
   unit: z.string().trim().max(30, 'Đơn vị tối đa 30 ký tự.'),
   minValue: z.number().finite().optional(),
   maxValue: z.number().finite().optional(),
+  /** MT-S2 "Cần ảnh"; the demo plans ignore it. */
+  photoRequired: z.boolean().optional(),
 }).superRefine((row, ctx) => {
   if (row.inputType === 'MEASUREMENT' && !row.unit) {
     ctx.addIssue({ code: 'custom', path: ['unit'], message: 'Mục đo cần có đơn vị.' });
@@ -52,4 +54,10 @@ export const buildPlanSchema = (today: string, scheduleLocked: boolean) =>
     }
   });
 
-export const EMPTY_CHECKLIST_ROW = { id: '', label: '', required: true, inputType: 'CHECK' as const, unit: '', minValue: undefined, maxValue: undefined };
+export const EMPTY_CHECKLIST_ROW = { id: '', label: '', required: true, inputType: 'CHECK' as const, unit: '', minValue: undefined, maxValue: undefined, photoRequired: false };
+
+export type ChecklistRowValues = z.infer<typeof checklistRowSchema>;
+/** Any form holding a checklist the editor can work on. */
+export interface ChecklistFormShape {
+  checklist: ChecklistRowValues[];
+}
