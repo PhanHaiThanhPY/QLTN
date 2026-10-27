@@ -5,7 +5,7 @@ import type { RepairStatus } from '@/domain/constants';
 import type { Attachment, RepairRecord, User } from '@/domain/types';
 import type { RecordDetail } from '@/services/records-service';
 
-export const RECORD_TABS = ['overview', 'approval', 'construction', 'acceptance', 'payment', 'history'] as const;
+export const RECORD_TABS = ['overview', 'approval', 'construction', 'acceptance', 'payment', 'documents', 'history'] as const;
 export type RecordTab = (typeof RECORD_TABS)[number];
 
 export const isRecordTab = (value: string | null): value is RecordTab =>
