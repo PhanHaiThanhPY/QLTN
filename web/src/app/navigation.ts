@@ -67,8 +67,8 @@ export const ALL_NAV_ITEMS: NavItem[] = [
 const API_READY_GROUPS = new Set(['Hệ thống', 'Quản trị']);
 /**
  * Single entries ready before the rest of their group: my tasks (TK-S1), record list (T4), repair schedule (B4-S1),
- * equipment (MT-S1), maintenance plans (MT-S2) and the exploitation group (F-S1, api only); the maintenance schedule
- * stays mock-only until MT-S3.
+ * equipment (MT-S1), maintenance plans (MT-S2), maintenance occurrences as a list (MT-S3; week and month views in
+ * MT-S4) and the exploitation group (F-S1, api only).
  */
 const API_READY_PATHS = new Set([
   '/tasks',
@@ -76,6 +76,7 @@ const API_READY_PATHS = new Set([
   '/records/schedule',
   '/maintenance/items',
   '/maintenance/plans',
+  '/maintenance/schedule',
   '/exploitation/packages',
   '/exploitation/partners',
   '/audit',

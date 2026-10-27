@@ -1,5 +1,26 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import type { WorkEntry } from '../../../domain/maintenance-execution';
 import type { ChecklistTemplateItem } from './maintenance-plan.entity';
+
+/** MT-S3 statuses after MT-S2's SCHEDULED and CANCELLED (BR-MT3-01). */
+export const OCCURRENCE_STATUSES = [
+  'SCHEDULED',
+  'IN_PROGRESS',
+  'PENDING_REVIEW',
+  'REWORK',
+  'COMPLETED',
+  'CANCELLED',
+] as const;
+export type OccurrenceStatus = (typeof OCCURRENCE_STATUSES)[number];
+
+export interface OccurrenceWork {
+  entries: WorkEntry[];
+  summary: string | null;
+  /** "Người làm thực tế" (free text, e.g. the contractor's worker). */
+  actualWorker: string | null;
+  /** General photos of the visit. */
+  attachmentIds: string[];
+}
 
 /** A maintenance visit (SPEC MT-S2 BR-MT2-06..08). MT-S2 only schedules and cancels; MT-S3 runs it. */
 @Entity('maintenance_occurrences')
@@ -56,6 +77,36 @@ export class MaintenanceOccurrence {
 
   @Column({ type: 'jsonb', default: () => "'[]'" })
   checklist: ChecklistTemplateItem[];
+
+  /** MT-S3 BR-MT3-03: the work in progress, saved many times before a submission. */
+  @Column({
+    type: 'jsonb',
+    default: () => `'{"entries": [], "summary": null, "actualWorker": null, "attachmentIds": []}'`,
+  })
+  work: OccurrenceWork;
+
+  /** Number of the latest submission (0 before the first). */
+  @Column({ type: 'integer', default: 0 })
+  round: number;
+
+  /** Items sent back on the latest rework: { itemId: reason }. */
+  @Column({ type: 'jsonb', default: () => "'{}'" })
+  rework: Record<string, string>;
+
+  @Column({ name: 'started_at', type: 'timestamptz', nullable: true })
+  startedAt: Date | null;
+
+  @Column({ name: 'submitted_at', type: 'timestamptz', nullable: true })
+  submittedAt: Date | null;
+
+  @Column({ name: 'review_due_at', type: 'timestamptz', nullable: true })
+  reviewDueAt: Date | null;
+
+  @Column({ name: 'completed_at', type: 'timestamptz', nullable: true })
+  completedAt: Date | null;
+
+  @Column({ name: 'cancelled_at', type: 'timestamptz', nullable: true })
+  cancelledAt: Date | null;
 
   @Column({ type: 'integer', default: 1 })
   version: number;

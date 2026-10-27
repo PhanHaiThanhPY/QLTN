@@ -14,6 +14,7 @@ import { ExploitationBid } from '../exploitation/entities/exploitation-bid.entit
 import { ExploitationPackage } from '../exploitation/entities/exploitation-package.entity';
 import { BID_FILE_PURPOSE, PACKAGE_FILE_PURPOSE } from '../exploitation/exploitation-files';
 import { MaintenanceItem } from '../maintenance/entities/maintenance-item.entity';
+import { MaintenanceOccurrence } from '../maintenance/entities/maintenance-occurrence.entity';
 import { RepairRecord } from '../records/entities/repair-record.entity';
 import {
   ADVANCE_FOLLOW_UP_STATUSES,
@@ -48,6 +49,7 @@ const SUBJECT_PURPOSE: Readonly<Record<string, string>> = {
   [SUBJECT_TYPE.MAINTENANCE_ITEM]: ITEM_DOCUMENT,
   [SUBJECT_TYPE.EXPLOITATION_PACKAGE]: PACKAGE_FILE_PURPOSE,
   [SUBJECT_TYPE.EXPLOITATION_BID]: BID_FILE_PURPOSE,
+  [SUBJECT_TYPE.MAINTENANCE_OCCURRENCE]: 'MAINTENANCE_RESULT',
 };
 /** Exploitation files are bid material: only EXPLOITATION_VIEW holders read them (F-S1 BR-F1-11, D-F1-5). */
 const EXPLOITATION_SUBJECTS: readonly string[] = [SUBJECT_TYPE.EXPLOITATION_PACKAGE, SUBJECT_TYPE.EXPLOITATION_BID];
@@ -106,6 +108,7 @@ export const PURPOSE_LABEL: Readonly<Record<string, string>> = {
   ITEM_DOCUMENT: 'Tài liệu thiết bị',
   EXPLOITATION_DOCUMENT: 'Tài liệu mời thầu khai thác',
   BID_DOCUMENT: 'Tài liệu dự thầu',
+  MAINTENANCE_RESULT: 'Kết quả bảo trì',
 };
 
 /** The subject a file is stored against: its id, building (scope) and version (audit). */
@@ -247,9 +250,36 @@ export class AttachmentsService {
         return this.packageSubject(manager, actor, dto.subjectId);
       case SUBJECT_TYPE.EXPLOITATION_BID:
         return this.bidSubject(manager, actor, dto.subjectId);
+      case SUBJECT_TYPE.MAINTENANCE_OCCURRENCE:
+        return this.occurrenceSubject(manager, actor, dto.subjectId);
       default:
         return this.recordSubject(manager, actor, dto.subjectId, dto.purpose);
     }
+  }
+
+  /** MT-S3 BR-MT3-03: the occurrence's performer, in the item's location, while it is in progress or sent back. */
+  private async occurrenceSubject(
+    manager: EntityManager,
+    actor: AuthenticatedUser,
+    id: string,
+  ): Promise<UploadSubject> {
+    const occurrence = await manager
+      .getRepository(MaintenanceOccurrence)
+      .findOne({ where: { id }, lock: { mode: 'pessimistic_read' } });
+    if (!occurrence || !actor.buildingIds.includes(occurrence.buildingId))
+      throw notFound('Không tìm thấy lượt bảo trì.');
+    const item = await manager.getRepository(MaintenanceItem).findOneBy({ id: occurrence.itemId });
+    if (item && actor.locationIds.length > 0 && !actor.locationIds.includes(item.locationId))
+      throw forbidden(OUT_OF_LOCATION);
+    if (occurrence.performerUserId !== actor.id || !['IN_PROGRESS', 'REWORK'].includes(occurrence.status)) {
+      throw forbiddenWithReason('attachment_step_denied', STEP_DENIED);
+    }
+    return {
+      subjectType: SUBJECT_TYPE.MAINTENANCE_OCCURRENCE,
+      id: occurrence.id,
+      buildingId: occurrence.buildingId,
+      version: occurrence.version,
+    };
   }
 
   /** F-S1: a BQL of the package's building, while it is a draft or open (a corrected issue). */

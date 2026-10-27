@@ -31,6 +31,7 @@ import type {
   WithdrawRecordDto,
 } from './dto/record.dto';
 import { RepairConfirmation, type ConfirmationOutcome } from './entities/repair-confirmation.entity';
+import { MaintenanceOccurrence } from '../maintenance/entities/maintenance-occurrence.entity';
 import { RepairRecord } from './entities/repair-record.entity';
 import { toRecordView, type RepairRecordView } from './record-view';
 import { ConstructionService, type ExecutionHistoryView } from './construction.service';
@@ -52,6 +53,15 @@ import { recordDues } from '../tasks/record-due';
 import { loadRecordForAction, validateText } from './record-loader';
 import { applyRecordScope, isOutOfScope, NO_BUILDING } from './record-scope-query';
 import { RECORD_FINAL_STATUSES, RECORD_NEEDS_UPDATE_STATUSES } from './record-status-groups';
+
+/** MT-S3 BR-MT3-08: where a record made from a failed maintenance item comes from. */
+export interface RecordOrigin {
+  sourceOccurrenceId: string;
+  sourceChecklistItemId: string;
+  /** Copies the item's photos onto the new record as SITE_PHOTO files; answers their ids in order. */
+  sitePhotos: (manager: EntityManager, record: RepairRecord) => Promise<string[]>;
+  auditReason: string;
+}
 
 const CODE_PREFIX = 'SC';
 const CODE_WIDTH = 3;
@@ -139,6 +149,8 @@ export interface RecordDetailView {
   emergencyPolicy: { limitVnd: string; docHours: number } | null;
   /** The record's equipment for the detail line and its link (MT-S1 BR-MT-10); null for "no specific equipment". */
   maintenanceItem: RecordItemSummary | null;
+  /** MT-S3 BR-MT3-08: "Từ lượt bảo trì BT-… · mục «tên mục»". */
+  sourceOccurrence: { id: string; code: string; itemId: string | null; itemLabel: string | null } | null;
   audit: AuditEventView[];
 }
 
@@ -226,7 +238,20 @@ export class RecordsService {
 
   async create(actor: AuthenticatedUser, dto: CreateRecordDto): Promise<RepairRecordView> {
     assertBuildingInScope(actor, dto.buildingId);
-    return this.dataSource.transaction(async (manager) => {
+    return this.dataSource.transaction(async (manager) => toRecordView(await this.createDraft(manager, actor, dto)));
+  }
+
+  /**
+   * The one way a draft record is made, inside the caller's transaction: `POST /records`, and MT-S3 BR-MT3-08 (a
+   * record from a failed maintenance item, which passes its `origin`: source item and site photos already copied).
+   */
+  async createDraft(
+    manager: EntityManager,
+    actor: AuthenticatedUser,
+    dto: CreateRecordDto,
+    origin?: RecordOrigin,
+  ): Promise<RepairRecord> {
+    {
       const config = await this.loadConfig(manager, dto.buildingId);
       const assignment = await loadAssignmentContext(manager, dto.buildingId);
       const errors = new FieldErrors();
@@ -277,20 +302,43 @@ export class RecordsService {
         taskDueDays: { ...config.taskDueDays },
         createdBy: actor.id,
         version: 1,
+        sourceOccurrenceId: origin?.sourceOccurrenceId ?? null,
+        sourceChecklistItemId: origin?.sourceChecklistItemId ?? null,
       });
       const saved = await repo.save(record);
+      if (origin) {
+        saved.attachmentIds = await origin.sitePhotos(manager, saved);
+        await repo.save(saved);
+      }
+      const reason =
+        boardFallback && confirmationUserId === boardFallback ? BOARD_FALLBACK_REASON : origin?.auditReason;
       await this.audit.record(manager, {
         subjectType: SUBJECT_TYPE.REPAIR_RECORD,
         subjectId: saved.id,
         buildingId: saved.buildingId,
-        action: 'createRecord',
+        action: origin ? 'createRepairFromMaintenance' : 'createRecord',
         actorId: actor.id,
         entityVersion: saved.version,
         toStatus: saved.status,
-        ...(boardFallback && confirmationUserId === boardFallback ? { reason: BOARD_FALLBACK_REASON } : {}),
+        ...(reason ? { reason } : {}),
       });
-      return toRecordView(saved);
-    });
+      return saved;
+    }
+  }
+
+  private async sourceOccurrenceOf(record: RepairRecord): Promise<RecordDetailView['sourceOccurrence']> {
+    if (!record.sourceOccurrenceId) return null;
+    const occurrence = await this.dataSource
+      .getRepository(MaintenanceOccurrence)
+      .findOneBy({ id: record.sourceOccurrenceId });
+    if (!occurrence) return null;
+    const item = occurrence.checklist.find((row) => row.id === record.sourceChecklistItemId);
+    return {
+      id: occurrence.id,
+      code: occurrence.code,
+      itemId: record.sourceChecklistItemId,
+      itemLabel: item?.label ?? null,
+    };
   }
 
   /** Draft save: only editable fields, version-locked, same audit trail as the demo command. */
@@ -538,6 +586,7 @@ export class RecordsService {
         ? { limitVnd: String(config.emergencyLimitVnd), docHours: config.emergencyDocHours }
         : null,
       maintenanceItem: await recordItemSummary(this.dataSource.manager, record.maintenanceItemId),
+      sourceOccurrence: await this.sourceOccurrenceOf(record),
       audit: audit.data,
     };
   }

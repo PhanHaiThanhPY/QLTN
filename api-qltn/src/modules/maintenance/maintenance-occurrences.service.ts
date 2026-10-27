@@ -15,6 +15,7 @@ import { toOccurrenceView, type OccurrenceView } from './maintenance-plan-views'
 import { MaintenancePlansService } from './maintenance-plans.service';
 
 const NOT_FOUND = 'Không tìm thấy lượt bảo trì.';
+const CANCELLABLE = ['SCHEDULED', 'IN_PROGRESS', 'REWORK'] as const;
 const ddmm = (date: string): string => `${date.slice(8)}/${date.slice(5, 7)}`;
 
 /** Actions on a scheduled occurrence (SPEC MT-S2 BR-MT2-07), by the plan's manager; each audited with its reason. */
@@ -52,19 +53,22 @@ export class MaintenanceOccurrencesService {
    */
   async cancel(actor: AuthenticatedUser, id: string, dto: OccurrenceReasonDto): Promise<OccurrenceView> {
     return this.dataSource.transaction(async (manager) => {
-      const occurrence = await this.loadScheduled(manager, actor, id, dto.version);
+      // MT-S3 BR-MT3-01: also while in progress or sent back; never while it waits for the reviewer.
+      const occurrence = await this.loadScheduled(manager, actor, id, dto.version, CANCELLABLE);
       const errors = new FieldErrors();
       validateReason(errors, 'reason', dto.reason);
       errors.throwIfAny();
       const changed = occurrence.scheduleChanged;
+      const from = occurrence.status;
       Object.assign(occurrence, {
         status: 'CANCELLED',
         cancelReason: dto.reason,
+        cancelledAt: new Date(),
         scheduleChanged: false,
         ...(changed ? { periodKey: null } : {}),
       });
       const view = await this.save(manager, actor, occurrence, 'cancelOccurrence', {
-        fromStatus: 'SCHEDULED',
+        fromStatus: from,
         toStatus: 'CANCELLED',
         reason: dto.reason,
       });
@@ -90,6 +94,7 @@ export class MaintenanceOccurrencesService {
     actor: AuthenticatedUser,
     id: string,
     version: number,
+    statuses: readonly string[] = ['SCHEDULED'],
   ): Promise<MaintenanceOccurrence> {
     const occurrence = await manager
       .getRepository(MaintenanceOccurrence)
@@ -97,8 +102,14 @@ export class MaintenanceOccurrencesService {
     if (!occurrence || !actor.buildingIds.includes(occurrence.buildingId)) throw notFound(NOT_FOUND);
     await this.plans.lockForManager(manager, actor, occurrence.planId);
     assertVersion(occurrence.version, version);
-    if (occurrence.status !== 'SCHEDULED')
-      throw conflictWithReason('occurrence_not_scheduled', 'Chỉ thao tác được với lượt "Đã lên lịch".');
+    if (!statuses.includes(occurrence.status)) {
+      throw conflictWithReason(
+        'occurrence_not_scheduled',
+        statuses.length > 1
+          ? 'Lượt chờ xác nhận hoặc đã kết thúc không hủy được.'
+          : 'Chỉ thao tác được với lượt "Đã lên lịch".',
+      );
+    }
     return occurrence;
   }
 

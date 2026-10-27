@@ -20,6 +20,8 @@ import { CUSTOM_ROLE_PREFIX, RolesService } from '../../modules/roles/roles.serv
 import { User } from '../../modules/users/entities/user.entity';
 import { DEMO_ITEMS, DEMO_PLANS, shiftDate } from './demo-items';
 import { ensureExploitationDemo } from './exploitation-seed';
+import { ensureMaintenanceExecutionDemo } from './maintenance-execution-seed';
+import { RecordsService } from '../../modules/records/records.service';
 import { FileStorage } from '../../modules/attachments/file-storage';
 import {
   DEMO_ASSIGNMENT_RULES,
@@ -48,6 +50,7 @@ export class DatabaseSeedService {
     private readonly roles: RolesService,
     private readonly codes: CodeCounterService,
     private readonly storage: FileStorage,
+    private readonly records: RecordsService,
   ) {}
 
   async run(): Promise<void> {
@@ -88,6 +91,12 @@ export class DatabaseSeedService {
           now: new Date(),
         })
       : 0;
+    const occurrences = await ensureMaintenanceExecutionDemo(manager, {
+      codes: this.codes,
+      storage: this.storage,
+      records: this.records,
+      now: new Date(),
+    });
     return {
       buildings: buildings.created,
       departments: departments.created,
@@ -98,6 +107,7 @@ export class DatabaseSeedService {
       items,
       plans,
       exploitation,
+      occurrences,
     };
   }
 

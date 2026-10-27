@@ -14,6 +14,8 @@ import { MaintenanceItem } from '../modules/maintenance/entities/maintenance-ite
 import { MaintenanceOccurrence } from '../modules/maintenance/entities/maintenance-occurrence.entity';
 import { MaintenancePlan } from '../modules/maintenance/entities/maintenance-plan.entity';
 import { MaintenanceScheduleVersion } from '../modules/maintenance/entities/maintenance-schedule-version.entity';
+import { MaintenanceReminder } from '../modules/maintenance/entities/maintenance-reminder.entity';
+import { MaintenanceSubmission } from '../modules/maintenance/entities/maintenance-submission.entity';
 import { MaintenanceSkippedPeriod } from '../modules/maintenance/entities/maintenance-skipped-period.entity';
 import { Department } from '../modules/organization/entities/department.entity';
 import { RoleDefinition } from '../modules/roles/entities/role-definition.entity';
@@ -59,6 +61,8 @@ export const ALL_ENTITIES = [
   MaintenanceScheduleVersion,
   MaintenanceOccurrence,
   MaintenanceSkippedPeriod,
+  MaintenanceSubmission,
+  MaintenanceReminder,
   ExploitationPartner,
   ExploitationPackage,
   ExploitationPackageRevision,

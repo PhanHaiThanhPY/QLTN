@@ -30,5 +30,7 @@ import { ScheduleService } from './schedule.service';
     EmergencyService,
     ScheduleService,
   ],
+  // MT-S3 BR-MT3-08: a record made from a failed maintenance item goes through the same createDraft.
+  exports: [RecordsService],
 })
 export class RecordsModule {}

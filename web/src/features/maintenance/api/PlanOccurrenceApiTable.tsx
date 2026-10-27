@@ -1,3 +1,4 @@
+import { Link } from 'react-router';
 import { OccurrenceStatusBadge } from '@/components/common/StatusBadge';
 import { Table, Td, Th, Tr } from '@/components/ui/table';
 import type { ApiOccurrence } from '@/services/maintenance-plans-api';
@@ -22,8 +23,8 @@ const StatusCell = ({ occurrence }: { occurrence: ApiOccurrence }) =>
 const SkippedDate = ({ date }: { date: string }) => <span className="text-ink-3 line-through">{formatDate(date)}</span>;
 
 /**
- * Occurrences and skipped periods by date (ui-brief §2.3). Rows are not links in this slice (the occurrence page is
- * MT-S3); a scheduled occurrence has its `⋯` menu. Table from md, cards on phones.
+ * Occurrences and skipped periods by date (MT-S2 ui-brief §2.3); the code opens the occurrence page (MT-S3) and a
+ * scheduled occurrence has its `⋯` menu. Table from md, cards on phones.
  */
 export const PlanOccurrenceApiTable = ({ rows, canAct, online, onAction }: PlanOccurrenceApiTableProps) => {
   const menu = (occurrence: ApiOccurrence) =>
@@ -54,7 +55,11 @@ export const PlanOccurrenceApiTable = ({ rows, canAct, online, onAction }: PlanO
               </Tr>
             ) : (
               <Tr key={row.occurrence.id}>
-                <Td className="font-medium text-ink">{row.occurrence.code}</Td>
+                <Td>
+                  <Link to={`/maintenance/occurrences/${row.occurrence.id}`} className="font-medium text-accent hover:underline">
+                    {row.occurrence.code}
+                  </Link>
+                </Td>
                 <Td>{formatDate(row.occurrence.scheduledDate)}</Td>
                 <Td><StatusCell occurrence={row.occurrence} /></Td>
                 <Td className="min-w-64"><OccurrenceApiNote occurrence={row.occurrence} /></Td>
@@ -74,7 +79,12 @@ export const PlanOccurrenceApiTable = ({ rows, canAct, online, onAction }: PlanO
             <li key={row.occurrence.id} className="rounded-lg border border-line bg-surface p-3">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="font-medium text-ink">{row.occurrence.code} · {formatDate(row.occurrence.scheduledDate)}</p>
+                  <p className="font-medium">
+                    <Link to={`/maintenance/occurrences/${row.occurrence.id}`} className="text-accent hover:underline">
+                      {row.occurrence.code}
+                    </Link>{' '}
+                    · {formatDate(row.occurrence.scheduledDate)}
+                  </p>
                   <div className="mt-1"><StatusCell occurrence={row.occurrence} /></div>
                 </div>
                 {menu(row.occurrence)}

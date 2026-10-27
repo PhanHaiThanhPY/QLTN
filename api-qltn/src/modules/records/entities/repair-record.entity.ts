@@ -40,6 +40,13 @@ export class RepairRecord extends BaseEntity {
   @Column({ name: 'maintenance_item_id', type: 'uuid', nullable: true })
   maintenanceItemId: string | null;
 
+  /** MT-S3 BR-MT3-08: the maintenance occurrence and checklist item this record was made from. */
+  @Column({ name: 'source_occurrence_id', type: 'uuid', nullable: true })
+  sourceOccurrenceId: string | null;
+
+  @Column({ name: 'source_checklist_item_id', type: 'varchar', length: 40, nullable: true })
+  sourceChecklistItemId: string | null;
+
   @Column({ type: 'varchar', length: 120, default: '' })
   title: string;
 

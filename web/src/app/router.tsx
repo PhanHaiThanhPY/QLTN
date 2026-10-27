@@ -17,7 +17,9 @@ const RepairSchedulePage = lazy(() => import('@/features/records/RepairScheduleP
 const RecordDetailPage = lazy(() => import('@/features/records/RecordDetailPage'));
 const DocumentPrintPage = lazy(() => import('@/features/records/documents/DocumentPrintPage'));
 const RecordFormPage = lazy(() => import('@/features/records/RecordFormPage'));
-const SchedulePage = lazy(() => import('@/features/maintenance/SchedulePage'));
+const SchedulePage = lazy(() =>
+  IS_API_MODE ? import('@/features/maintenance/api/occurrence/OccurrencesApiPage') : import('@/features/maintenance/SchedulePage'),
+);
 const PlansPage = lazy(() => (IS_API_MODE ? import('@/features/maintenance/api/PlansApiPage') : import('@/features/maintenance/PlansPage')));
 const PlanDetailPage = lazy(() =>
   IS_API_MODE ? import('@/features/maintenance/api/PlanDetailApiPage') : import('@/features/maintenance/PlanDetailPage'),
@@ -32,7 +34,9 @@ const ExploitationPackagesPage = lazy(() => import('@/features/exploitation/Pack
 const ExploitationPackagePage = lazy(() => import('@/features/exploitation/PackageDetailPage'));
 const ExploitationBidPage = lazy(() => import('@/features/exploitation/BidPage'));
 const ExploitationPartnersPage = lazy(() => import('@/features/exploitation/PartnersPage'));
-const OccurrenceDetailPage = lazy(() => import('@/features/maintenance/OccurrenceDetailPage'));
+const OccurrenceDetailPage = lazy(() =>
+  IS_API_MODE ? import('@/features/maintenance/api/occurrence/OccurrenceApiPage') : import('@/features/maintenance/OccurrenceDetailPage'),
+);
 const ReportsPage = lazy(() => import('@/features/reports'));
 const AuditLogPage = lazy(() => import('@/features/audit'));
 const NotificationsPage = lazy(() => import('@/features/notifications'));
@@ -69,7 +73,7 @@ export const router = createBrowserRouter([
       { path: 'records/new', element: apiConnected(page(<RecordFormPage />)) },
       { path: 'records/:recordId', element: apiConnected(page(<RecordDetailPage />)) },
       { path: 'records/:recordId/edit', element: apiConnected(page(<RecordFormPage />)) },
-      { path: 'maintenance/schedule', element: connected(page(<SchedulePage />)) },
+      { path: 'maintenance/schedule', element: page(<SchedulePage />) },
       { path: 'maintenance/plans', element: page(<PlansPage />) },
       { path: 'maintenance/plans/new', element: page(<PlanFormPage />) },
       { path: 'maintenance/plans/:planId', element: page(<PlanDetailPage />) },
@@ -81,7 +85,7 @@ export const router = createBrowserRouter([
       { path: 'exploitation/packages/:packageId', element: apiConnected(page(<ExploitationPackagePage />)) },
       { path: 'exploitation/packages/:packageId/bids/:bidId', element: apiConnected(page(<ExploitationBidPage />)) },
       { path: 'exploitation/partners', element: apiConnected(page(<ExploitationPartnersPage />)) },
-      { path: 'maintenance/occurrences/:occurrenceId', element: connected(page(<OccurrenceDetailPage />)) },
+      { path: 'maintenance/occurrences/:occurrenceId', element: page(<OccurrenceDetailPage />) },
       { path: 'reports', element: connected(page(<ReportsPage />)) },
       { path: 'audit', element: apiConnected(page(<AuditLogPage />)) },
       { path: 'notifications', element: page(<NotificationsPage />) },

@@ -26,8 +26,8 @@ const post =
       body: { ...asRecord(command.payload), version: versionOf(command) },
     });
     broadcastChange();
-    // A make-up occurrence answers with the occurrence; the screen stays on its plan.
-    return { ok: true, subjectId: base === 'maintenance-plans' ? (command.subjectId ?? saved.id) : saved.id };
+    // A make-up occurrence answers with the occurrence and an occurrence step with its page: the subject stays.
+    return { ok: true, subjectId: base === 'maintenance-plans' ? (command.subjectId ?? saved.id) : (saved.id ?? command.subjectId) };
   };
 
 /** Plan and occurrence commands of SPEC MT-S2 as REST calls (api mode only). */
@@ -53,4 +53,18 @@ export const MAINTENANCE_PLAN_COMMANDS: Readonly<Record<string, PlanCommandHandl
   rescheduleMaintenanceOccurrence: post('maintenance-occurrences', '/reschedule'),
   cancelMaintenanceOccurrence: post('maintenance-occurrences', '/cancel'),
   keepMaintenanceOccurrence: post('maintenance-occurrences', '/keep'),
+  // MT-S3: running an occurrence; each answers the occurrence page, the screen refetches it.
+  startMaintenanceOccurrence: post('maintenance-occurrences', '/start'),
+  saveMaintenanceWork: post('maintenance-occurrences', '/save'),
+  submitMaintenanceWork: post('maintenance-occurrences', '/submit'),
+  requestMaintenanceOccurrenceRework: post('maintenance-occurrences', '/rework'),
+  confirmMaintenanceOccurrence: post('maintenance-occurrences', '/confirm'),
+  reassignMaintenanceOccurrence: post('maintenance-occurrences', '/reassign'),
+  createRepairFromMaintenanceItem: async (command) => {
+    const made = await apiRequest<{ recordId: string; code: string }>('POST', pathOf('maintenance-occurrences', command, '/repairs'), {
+      body: { ...asRecord(command.payload), version: versionOf(command) },
+    });
+    broadcastChange();
+    return { ok: true, subjectId: made.recordId, data: { code: made.code } };
+  },
 };

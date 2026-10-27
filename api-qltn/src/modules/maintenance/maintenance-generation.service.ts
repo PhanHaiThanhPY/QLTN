@@ -5,6 +5,8 @@ import { CodeCounterService } from '../../common/services/code-counter.service';
 import { JobScheduler } from '../../common/services/job-scheduler.service';
 import { vnDate } from '../../common/utils/vn-date';
 import { addDays, LOOKAHEAD_DAYS, periodsBetween } from '../../domain/maintenance-schedule';
+import { SUBJECT_TYPE } from '../audit/entities/audit-event.entity';
+import { notify } from '../notifications/notify';
 import { MaintenanceItem } from './entities/maintenance-item.entity';
 import { MaintenanceOccurrence } from './entities/maintenance-occurrence.entity';
 import { MaintenancePlan } from './entities/maintenance-plan.entity';
@@ -103,7 +105,19 @@ export class MaintenanceGenerationService implements OnModuleInit {
         .orIgnore()
         .returning(['id'])
         .execute();
-      created += inserted.identifiers.filter(Boolean).length;
+      const newId = (inserted.identifiers[0] as { id?: string } | undefined)?.id;
+      if (!newId) continue;
+      created += 1;
+      // MT-S3 BR-MT3-10: the performer hears of each new occurrence.
+      await notify(manager, {
+        recipientIds: [plan.performerUserId],
+        kind: 'MAINTENANCE_ASSIGNED',
+        title: `Lượt bảo trì ${code} ngày ${date.slice(8)}/${date.slice(5, 7)}`,
+        body: `${item.code} · ${plan.name}`,
+        subjectType: SUBJECT_TYPE.MAINTENANCE_OCCURRENCE,
+        subjectId: newId,
+        buildingId: plan.buildingId,
+      });
     }
     return created;
   }

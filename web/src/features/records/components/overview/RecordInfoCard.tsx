@@ -17,11 +17,32 @@ const NO_ITEM_TEXT: Record<RecordItemLink, string> = {
   UNLINKED: 'Chưa chọn (bắt buộc khi gửi xác nhận)',
 };
 
+/** Mock mode has the whole occurrence; api mode (MT-S3) its code and the checklist item the record came from. */
+const sourceLink = (detail: ReturnType<typeof useRecordContext>['detail']) => {
+  const { sourceOccurrence, sourceSummary } = detail;
+  if (sourceSummary) {
+    return (
+      <Link className="text-accent hover:underline" to={subjectPath('MAINTENANCE_OCCURRENCE', sourceSummary.id)}>
+        Từ lượt bảo trì {sourceSummary.code}
+        {sourceSummary.itemLabel ? ` · mục ${sourceSummary.itemLabel}` : ''}
+      </Link>
+    );
+  }
+  if (sourceOccurrence) {
+    return (
+      <Link className="text-accent hover:underline" to={subjectPath('MAINTENANCE_OCCURRENCE', sourceOccurrence.id)}>
+        {sourceOccurrence.code} · {formatDate(sourceOccurrence.scheduledDate)}
+      </Link>
+    );
+  }
+  return 'Không có';
+};
+
 /** General information, links to the maintenance item / source occurrence and the description. */
 export const RecordInfoCard = () => {
   const { detail } = useRecordContext();
   const { buildingName, locationName, userName } = useReferenceData();
-  const { record, sourceOccurrence } = detail;
+  const { record } = detail;
   // Mock mode loads the whole item; api mode (MT-S1) sends the short line the detail needs.
   const item = detail.item ?? detail.itemSummary;
   const items: InfoItem[] = [
@@ -41,13 +62,7 @@ export const RecordInfoCard = () => {
     },
     {
       label: 'Lượt bảo trì nguồn',
-      value: sourceOccurrence ? (
-        <Link className="text-accent hover:underline" to={subjectPath('MAINTENANCE_OCCURRENCE', sourceOccurrence.id)}>
-          {sourceOccurrence.code} · {formatDate(sourceOccurrence.scheduledDate)}
-        </Link>
-      ) : (
-        'Không có'
-      ),
+      value: sourceLink(detail),
     },
     { label: 'Người tạo', value: `${userName(record.createdBy)} · ${formatDateTime(record.createdAt)}` },
     { label: 'Cập nhật', value: `${formatDateTime(record.updatedAt)} · phiên bản ${record.version}` },

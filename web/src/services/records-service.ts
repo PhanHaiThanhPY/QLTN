@@ -276,6 +276,8 @@ export interface RecordDetail {
   /** api mode (MT-S1): the record's equipment as the detail line shows it; the full item lives on its own page. */
   itemSummary?: { id: string; code: string; name: string; active: boolean };
   sourceOccurrence?: MaintenanceOccurrence;
+  /** MT-S3 (api mode): the occurrence and checklist item the record was made from. */
+  sourceSummary?: { id: string; code: string; itemLabel: string | null };
   inactiveSlots: AssigneeSlot[];
   isOverdue: boolean;
 }
