@@ -11,6 +11,8 @@ export const CATEGORY_TEXT: Readonly<Record<LedgerCategory, string>> = {
   SERVICE: 'Chi dịch vụ',
   TRANSFER: 'Chuyển quỹ',
   OTHER: 'Chi khác',
+  BANK_FEE: 'Phí ngân hàng',
+  INTEREST: 'Lãi không kỳ hạn',
 } as const;
 
 /** Short names for the ledger's "Nhóm" column (ui-brief §2.1). */
@@ -21,6 +23,8 @@ export const CATEGORY_SHORT: Readonly<Record<LedgerCategory, string>> = {
   SERVICE: 'Chi DV',
   TRANSFER: 'Chuyển quỹ',
   OTHER: 'Chi khác',
+  BANK_FEE: 'Phí NH',
+  INTEREST: 'Lãi',
 } as const;
 
 export const DIRECTION_TEXT: Readonly<Record<LedgerDirection, string>> = { IN: 'Thu', OUT: 'Chi' } as const;

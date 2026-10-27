@@ -4,6 +4,7 @@ import { cn } from '@/lib/cn';
 import type { LedgerPage, LedgerRow } from '@/services/fund-api';
 import { formatDate } from '@/utils/date';
 import { formatVndText } from '@/utils/money';
+import { ReconBadge } from './ReconBadge';
 import { Spoken } from './Spoken';
 import { CATEGORY_SHORT, CATEGORY_TEXT, DIRECTION_TEXT, signedVnd, spokenVnd } from '../fund-ui';
 
@@ -90,7 +91,7 @@ export const LedgerTable = ({ page }: { page: LedgerPage }) => {
                     <Marks row={row} codes={codes} />
                   </span>
                   <span className="mt-1 block lg:hidden">
-                    <Badge tone="neutral">Chưa đối soát</Badge>
+                    <ReconBadge code={row.statementCode} />
                   </span>
                 </td>
                 <td className="py-2 pr-3">
@@ -101,7 +102,7 @@ export const LedgerTable = ({ page }: { page: LedgerPage }) => {
                   <Amount row={row} />
                 </td>
                 <td className="hidden py-2 lg:table-cell">
-                  <Badge tone="neutral">Chưa đối soát</Badge>
+                  <ReconBadge code={row.statementCode} />
                 </td>
               </tr>
             ))}
@@ -139,7 +140,7 @@ export const LedgerTable = ({ page }: { page: LedgerPage }) => {
             <p className={row.reversedById ? 'line-through' : undefined}>{row.description}</p>
             <p className="mt-1 flex flex-wrap gap-1 text-xs text-ink-2">
               {DIRECTION_TEXT[row.direction]} · {CATEGORY_TEXT[row.category]} <Marks row={row} codes={codes} />
-              <Badge tone="neutral">Chưa đối soát</Badge>
+              <ReconBadge code={row.statementCode} />
             </p>
           </li>
         ))}

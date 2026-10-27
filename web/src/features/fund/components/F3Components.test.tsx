@@ -86,6 +86,7 @@ describe('F-S3 components', () => {
       reversedById: null,
       reconciliation: 'UNRECONCILED' as const,
       contractId: 'c1',
+      statementCode: null,
       createdBy: 'u1',
       createdAt: '2026-11-18T02:00:00Z',
       ...extra,

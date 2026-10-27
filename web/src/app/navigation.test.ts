@@ -86,7 +86,7 @@ describe('Quỹ khai thác (SPEC F-S1 ui-brief §0, AC-F1.14)', () => {
   });
 
   describe('Sổ quỹ, Thuế, Phiếu chi (SPEC F-S3 BR-F3-14, D-F3-6)', () => {
-    const FUND = ['Sổ quỹ', 'Thuế', 'Phiếu chi'];
+    const FUND = ['Sổ quỹ', 'Thuế', 'Phiếu chi', 'Sao kê và đối soát'];
 
     it.each(['ACCOUNTANT', 'OWNERS_BOARD'] as const)('shows them to %s in api mode', (role) => {
       const labels = visibleNavItems(userOf(role), true).map((item) => item.label);

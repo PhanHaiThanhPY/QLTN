@@ -20,6 +20,7 @@ import { cn } from '@/lib/cn';
 import { getVoucher } from '@/services/fund-api';
 import { formatDate, formatDateTime } from '@/utils/date';
 import { formatVndText } from '@/utils/money';
+import { ReconBadge } from './components/ReconBadge';
 import { Spoken } from './components/Spoken';
 import { VoucherActions } from './components/VoucherActions';
 import { DECISION_TEXT, TARGET_FUND_TEXT, VOUCHER_CATEGORY_TEXT, VOUCHER_STATUS_TEXT, VOUCHER_STATUS_TONE, spokenVnd } from './fund-ui';
@@ -99,6 +100,7 @@ const VoucherPage = () => {
                 { label: 'Người nhận', value: voucher.payeeName },
                 { label: 'Tài khoản người nhận', value: voucher.payeeAccount ?? '—' },
                 { label: 'Ngày chi', value: voucher.paidOn ? formatDate(voucher.paidOn) : '—' },
+                ...(voucher.status === 'PAID' ? [{ label: 'Đối soát', value: <ReconBadge code={voucher.statementCode} /> }] : []),
               ]}
             />
             {requestFile ? <AttachmentList attachments={[requestFile]} /> : null}

@@ -75,10 +75,20 @@ export class StatementsService {
     private readonly audit: AuditService,
   ) {}
 
-  async list(actor: AuthenticatedUser, fundId: string): Promise<BankStatementImport[]> {
+  /** Newest first; `matchedCount` says whether the import can still be deleted (BR-F4-04). */
+  async list(actor: AuthenticatedUser, fundId: string): Promise<Array<BankStatementImport & { matchedCount: number }>> {
     await this.fundInScope(this.dataSource.manager, actor, fundId);
     assertStatementView(actor);
-    return this.dataSource.getRepository(BankStatementImport).find({ where: { fundId }, order: { createdAt: 'DESC' } });
+    const imports = await this.dataSource
+      .getRepository(BankStatementImport)
+      .find({ where: { fundId }, order: { createdAt: 'DESC' } });
+    const counts = await this.dataSource.query<Array<{ import_id: string; n: string }>>(
+      `SELECT l.import_id, count(*)::text AS n FROM bank_matches m JOIN bank_statement_lines l ON l.id = m.line_id
+        WHERE l.fund_id = $1 GROUP BY l.import_id`,
+      [fundId],
+    );
+    const matched = new Map(counts.map((row) => [row.import_id, Number(row.n)]));
+    return imports.map((row) => ({ ...row, matchedCount: matched.get(row.id) ?? 0 }));
   }
 
   async preview(actor: AuthenticatedUser, fundId: string, input: StatementInput): Promise<StatementPreview> {

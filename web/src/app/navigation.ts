@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  ArrowLeftRight,
   Banknote,
   Bell,
   BookOpen,
@@ -65,6 +66,15 @@ export const ALL_NAV_ITEMS: NavItem[] = [
   { to: '/exploitation/fund', label: 'Sổ quỹ', icon: BookOpen, capability: 'FUND_VIEW', group: 'Quỹ khai thác', apiOnly: true },
   { to: '/exploitation/tax', label: 'Thuế', icon: Receipt, capability: 'FUND_VIEW', group: 'Quỹ khai thác', apiOnly: true },
   { to: '/exploitation/vouchers', label: 'Phiếu chi', icon: Banknote, capability: 'FUND_VIEW', group: 'Quỹ khai thác', apiOnly: true },
+  // F-S4 BR-F4-12: Kế toán and BQT.
+  {
+    to: '/exploitation/reconciliation',
+    label: 'Sao kê và đối soát',
+    icon: ArrowLeftRight,
+    capability: 'FUND_VIEW',
+    group: 'Quỹ khai thác',
+    apiOnly: true,
+  },
 
   { to: '/space', label: 'Không gian chung cư', icon: Map, group: 'Theo dõi' },
   { to: '/reports', label: 'Báo cáo', icon: BarChart3, capability: 'REPORT_VIEW', group: 'Theo dõi' },
@@ -99,6 +109,7 @@ const API_READY_PATHS = new Set([
   '/exploitation/fund',
   '/exploitation/tax',
   '/exploitation/vouchers',
+  '/exploitation/reconciliation',
   '/audit',
   '/notifications',
 ]);

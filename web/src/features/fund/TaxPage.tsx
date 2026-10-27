@@ -18,6 +18,7 @@ import { formatVndText } from '@/utils/money';
 import { FigureRow } from '@/features/exploitation/components/FigureRow';
 import { shortVnd } from '@/features/exploitation/contract-ui';
 import { FundToolbar } from './components/FundToolbar';
+import { ReconBadge } from './components/ReconBadge';
 import { TaxObligationDialog } from './components/TaxObligationDialog';
 import { TaxPaymentDialog } from './components/TaxPaymentDialog';
 import { monthText } from './fund-ui';
@@ -75,7 +76,7 @@ const TaxPage = () => {
                   <span className={row.status === 'CANCELLED' ? 'text-ink-3 line-through' : undefined}>
                     {row.code} · Giấy nộp tiền · {formatDate(row.paidOn)} · {formatVndText(row.amountVnd)}
                   </span>
-                  {row.status === 'CANCELLED' ? <Badge tone="neutral">Đã hủy</Badge> : null}
+                  {row.status === 'CANCELLED' ? <Badge tone="neutral">Đã hủy</Badge> : <ReconBadge code={row.statementCode} />}
                   {canOperate && row.status === 'RECORDED' ? (
                     <Button size="sm" variant="ghost" onClick={() => setDialog(row)}>
                       Hủy
@@ -112,7 +113,7 @@ const TaxPage = () => {
                 <p>Hồ sơ nghĩa vụ {obligation.code}</p>
                 <p className="tabular-nums">Số tiền {formatVndText(last.amountVnd)}</p>
                 <p>Ngày ghi nhận {formatDate(last.paidOn)}</p>
-                <p className="text-ink-2">Giao dịch sao kê: — (F-S4)</p>
+                <p className="text-ink-2">Giao dịch sao kê: {last.statementCode ?? 'chưa đối soát'}</p>
                 {tax.files[last.attachmentId] ? <AttachmentList attachments={[tax.files[last.attachmentId]]} /> : null}
               </>
             ) : (
@@ -140,7 +141,11 @@ const TaxPage = () => {
           { label: 'Theo hồ sơ', value: obligation ? shortVnd(obligation.amountVnd) : '—' },
           { label: 'Đã nộp', value: obligation ? shortVnd(obligation.paidVnd) : '—' },
           { label: 'Còn nộp', value: obligation ? shortVnd(obligation.remainingVnd) : '—', warn: Boolean(obligation && !obligation.settled) },
-          { label: 'Đối chiếu', value: '—', hint: 'F-S4' },
+          {
+            label: 'Đã đối chiếu',
+            value: obligation ? `${obligation.reconciled.matched}/${obligation.reconciled.total}` : '—',
+            hint: 'giấy nộp đã khớp sao kê',
+          },
         ]}
       />
       {body()}

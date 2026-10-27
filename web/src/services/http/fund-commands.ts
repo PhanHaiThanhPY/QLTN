@@ -36,9 +36,18 @@ const create =
     return { ok: true, subjectId: typeof answer.id === 'string' ? answer.id : command.subjectId, data: answer };
   };
 
+/** An unversioned action on `<path(id)>` (the fund lock and the live-pair indexes guard concurrent matching). */
+const plain =
+  (path: (id: string) => string): Handler =>
+  async (command) => {
+    const answer = await apiRequest<unknown>('POST', path(idOf(command)), { body: asRecord(command.payload) });
+    broadcastChange();
+    return { ok: true, subjectId: command.subjectId, data: asRecord(answer) };
+  };
+
 const voucher = (suffix: string) => versioned('POST', (id) => `/funds/vouchers/${id}${suffix}`);
 
-/** SPEC F-S3 commands as REST calls (api mode only). Receipts and deposits answer the contract page. */
+/** SPEC F-S3 and F-S4 commands as REST calls (api mode only). Receipts and deposits answer the contract page. */
 export const FUND_COMMANDS: Readonly<Record<string, Handler>> = {
   setupFund: versioned('PUT', (id) => `/funds/${id}/setup`),
   approveFundOpening: versioned('POST', (id) => `/funds/${id}/opening/approve`),
@@ -57,6 +66,19 @@ export const FUND_COMMANDS: Readonly<Record<string, Handler>> = {
   cancelFundVoucher: voucher('/cancel'),
   approveFundVoucherCancel: voucher('/approve-cancel'),
   rejectFundVoucherCancel: voucher('/reject-cancel'),
+  // F-S4: an import sends the template file or typed lines as multipart; the answer counts new lines and suggestions.
+  importStatement: async (command) => {
+    const payload = asRecord(command.payload);
+    const form = payload.form instanceof FormData ? payload.form : new FormData();
+    const answer = asRecord(await apiRequest<unknown>('POST', `/funds/${idOf(command)}/statements`, { form }));
+    broadcastChange();
+    return { ok: true, subjectId: command.subjectId, data: answer };
+  },
+  deleteStatementImport: plain((id) => `/funds/statement-imports/${id}/delete`),
+  matchStatementLine: plain((id) => `/funds/statement-lines/${id}/match`),
+  recordFromStatement: plain((id) => `/funds/statement-lines/${id}/record`),
+  unmatchStatementLine: plain((id) => `/funds/matches/${id}/unmatch`),
+  confirmStatementSuggestions: plain((id) => `/funds/${id}/reconciliation/confirm`),
   recordExploitationReceipt: create((id) => `/exploitation/contracts/${id}/receipts`),
   cancelExploitationReceipt: versioned('POST', (id) => `/exploitation/receipts/${id}/cancel`),
   recordExploitationDeposit: create((id) => `/exploitation/contracts/${id}/deposits`),

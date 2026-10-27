@@ -4,7 +4,8 @@ import { mapAttachment, mapAuditEvent } from './http/mappers';
 import type { ApiAttachment, ApiAuditEvent } from './http/mappers';
 
 /** SPEC F-S3 shapes as the API answers them (api mode only). Money is integer VND as a string; the server sums it. */
-export type LedgerCategory = 'CONTRACT_RECEIPT' | 'DEPOSIT' | 'TAX' | 'SERVICE' | 'TRANSFER' | 'OTHER';
+/** F-S4 adds BANK_FEE and INTEREST, recorded from the bank statement. */
+export type LedgerCategory = 'CONTRACT_RECEIPT' | 'DEPOSIT' | 'TAX' | 'SERVICE' | 'TRANSFER' | 'OTHER' | 'BANK_FEE' | 'INTEREST';
 export type LedgerDirection = 'IN' | 'OUT';
 export type VoucherCategory = 'SERVICE' | 'TRANSFER' | 'OTHER';
 export type VoucherStatus = 'DRAFT' | 'PENDING' | 'NEEDS_CHANGES' | 'APPROVED' | 'REJECTED' | 'PAID' | 'CANCELLED';
@@ -31,7 +32,7 @@ export interface LedgerRow {
   direction: LedgerDirection;
   amountVnd: string;
   category: LedgerCategory;
-  sourceType: 'RECEIPT' | 'DEPOSIT' | 'TAX_PAYMENT' | 'VOUCHER';
+  sourceType: 'RECEIPT' | 'DEPOSIT' | 'TAX_PAYMENT' | 'VOUCHER' | 'STATEMENT';
   sourceId: string;
   sourceCode: string;
   description: string;
@@ -39,6 +40,8 @@ export interface LedgerRow {
   reversedById: string | null;
   reconciliation: 'UNRECONCILED' | 'RECONCILED';
   contractId: string | null;
+  /** F-S4 BR-F4-11: the bank line it is matched with. */
+  statementCode: string | null;
   createdBy: string;
   createdAt: string;
 }
@@ -72,6 +75,8 @@ export interface TaxObligation {
   paidVnd: string;
   remainingVnd: string;
   settled: boolean;
+  /** F-S4 BR-F4-11: "Đã đối chiếu k/n". */
+  reconciled: { matched: number; total: number };
   version: number;
 }
 
@@ -84,6 +89,7 @@ export interface TaxPayment {
   attachmentId: string;
   status: 'RECORDED' | 'CANCELLED';
   cancelReason: string | null;
+  statementCode: string | null;
   version: number;
 }
 
@@ -115,6 +121,8 @@ export interface Voucher {
   proofAttachmentId: string | null;
   cancelRequest: { reason: string; requestedBy: string; requestedAt: string } | null;
   cancelReason: string | null;
+  /** F-S4 BR-F4-11: the bank line a paid voucher is matched with. */
+  statementCode: string | null;
   createdBy: string;
   createdAt: string;
   version: number;

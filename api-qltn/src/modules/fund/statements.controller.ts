@@ -120,7 +120,10 @@ export class StatementsController {
 
   @Get(':id/statements')
   @ApiOperation({ summary: 'Các lần nhập sao kê của tài khoản quỹ' })
-  list(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string): Promise<BankStatementImport[]> {
+  list(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<Array<BankStatementImport & { matchedCount: number }>> {
     return this.statements.list(user, id);
   }
 
