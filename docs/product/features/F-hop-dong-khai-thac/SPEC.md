@@ -1,7 +1,7 @@
 ---
 id: F.S2
 title: Chọn đơn vị, hội nghị thông qua và hợp đồng khai thác
-status: Đã duyệt
+status: Đã triển khai
 owner: PM/BA
 intent: "Từ một gói đã đóng nhận, BQT duyệt đơn vị được chọn theo căn cứ rõ ràng, hội nghị thông qua, và hợp đồng chỉ có hiệu lực khi đủ quyết nghị, kèm lịch phải thu từng kỳ để kế toán theo dõi."
 depends_on: [F.S1]
@@ -9,7 +9,7 @@ depends_on: [F.S1]
 
 # SPEC: Chọn đơn vị, hội nghị thông qua và hợp đồng khai thác (F-S2)
 
-**Chủ sở hữu:** PM/BA · **Cập nhật:** 27/10/2026 · **Trạng thái:** `Đã duyệt`, chủ dự án duyệt ngày 27/10/2026 (PD-33), gồm 6 mặc định D-F2-1 đến D-F2-6 ở §6. Bắt đầu build sau khi F-S1 đạt review
+**Chủ sở hữu:** PM/BA · **Cập nhật:** 27/10/2026 · **Trạng thái:** `Đã triển khai` (27/10/2026, merge vào `main`); trước đó `Đã duyệt`, chủ dự án duyệt ngày 27/10/2026 (PD-33), gồm 6 mặc định D-F2-1 đến D-F2-6 ở §6. Bắt đầu build sau khi F-S1 đạt review
 
 **Nguồn:**
 - Phân tích [F-quy-khai-thac.md](../../modules/F-quy-khai-thac.md), đã duyệt (PD-31): §2 F03, F04, F05; FG-06, FG-12; mặc định FQ-03, FQ-04, FQ-05, FQ-11, FQ-12 (OD-26).
@@ -254,3 +254,4 @@ Chỉ chạy các test liên quan.
 | 27/10/2026 | Viết từ phân tích nhóm F (PD-31), sau F-S1 (PD-32). |
 | 27/10/2026 | Chủ dự án duyệt (PD-33), gồm D-F2-1 đến D-F2-6, và cho giao dev-build (bắt đầu sau khi F-S1 đạt review). |
 | 27/10/2026 | Review PASS WITH RESIDUE trên `64d6a62`; PM/BA đóng slice. Chờ merge (migration `2026-10-27h-exploitation-contracts.sql`). |
+| 27/10/2026 | Merge vào `main` qua nhánh tích hợp `integration/f-s2` (`dbbe32a`); trạng thái `Đã triển khai`. |

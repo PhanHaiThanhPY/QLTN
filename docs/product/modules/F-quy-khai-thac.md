@@ -210,10 +210,10 @@
 | Slice | Nội dung | Phụ thuộc |
 |---|---|---|
 | **F-S1 Mời thầu và dự thầu** ([SPEC](../features/F-moi-thau-khai-thac/SPEC.md), đã triển khai 27/10) | Danh mục đơn vị khai thác; F01 gói và đợt mời (phiên bản, hạn nhận, tài liệu); F02 tiếp nhận hồ sơ (danh mục tài liệu, yêu cầu bổ sung, khóa nhận khi hết hạn, cờ trễ hạn) | FQ-01, FQ-02 (đã có mặc định) |
-| F-S2 Chọn, hội nghị, hợp đồng ([SPEC](../features/F-hop-dong-khai-thac/SPEC.md), đã duyệt PD-33, chờ build) | F03 kết quả chọn có duyệt (chỉ đơn vị đủ hồ sơ); F05 hội nghị; F04 hợp đồng: soạn → ký → **hiệu lực chỉ khi có quyết nghị** (DF-27); phụ lục; **lịch phải thu** | F-S1; FQ-03 đến FQ-05, FQ-11 |
+| F-S2 Chọn, hội nghị, hợp đồng ([SPEC](../features/F-hop-dong-khai-thac/SPEC.md), đã triển khai 27/10) | F03 kết quả chọn có duyệt (chỉ đơn vị đủ hồ sơ); F05 hội nghị; F04 hợp đồng: soạn → ký → **hiệu lực chỉ khi có quyết nghị** (DF-27); phụ lục; **lịch phải thu** | F-S1; FQ-03 đến FQ-05, FQ-11 |
 | F-S3 Quỹ, thu, thuế, chi ([SPEC](../features/F-thu-chi-quy-khai-thac/SPEC.md), đã duyệt PD-34, chờ build) | Tài khoản quỹ theo tòa (dùng chung với nhóm T); F06 khoản thu phân bổ vào kỳ; F07 nghĩa vụ thuế và giấy nộp; **phiếu chi** (FG-03); **mô hình tiền** (FG-02) | F-S2; FQ-06 đến FQ-08, FQ-10 |
 | F-S4 Sao kê và đối soát ([SPEC](../features/F-sao-ke-doi-soat/SPEC.md), đã duyệt PD-35, chờ build) | Nhập sao kê dùng chung F và T (DF-26); ghép giao dịch với chứng từ; lệch và trùng | F-S3; FQ-09 |
-| F-S5 Báo cáo và thanh lý | F09 báo cáo thu chi (thác nước, theo nguồn, công nợ riêng, xuất); F10 thanh lý (điều kiện khép, ghi nhận không thu được) | F-S3, F-S4; FQ-13 |
+| F-S5 Báo cáo và thanh lý ([SPEC](../features/F-bao-cao-thanh-ly/SPEC.md), chờ duyệt) | F09 báo cáo thu chi (thác nước, theo nguồn, công nợ riêng, xuất); F10 thanh lý (điều kiện khép, ghi nhận không thu được) | F-S3, F-S4; FQ-13 |
 
 **AC nháp, lấy đúng ví dụ D1** (dùng cho kịch bản nghiệm thu):
 - **AC-1 (F02, F03):** DV-B thiếu "Chứng từ điều kiện" thì không chọn được, dù chào 22 triệu, cao hơn DV-A (20 triệu).
