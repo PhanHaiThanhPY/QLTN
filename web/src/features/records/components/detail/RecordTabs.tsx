@@ -11,6 +11,8 @@ import { ApprovalTab } from '../approval/ApprovalTab';
 import { ConstructionTab } from '../construction/ConstructionTab';
 import { OverviewTab } from '../overview/OverviewTab';
 import { PaymentTab } from '../payment/PaymentTab';
+import { IS_API_MODE } from '@/config/data-source';
+import { DocumentsTab } from '../../documents/components/DocumentsTab';
 
 const TAB_ITEMS: TabItem[] = [
   { value: 'overview', label: 'Tổng quan' },
@@ -18,6 +20,8 @@ const TAB_ITEMS: TabItem[] = [
   { value: 'construction', label: 'Thi công' },
   { value: 'acceptance', label: 'Nghiệm thu' },
   { value: 'payment', label: 'Thanh toán' },
+  // B7-S1: D5 documents, api mode only (the demo keeps its "Xem bộ biểu mẫu" button).
+  ...(IS_API_MODE ? [{ value: 'documents', label: 'Biểu mẫu' }] : []),
   { value: 'history', label: 'Lịch sử' },
 ];
 
@@ -53,6 +57,11 @@ export const RecordTabs = () => {
       <TabPanel value="payment">
         <PaymentTab />
       </TabPanel>
+      {IS_API_MODE ? (
+        <TabPanel value="documents">
+          <DocumentsTab />
+        </TabPanel>
+      ) : null}
       <TabPanel value="history">
         <Card>
           <CardBody>

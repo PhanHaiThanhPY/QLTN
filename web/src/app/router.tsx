@@ -15,6 +15,7 @@ const TasksPage = lazy(() => import('@/features/tasks'));
 const RecordsPage = lazy(() => import('@/features/records'));
 const RepairSchedulePage = lazy(() => import('@/features/records/RepairSchedulePage'));
 const RecordDetailPage = lazy(() => import('@/features/records/RecordDetailPage'));
+const DocumentPrintPage = lazy(() => import('@/features/records/documents/DocumentPrintPage'));
 const RecordFormPage = lazy(() => import('@/features/records/RecordFormPage'));
 const SchedulePage = lazy(() => import('@/features/maintenance/SchedulePage'));
 const PlansPage = lazy(() => import('@/features/maintenance/PlansPage'));
@@ -45,6 +46,8 @@ const apiConnected = (element: ReactNode): ReactNode => (IS_API_MODE ? element :
 
 export const router = createBrowserRouter([
   { path: '/login', element: page(<LoginPage />), errorElement: <RouteErrorPage /> },
+  // B7-S1: D5 paper view outside the app shell, so a print holds only the document (api mode).
+  { path: '/records/:recordId/documents/:kind/:docId', element: apiConnected(page(<DocumentPrintPage />)), errorElement: <RouteErrorPage /> },
   {
     path: '/',
     element: <AppLayout />,
