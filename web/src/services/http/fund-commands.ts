@@ -47,7 +47,7 @@ const plain =
 
 const voucher = (suffix: string) => versioned('POST', (id) => `/funds/vouchers/${id}${suffix}`);
 
-/** SPEC F-S3 and F-S4 commands as REST calls (api mode only). Receipts and deposits answer the contract page. */
+/** SPEC F-S3, F-S4 and F-S5 commands as REST calls (api mode only). Receipts and deposits answer the contract page. */
 export const FUND_COMMANDS: Readonly<Record<string, Handler>> = {
   setupFund: versioned('PUT', (id) => `/funds/${id}/setup`),
   approveFundOpening: versioned('POST', (id) => `/funds/${id}/opening/approve`),
@@ -79,6 +79,19 @@ export const FUND_COMMANDS: Readonly<Record<string, Handler>> = {
   recordFromStatement: plain((id) => `/funds/statement-lines/${id}/record`),
   unmatchStatementLine: plain((id) => `/funds/matches/${id}/unmatch`),
   confirmStatementSuggestions: plain((id) => `/funds/${id}/reconciliation/confirm`),
+  // F-S5: the termination of a contract; every write answers the "Thanh lý" tab.
+  createTermination: create((id) => `/exploitation/contracts/${id}/termination`),
+  cancelTermination: versioned('POST', (id) => `/exploitation/terminations/${id}/cancel`),
+  recordHandover: create((id) => `/exploitation/terminations/${id}/handovers`),
+  recordTerminationMinutes: versioned('POST', (id) => `/exploitation/terminations/${id}/minutes`),
+  recordDepositOffset: create((id) => `/exploitation/terminations/${id}/offsets`),
+  cancelDepositOffset: versioned('POST', (id) => `/exploitation/deposit-offsets/${id}/cancel`),
+  proposeWriteOff: create((id) => `/exploitation/terminations/${id}/write-offs`),
+  resubmitWriteOff: versioned('POST', (id) => `/exploitation/write-offs/${id}/resubmit`),
+  approveWriteOff: versioned('POST', (id) => `/exploitation/write-offs/${id}/approve`),
+  requestWriteOffChanges: versioned('POST', (id) => `/exploitation/write-offs/${id}/request-changes`),
+  rejectWriteOff: versioned('POST', (id) => `/exploitation/write-offs/${id}/reject`),
+  closeTermination: versioned('POST', (id) => `/exploitation/terminations/${id}/close`),
   recordExploitationReceipt: create((id) => `/exploitation/contracts/${id}/receipts`),
   cancelExploitationReceipt: versioned('POST', (id) => `/exploitation/receipts/${id}/cancel`),
   recordExploitationDeposit: create((id) => `/exploitation/contracts/${id}/deposits`),
