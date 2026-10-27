@@ -171,3 +171,4 @@ Chỉ chạy test liên quan, không chạy toàn bộ suite.
 | 27/10/2026 | Chủ dự án duyệt (PD-17) và cho giao dev-build ngay. Giữ hai lựa chọn: hồ sơ 0 đồng vẫn do BQL bấm đóng (T22); quyền xem tài khoản không đổi (BR-FX1-01). |
 | 27/10/2026 | FX-S1 triển khai, review đạt và đóng; merge vào `main` theo yêu cầu của chủ dự án. FX-S2, FX-S3 đang review. |
 | 27/10/2026 | FX-S2 triển khai, review đạt và đóng; merge vào `main`. |
+| 27/10/2026 | FX-S3 triển khai, review đạt và đóng; merge vào `main`. Cả 3 slice FX đã triển khai. |

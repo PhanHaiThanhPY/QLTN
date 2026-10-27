@@ -52,3 +52,39 @@ export const contractorTotal = (items: readonly QuoteItem[], contractor: QuoteCo
     totalVnd: total.toString(),
   };
 };
+
+/** Largest amount the system stores: 15 digits, as `VND_PATTERN` (FX-S3 BR-FX3-06). */
+export const VND_MAX = 999_999_999_999_999n;
+
+export interface QuoteLimitCheck {
+  /** Lines whose total exceeds `VND_MAX`. */
+  linesOverLimit: number[];
+  /** Total of the contractor when every value is well formed, else null. */
+  totalVnd: bigint | null;
+}
+
+/**
+ * Bounds of one contractor's quotation (FX-S3 BR-FX3-06/07), computed with BigInt so an oversized product is
+ * reported rather than overflowing the bigint column. Values that are not well formed are skipped: their own
+ * format errors are reported elsewhere.
+ */
+export const checkQuoteLimits = (items: readonly QuoteItem[], contractor: QuoteContractor): QuoteLimitCheck => {
+  const lines = items.map((item, index) => {
+    const price = contractor.unitPricesVnd[index];
+    const valid = QUANTITY_PATTERN.test(item.quantity) && price !== undefined && VND_PATTERN.test(price);
+    return valid ? lineTotalVnd(item.quantity, price) : null;
+  });
+  const complete =
+    contractor.unitPricesVnd.length === items.length &&
+    lines.every((line) => line !== null) &&
+    VND_PATTERN.test(contractor.otherCostVnd) &&
+    VND_PATTERN.test(contractor.taxVnd);
+  return {
+    linesOverLimit: lines.flatMap((line, index) => (line !== null && line > VND_MAX ? [index] : [])),
+    totalVnd: complete
+      ? lines.reduce<bigint>((sum, line) => sum + (line ?? 0n), 0n) +
+        BigInt(contractor.otherCostVnd) +
+        BigInt(contractor.taxVnd)
+      : null,
+  };
+};

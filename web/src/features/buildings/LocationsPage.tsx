@@ -1,17 +1,16 @@
 import { useSearchParams } from 'react-router';
-import { AuditTimeline } from '@/components/common/AuditTimeline';
 import { PageHeader } from '@/components/common/PageHeader';
 import { ErrorState, LoadingState } from '@/components/common/States';
-import { Card, CardBody, CardHeader } from '@/components/ui/card';
+import { Card, CardBody } from '@/components/ui/card';
 import { useServiceQuery } from '@/hooks/useServiceQuery';
 import { getLocationSettings } from '@/services/building-service';
+import { BuildingHistoryCard } from './components/BuildingHistoryCard';
 import { BuildingPicker } from './components/BuildingPicker';
 import { LocationsCard } from './components/LocationsCard';
-import { LOCATION_ACTIONS } from './location-filters';
 
 const TITLE = 'Tầng, khu vực, vị trí';
 
-/** Locations of one building in scope: search, filter by floor/status, add, edit, stop using; with their change history. */
+/** Locations of one building in scope: search, filter by floor/status, add, edit, stop using; with the building history. */
 const LocationsPage = () => {
   const [params, setParams] = useSearchParams();
   const selectedId = params.get('b') ?? undefined;
@@ -31,12 +30,7 @@ const LocationsPage = () => {
         </CardBody>
       </Card>
       <LocationsCard key={building.id} buildingId={building.id} locations={locations} canEdit={canEdit} />
-      <Card className="shadow-none">
-        <CardHeader title="Lịch sử thay đổi vị trí" />
-        <CardBody>
-          <AuditTimeline events={audit.filter((event) => LOCATION_ACTIONS.includes(event.action))} />
-        </CardBody>
-      </Card>
+      <BuildingHistoryCard events={audit} />
     </div>
   );
 };

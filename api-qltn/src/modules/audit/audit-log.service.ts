@@ -108,7 +108,14 @@ const toRow = (raw: RawRow): AuditLogRow => ({
   createdAt: raw.created_at,
 });
 
-const csvCell = (value: string): string => (/[",\r\n;]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value);
+/**
+ * One CSV cell. A leading `=`, `+`, `-`, `@`, tab or CR would make Excel read the cell as a formula (FX-S3
+ * BR-FX3-05), so it gets a `'` first; then cells holding a quote, comma, semicolon or line break are quoted.
+ */
+export const csvCell = (value: string): string => {
+  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  return /[",\r\n;]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+};
 
 const CSV_HEADER = [
   'Thời điểm',

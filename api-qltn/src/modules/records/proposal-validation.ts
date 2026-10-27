@@ -1,5 +1,12 @@
 import { FieldErrors } from '../../common/validation/field-errors';
-import { contractorTotal, QUANTITY_PATTERN, VND_PATTERN, type QuoteItem } from '../../domain/proposal-quote';
+import {
+  checkQuoteLimits,
+  contractorTotal,
+  QUANTITY_PATTERN,
+  VND_MAX,
+  VND_PATTERN,
+  type QuoteItem,
+} from '../../domain/proposal-quote';
 import {
   BUDGET_SOURCES,
   PROPOSAL_TYPES,
@@ -108,6 +115,28 @@ const parseContractors = (errors: FieldErrors, raw: unknown[]): ProposalContract
   });
 };
 
+const OVER_LIMIT = 'Số tiền vượt giới hạn hệ thống.';
+
+/**
+ * FX-S3 BR-FX3-06: every line total and contractor total ≤ `VND_MAX` (draft and submission), so saving never ends in
+ * a 500. BR-FX3-07: on submission (`requirePositive`) each contractor total must be above 0.
+ */
+const checkAmounts = (
+  errors: FieldErrors,
+  items: readonly QuoteItem[],
+  contractors: readonly ProposalContractor[],
+  requirePositive: boolean,
+): void => {
+  contractors.forEach((contractor, index) => {
+    const field = `contractors.${index}`;
+    const { linesOverLimit, totalVnd } = checkQuoteLimits(items, contractor);
+    linesOverLimit.forEach((line) => errors.add(`${field}.unitPricesVnd.${line}`, OVER_LIMIT));
+    if (totalVnd === null) return;
+    errors.when(linesOverLimit.length === 0 && totalVnd > VND_MAX, `${field}.totalVnd`, OVER_LIMIT);
+    errors.when(requirePositive && totalVnd === 0n, `${field}.totalVnd`, 'Tổng báo giá của nhà thầu phải lớn hơn 0.');
+  });
+};
+
 /**
  * T04: merges the fields sent onto the saved draft. Every field stays optional, but a value that is sent must be
  * well formed (SPEC §5.1); completeness is only checked on submission.
@@ -158,6 +187,7 @@ export const mergeProposalDraft = (current: ProposalDraft | null, input: Proposa
     );
   }
   if (input.incidentAttachmentIds !== undefined) draft.incidentAttachmentIds = idsOf(input.incidentAttachmentIds);
+  checkAmounts(errors, draft.items ?? [], draft.contractors ?? [], false);
   errors.throwIfAny();
   return draft;
 };
@@ -267,6 +297,7 @@ export const completeProposal = (
     'Chọn đúng 1 nhà thầu đề xuất.',
   );
   errors.when(fields.incidentAttachmentIds.length === 0, 'incidentAttachmentIds', 'Cần biên bản ghi nhận sự việc.');
+  checkAmounts(errors, items, contractors, true);
   errors.throwIfAny();
   return {
     ...fields,

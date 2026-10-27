@@ -577,6 +577,65 @@ describe('Repair proposal and approval chain, slice S2 (e2e)', () => {
     await approve(tvkt, submitted, { submissionId: submitted.currentSubmissionId }).expect(200);
   });
 
+  describe('FX-S3 R-08: quotation amounts', () => {
+    const zeroPrices = (body: Record<string, unknown>) => ({
+      ...body,
+      contractors: (body.contractors as Array<Record<string, unknown>>).map((contractor) => ({
+        ...contractor,
+        unitPricesVnd: ['0', '0', '0'],
+        otherCostVnd: '0',
+        taxVnd: '0',
+      })),
+    });
+
+    it('AC-FX3.10: a contractor total of 0 is refused on submission but saved as a draft', async () => {
+      const record = await proposalRecord();
+      const body = zeroPrices(await proposalBody(record.id));
+      const refused = await bqlA
+        .post(`/api/records/${record.id}/submit-proposal`, { version: record.version, ...body, signature: SIGNATURE })
+        .expect(400);
+      expect(fieldsOf(refused)).toEqual(['contractors.0.totalVnd', 'contractors.1.totalVnd', 'contractors.2.totalVnd']);
+      expect(errorOf(refused).message).toBe('Tổng báo giá của nhà thầu phải lớn hơn 0.');
+      await bqlA
+        .post(`/api/records/${record.id}/save-proposal-draft`, { version: record.version, ...body })
+        .expect(200);
+    });
+
+    it('BR-FX3-06: amounts above 15 digits answer 400 on the line or the contractor, never 500', async () => {
+      const record = await proposalRecord();
+      const huge = {
+        items: [{ name: 'Ống', unit: 'm', quantity: '999999999' }],
+        contractors: [{ name: 'Nhà thầu lớn', unitPricesVnd: ['999999999999999'], otherCostVnd: '0', taxVnd: '0' }],
+      };
+      const line = await bqlA
+        .post(`/api/records/${record.id}/save-proposal-draft`, { version: record.version, ...huge })
+        .expect(400);
+      expect(fieldsOf(line)).toEqual(['contractors.0.unitPricesVnd.0']);
+      expect(errorOf(line).message).toBe('Số tiền vượt giới hạn hệ thống.');
+
+      const total = await bqlA
+        .post(`/api/records/${record.id}/save-proposal-draft`, {
+          version: record.version,
+          items: [{ name: 'Ống', unit: 'm', quantity: '1' }],
+          contractors: [{ name: 'Nhà thầu lớn', unitPricesVnd: ['999999999999999'], otherCostVnd: '0', taxVnd: '1' }],
+        })
+        .expect(400);
+      expect(fieldsOf(total)).toEqual(['contractors.0.totalVnd']);
+
+      const body = await proposalBody(record.id, 1);
+      const submitted = await bqlA
+        .post(`/api/records/${record.id}/submit-proposal`, {
+          version: record.version,
+          ...body,
+          items: huge.items,
+          contractors: [{ ...(body.contractors as object[])[0], ...huge.contractors[0] }],
+          signature: SIGNATURE,
+        })
+        .expect(400);
+      expect(fieldsOf(submitted)).toContain('contractors.0.unitPricesVnd.0');
+    });
+  });
+
   it('AC-0.1: a wrong source status answers 409 invalid_status_transition and writes no audit', async () => {
     const record = await proposalRecord();
     const actionsOf = async (): Promise<string[]> =>

@@ -140,6 +140,23 @@ Quyết định của dev-build:
 
 Test đã chạy: unit `src/domain` + `csv-cell`; e2e như bảng; web `tsc -b`, vitest `src/features/buildings`; api `format:check`, eslint, `tsc --noEmit`.
 
+### Kết quả review độc lập — FX-S3 (dev-review, 27/10/2026)
+
+**Kết luận: PASS WITH RESIDUE → handoff PM/BA close.** Không phát hiện finding cần sửa.
+
+- API: `npm test` → 9 suites / 66 tests đạt; e2e liên quan trên DB cô lập `qltn_review_fx_s3_e2e` → 5 suites / 36 tests đạt (`record-proposals`, `record-construction`, `record-payments`, `stage-holders`, `audit-log`).
+- Web: `npm test -- src/features/buildings/LocationsPage.history.test.tsx` → 1 file / 2 tests đạt; `npm run typecheck` → đạt.
+- Chất lượng: API `npm run format:check`, `npm run lint`, `npm run typecheck` đều đạt; `git diff --check fb4fd7a..75251a6` và `node --check docs/product/features/FX-sua-loi-review-27-10/supporting/fx-s3-ui-check.mjs` đều đạt.
+- AC-FX3.1–3.4, 3.7–3.10 được kiểm qua e2e/unit: snapshot holder cho mọi stage, `step_holder_missing` 409 không đổi trạng thái/version, CSV chống formula injection, quote vượt giới hạn trả 400 không tràn/500, quote tổng 0 chỉ bị chặn khi trình.
+- AC-FX3.5–3.6: đã xem ảnh evidence và test component; màn Vị trí đổi thành “Lịch sử thay đổi tòa”, hiển thị sự kiện áp cấu hình kèm actor/thời điểm/lý do, có filter Tất cả/Vị trí/Cấu hình và không có thao tác cấu hình trên thẻ lịch sử.
+- Residue: chưa rerun live browser trên đúng worktree FX-S3 vì `agent-browser` không có trong PATH; Chrome tab QLTN hiện đang trỏ server cây chung, không phải candidate. Ảnh evidence, script syntax và test component đã được xem độc lập.
+
+### Đóng FX-S3 (PM/BA, 27/10/2026)
+
+- **FX-S3 đóng.** Review đạt (PASS WITH RESIDUE). Cả 10 AC (AC-FX3.1–3.10) đều có bằng chứng ở trên.
+- Residue được chấp nhận, giống FX-S1 và FX-S2: chưa chạy lại trình duyệt trên đúng bản ứng viên.
+- Merge vào `main` sau FX-S1 và FX-S2. Gói FX hoàn tất.
+
 ### Sự cố lúc chụp ảnh (đã khôi phục)
 
 - **Nguyên nhân:**

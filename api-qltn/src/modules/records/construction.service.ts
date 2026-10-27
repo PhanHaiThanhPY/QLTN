@@ -26,6 +26,7 @@ import type { RecordAction } from './record-actions';
 import { loadRecordForAction, validateText } from './record-loader';
 import { acceptanceStepKeysOf, acceptanceStepsHeldBy, approvalStepOf, stepHolderOf } from './record-steps';
 import { toRecordView, type RepairRecordView } from './record-view';
+import { assertStageHolders } from './stage-holders';
 import { checkSignature, signatureDataUrl } from './signature';
 
 const NOTE_MIN = 5;
@@ -171,6 +172,7 @@ export class ConstructionService {
   ): Promise<RepairRecordView> {
     return this.dataSource.transaction(async (manager) => {
       const record = await loadRecordForAction(manager, actor, id, dto.version, action);
+      await assertStageHolders(manager, record, 'ACCEPTANCE');
       const construction = await this.constructionOf(manager, record);
       const errors = new FieldErrors();
       errors.when(
