@@ -4,6 +4,12 @@ import { RefreshToken } from '../modules/auth/entities/refresh-token.entity';
 import { BuildingConfig } from '../modules/buildings/entities/building-config.entity';
 import { Building } from '../modules/buildings/entities/building.entity';
 import { Location } from '../modules/buildings/entities/location.entity';
+import { ExploitationSelection } from '../modules/exploitation/entities/exploitation-selection.entity';
+import { ExploitationSelectionDecision } from '../modules/exploitation/entities/exploitation-selection-decision.entity';
+import { ExploitationAssembly } from '../modules/exploitation/entities/exploitation-assembly.entity';
+import { ExploitationContract } from '../modules/exploitation/entities/exploitation-contract.entity';
+import { ExploitationContractRevision } from '../modules/exploitation/entities/exploitation-contract-revision.entity';
+import { ExploitationReceivable } from '../modules/exploitation/entities/exploitation-receivable.entity';
 import { ExploitationBidItem } from '../modules/exploitation/entities/exploitation-bid-item.entity';
 import { ExploitationBid } from '../modules/exploitation/entities/exploitation-bid.entity';
 import { ExploitationPackageRevision } from '../modules/exploitation/entities/exploitation-package-revision.entity';
@@ -65,4 +71,10 @@ export const ALL_ENTITIES = [
   ExploitationBid,
   ExploitationBidItem,
   ExploitationSupplementRequest,
+  ExploitationSelection,
+  ExploitationSelectionDecision,
+  ExploitationAssembly,
+  ExploitationContract,
+  ExploitationContractRevision,
+  ExploitationReceivable,
 ];
