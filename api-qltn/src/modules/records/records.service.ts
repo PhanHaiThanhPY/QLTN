@@ -561,7 +561,8 @@ export class RecordsService {
   }
 
   /** Mirrors web `assertSubmittable`; T3 only supports "no specific equipment" (maintenance items are Đợt 3). */
-  private async assertSubmittable(manager: EntityManager, ctx: AssignmentContext, record: RepairRecord): Promise<void> {
+  /** T01 eligibility (title, description, location, active manager and confirmer); also checked by E-T1 from DRAFT. */
+  async assertSubmittable(manager: EntityManager, ctx: AssignmentContext, record: RepairRecord): Promise<void> {
     const errors = new FieldErrors();
     validateText(errors, 'title', 'Tên hồ sơ', record.title, TITLE_MIN, TITLE_MAX);
     validateText(errors, 'description', 'Mô tả hư hỏng', record.description, DESCRIPTION_MIN, DESCRIPTION_MAX);

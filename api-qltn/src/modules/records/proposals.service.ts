@@ -2,13 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In } from 'typeorm';
 import type { AuthenticatedUser } from '../../common/auth/authenticated-user';
-import { conflict, conflictWithReason, notFound } from '../../common/errors';
+import { conflict, conflictWithReason, forbiddenWithReason, notFound } from '../../common/errors';
 import { FieldErrors } from '../../common/validation/field-errors';
 import type { WorkflowApprovalStep } from '../../domain/building-config';
+import { isLateSubmission, POST_REVIEW_REJECTED } from '../../domain/emergency';
 import { AuditService } from '../audit/audit.service';
 import { SUBJECT_TYPE } from '../audit/entities/audit-event.entity';
 import { Attachment } from '../attachments/entities/attachment.entity';
 import { Building } from '../buildings/entities/building.entity';
+import { notify } from '../notifications/notify';
 import { User } from '../users/entities/user.entity';
 import type {
   ApproveProposalDto,
@@ -34,6 +36,8 @@ const READY_FOR_CONSTRUCTION = 'READY_FOR_CONSTRUCTION';
 const NEEDS_SUBMISSION_UPDATE = 'NEEDS_SUBMISSION_UPDATE';
 const REJECTED_RESUBMITTABLE = 'REJECTED_RESUBMITTABLE';
 const UNRESOLVED = 'UNRESOLVED';
+/** B06-S1 BR-E-06: an emergency record is already being built, so its last approval resumes construction. */
+const IN_CONSTRUCTION = 'IN_CONSTRUCTION';
 const REASON_MIN = 5;
 const REASON_MAX = 1000;
 
@@ -145,7 +149,7 @@ export class ProposalsService {
   ): Promise<RepairRecordView> {
     return this.dataSource.transaction(async (manager) => {
       const record = await loadRecordForAction(manager, actor, id, dto.version, action);
-      const { signature, ...draftFields } = dto;
+      const { signature, lateReason, ...draftFields } = dto;
       const previous = await manager.getRepository(RepairProposalSubmission).countBy({ recordId: record.id });
       if (previous >= MAX_SUBMISSION_ATTEMPTS) {
         throw conflictWithReason('max_submission_attempts', `Đã đạt tối đa ${MAX_SUBMISSION_ATTEMPTS} lần trình.`);
@@ -165,6 +169,11 @@ export class ProposalsService {
       if (!signed.ok) errors.add('signature', signed.message);
       const firstStep = chain[0];
       errors.when(!firstStep, 'approvalStepKeys', 'Hồ sơ chưa có bước duyệt tờ trình.');
+      // B06-S1 BR-E-05: the first submission of an emergency record is measured against its deadline only once.
+      const now = new Date();
+      const firstDocs = record.emergency !== null && !record.emergency.docsSubmittedAt;
+      const late = firstDocs && record.emergency !== null && isLateSubmission(record.emergency, now);
+      if (late) validateText(errors, 'lateReason', 'Lý do bổ sung trễ', lateReason, REASON_MIN, REASON_MAX);
       errors.throwIfAny();
       if (!signed.ok || !firstStep) return toRecordView(record);
 
@@ -183,6 +192,15 @@ export class ProposalsService {
         }),
       );
       await this.saveSignature(manager, record, actor, 'PROPOSAL', submission.id, signed.content);
+      if (record.emergency) {
+        record.emergency = {
+          ...record.emergency,
+          ...(firstDocs
+            ? { docsSubmittedAt: now.toISOString(), lateReason: late ? (lateReason ?? '').trim() : null }
+            : {}),
+          proposedAmountVnd: proposed.totalVnd,
+        };
+      }
 
       const fromStatus = record.status;
       record.status = waitingStatusOf(firstStep);
@@ -236,7 +254,8 @@ export class ProposalsService {
         return this.commit(manager, actor, record, 'approveProposal', target.fromStatus, step.label);
       }
       const contractor = content.contractors[selected];
-      record.status = READY_FOR_CONSTRUCTION;
+      record.status = record.emergency ? IN_CONSTRUCTION : READY_FOR_CONSTRUCTION;
+      if (record.emergency) record.emergency = { ...record.emergency, postReviewOutcome: 'APPROVED' };
       record.currentApprovalStepKey = null;
       record.approvedSubmissionId = submission.id;
       record.approvedAmountVnd = content.contractorTotals[selected].totalVnd;
@@ -266,10 +285,21 @@ export class ProposalsService {
     });
   }
 
-  /** T09: resubmittable, or `UNRESOLVED` on the last allowed attempt. */
+  /**
+   * T09: resubmittable, or `UNRESOLVED` on the last allowed attempt. On an emergency record (B06-S1 BR-E-07) the
+   * last attempt, or the BOARD holder's `finalPostReview`, ends the post-review in `POST_REVIEW_REJECTED` instead,
+   * so an emergency record never becomes `UNRESOLVED`.
+   */
   async reject(actor: AuthenticatedUser, id: string, dto: ProposalReasonDto): Promise<RepairRecordView> {
     return this.dataSource.transaction(async (manager) => {
       const target = await this.loadDecision(manager, actor, id, 'rejectProposal', dto);
+      const emergency = target.record.emergency;
+      if (dto.finalPostReview === true && (!emergency || target.step.key !== 'BOARD')) {
+        throw forbiddenWithReason(
+          'final_post_review_denied',
+          'Chỉ người giữ bước BQT mới chọn “Không duyệt hậu kiểm”, và chỉ trên hồ sơ khẩn cấp.',
+        );
+      }
       const errors = new FieldErrors();
       validateText(errors, 'reason', 'Lý do', dto.reason, REASON_MIN, REASON_MAX);
       const boardEvidence = await this.boardEvidence(manager, errors, target, dto);
@@ -283,9 +313,28 @@ export class ProposalsService {
         await this.saveSignature(manager, target.record, actor, 'BOARD_DECISION', decision.id, boardEvidence.signature);
       }
       const isLast = target.submission.attemptNo >= MAX_SUBMISSION_ATTEMPTS;
-      target.record.status = isLast ? UNRESOLVED : REJECTED_RESUBMITTABLE;
-      target.record.currentApprovalStepKey = null;
-      return this.commit(manager, actor, target.record, 'rejectProposal', target.fromStatus, reason);
+      const record = target.record;
+      record.currentApprovalStepKey = null;
+      if (emergency && (isLast || dto.finalPostReview === true)) {
+        record.status = POST_REVIEW_REJECTED;
+        record.emergency = {
+          ...emergency,
+          postReviewOutcome: 'REJECTED',
+          postReviewRejection: { reason, decidedBy: actor.id, decidedAt: new Date().toISOString() },
+        };
+        await notify(manager, {
+          recipientIds: [record.managerUserId],
+          kind: 'POST_REVIEW_REJECTED',
+          title: `Không được duyệt hậu kiểm ${record.code}`,
+          body: `Hồ sơ ${record.code} không được duyệt hậu kiểm: ${reason}. Không có thanh toán trong hệ thống; BQT sẽ ghi quyết định xử lý chi phí và đóng hồ sơ.`,
+          subjectType: SUBJECT_TYPE.REPAIR_RECORD,
+          subjectId: record.id,
+          buildingId: record.buildingId,
+        });
+      } else {
+        record.status = isLast ? UNRESOLVED : REJECTED_RESUBMITTABLE;
+      }
+      return this.commit(manager, actor, record, 'rejectProposal', target.fromStatus, reason);
     });
   }
 

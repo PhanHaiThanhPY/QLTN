@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsArray, IsInt, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import { IsArray, IsBoolean, IsInt, IsOptional, IsString, IsUUID, Min } from 'class-validator';
 import { Trim } from '../../../common/validation/trim.decorator';
 
 /**
@@ -91,6 +91,12 @@ export class SubmitProposalDto extends SaveProposalDraftDto {
   @ApiProperty({ description: 'Chữ ký người trình: data:image/png;base64,… (≤ 200 KB).' })
   @IsString()
   signature: string;
+
+  @ApiPropertyOptional({ description: 'Hồ sơ khẩn cấp nộp sau hạn bổ sung: lý do trễ (5–1000 ký tự), B06-S1 BR-E-05.' })
+  @IsOptional()
+  @Trim()
+  @IsString()
+  lateReason?: string;
 }
 
 /** Common body of T07–T09. */
@@ -137,4 +143,11 @@ export class ProposalReasonDto extends ProposalDecisionDto {
   @Trim()
   @IsString()
   reason: string;
+
+  @ApiPropertyOptional({
+    description: 'T09 trên hồ sơ khẩn cấp: người giữ bước BQT không duyệt hậu kiểm (kết thúc), B06-S1 BR-E-07.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  finalPostReview?: boolean;
 }

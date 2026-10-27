@@ -43,6 +43,8 @@ const isManagerAt = (actor: AuthenticatedUser, record: RepairRecord, statuses: r
 
 /** Statuses where the manager reports construction or repair work (T11, T12, T15, T16; v1 BR-12). */
 const EXECUTION_STATUSES: readonly string[] = ['IN_CONSTRUCTION', 'NEEDS_REPAIR'];
+/** T11 also runs while an emergency is in progress (B06-S1), so construction files may be added then. */
+const CONSTRUCTION_FILE_STATUSES: readonly string[] = [...EXECUTION_STATUSES, 'EMERGENCY_IN_PROGRESS'];
 
 const isPaymentManager = (actor: AuthenticatedUser, record: RepairRecord, statuses: readonly string[]): boolean =>
   record.managerUserId === actor.id && hasCapability(actor, 'PAYMENT_RECORD') && statuses.includes(record.status);
@@ -60,7 +62,10 @@ const PURPOSE_RULES: Readonly<Record<string, (actor: AuthenticatedUser, record: 
   QUOTATION: (actor, record) => isManagerAt(actor, record, PROPOSAL_EDIT_STATUSES),
   INCIDENT_MINUTES: (actor, record) => isManagerAt(actor, record, PROPOSAL_EDIT_STATUSES),
   BOARD_MINUTES: isWaitingBoardHolder,
-  CONSTRUCTION: (actor, record) => isManagerAt(actor, record, EXECUTION_STATUSES),
+  // B06-S1 BR-E-08: the BOARD holder's cost decision when closing a record not accepted at post-review.
+  BOARD_DECISION: (actor, record) =>
+    record.status === 'POST_REVIEW_REJECTED' && stepHolderOf(record, 'BOARD') === actor.id,
+  CONSTRUCTION: (actor, record) => isManagerAt(actor, record, CONSTRUCTION_FILE_STATUSES),
   PAYMENT_REQUEST: (actor, record) => isPaymentManager(actor, record, ADVANCE_FOLLOW_UP_STATUSES),
   INVOICE: (actor, record) => isPaymentManager(actor, record, SETTLEMENT_REQUEST_STATUSES),
   // ADR-0001 R4: any PAYMENT_CONFIRM holder in scope, while an instalment can wait for its transfer.
@@ -78,6 +83,7 @@ export const PURPOSE_LABEL: Readonly<Record<string, string>> = {
   QUOTATION: 'Báo giá nhà thầu',
   INCIDENT_MINUTES: 'Biên bản ghi nhận sự việc',
   BOARD_MINUTES: 'Biên bản họp BQT',
+  BOARD_DECISION: 'Quyết định xử lý chi phí của BQT',
   CONSTRUCTION: 'Thi công',
   ACCEPTANCE: 'Nghiệm thu',
   PAYMENT_REQUEST: 'Đề nghị thanh toán',

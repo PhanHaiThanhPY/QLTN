@@ -52,6 +52,8 @@ export const REPAIR_STATUS = {
   CLOSED_NO_REPAIR: 'CLOSED_NO_REPAIR',
   UNRESOLVED: 'UNRESOLVED',
   CLOSED_WITHDRAWN: 'CLOSED_WITHDRAWN',
+  POST_REVIEW_REJECTED: 'POST_REVIEW_REJECTED',
+  CLOSED_POST_REVIEW_REJECTED: 'CLOSED_POST_REVIEW_REJECTED',
 } as const;
 export type RepairStatus = (typeof REPAIR_STATUS)[keyof typeof REPAIR_STATUS];
 
@@ -80,6 +82,8 @@ export const REPAIR_STATUS_LABEL: Record<RepairStatus, string> = {
   CLOSED_NO_REPAIR: 'Đóng vì không cần sửa',
   UNRESOLVED: 'Chưa xử lý',
   CLOSED_WITHDRAWN: 'Đóng do rút hồ sơ',
+  POST_REVIEW_REJECTED: 'Không được duyệt hậu kiểm',
+  CLOSED_POST_REVIEW_REJECTED: 'Đã đóng: không được duyệt hậu kiểm',
 };
 
 /** Compact status groups shown in lists and filters; the detailed status remains available in the record detail and audit history. */
@@ -131,6 +135,8 @@ export const REPAIR_STATUS_GROUP_BY_STATUS: Record<RepairStatus, RepairStatusGro
   CLOSED_NO_REPAIR: 'CLOSED',
   UNRESOLVED: 'NEEDS_ACTION',
   CLOSED_WITHDRAWN: 'CLOSED',
+  POST_REVIEW_REJECTED: 'NEEDS_ACTION',
+  CLOSED_POST_REVIEW_REJECTED: 'CLOSED',
 };
 
 export const REPAIR_FINAL_STATUSES: readonly RepairStatus[] = [
@@ -138,6 +144,7 @@ export const REPAIR_FINAL_STATUSES: readonly RepairStatus[] = [
   'CLOSED_NO_REPAIR',
   'UNRESOLVED',
   'CLOSED_WITHDRAWN',
+  'CLOSED_POST_REVIEW_REJECTED',
 ];
 
 /** Available approval steps. Administrators choose and order a subset per building. */
