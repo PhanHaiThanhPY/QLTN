@@ -126,3 +126,16 @@ Dữ liệu thử để lại trên qltn_dev: kế hoạch `[TEST MT LƯỢT] �
 - **Vùng bấm 32px ngoài phạm vi MT-S3:** hai nút "Hỏi thêm trợ lý" và "Mở rộng nhận xét" của khung trợ lý AI chung của ứng dụng.
 - **Kiểm mất mạng:** chưa giả lập mất mạng lúc bấm Lưu trong trình duyệt. Mã đã giữ dữ liệu đang nhập và hiện Notice khi mã lỗi là `NETWORK_ERROR`.
 - **Khi merge:** nhánh chứa TK-S1, MT-S2 và F-S1. Merge theo thứ tự PM/BA đã nêu thì chỉ còn các commit MT-S3.
+
+## Đóng MT-S3 (PM/BA, 27/10/2026)
+
+- **MT-S3 đóng.** Review trên đúng bản ứng viên `c479925`: PASS WITH RESIDUE, không có lỗi sản phẩm.
+  - e2e 10/10; chạy lại các phần liên quan 67/67; API unit 131/131; web 580/580.
+  - Review theo AC-MT3.14 đã làm rõ (`9b3c32f`).
+  - PM/BA tự kiểm AC-MT3.4, AC-MT3.9, AC-MT3.15 và tệp migration.
+- **Residue được chấp nhận, chuyển sang UAT:**
+  - Phần "lỗi mạng không làm mất dữ liệu" (AC-MT3.17) có trong mã, nhưng chưa được giả lập mất mạng trên trình duyệt.
+  - Chưa chạy lại trình duyệt trên đúng bản ứng viên, vì môi trường của seat review không có trình duyệt.
+- **Merge vào `main`** (`ef37aa8`) theo yêu cầu của chủ dự án. Nhánh đã dựng sẵn trên bản tích hợp `d6ebda4`, nên không có xung đột. Kiểm trên bản đã merge: typecheck API và web; test web bảo trì và `app` 72/72.
+- **Trước khi chạy code này**, phải áp migration `2026-10-27g-maintenance-execution.sql` lên mọi DB. API tự áp khi khởi động.
+

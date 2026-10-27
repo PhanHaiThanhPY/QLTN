@@ -1,7 +1,7 @@
 ---
 id: MT.S3
 title: Thực hiện và xác nhận lượt bảo trì trên điện thoại
-status: Đã duyệt
+status: Đã triển khai
 owner: PM/BA
 intent: "Người thực hiện điền kết quả từng mục kiểm ngay tại thiết bị bằng điện thoại, người xác nhận duyệt hoặc trả làm lại, và mỗi mục lỗi đều có hướng xử lý rõ ràng, kể cả hồ sơ sửa chữa tạo từ chính mục đó."
 depends_on: [MT.S2]
@@ -9,7 +9,7 @@ depends_on: [MT.S2]
 
 # SPEC: Thực hiện và xác nhận lượt bảo trì trên điện thoại (MT-S3)
 
-**Chủ sở hữu:** PM/BA · **Cập nhật:** 27/10/2026 · **Trạng thái:** `Đã duyệt`, chủ dự án duyệt ngày 27/10/2026 (PD-27), gồm 7 mặc định D-MT3-1 đến D-MT3-7 ở §6. Chỉ giao dev-build sau khi MT-S2 đạt review
+**Chủ sở hữu:** PM/BA · **Cập nhật:** 27/10/2026 · **Trạng thái:** `Đã triển khai` (27/10/2026, merge vào `main`); trước đó `Đã duyệt`, chủ dự án duyệt ngày 27/10/2026 (PD-27), gồm 7 mặc định D-MT3-1 đến D-MT3-7 ở §6. Chỉ giao dev-build sau khi MT-S2 đạt review
 
 **Nguồn:**
 - Phân tích [maintenance.md](../../modules/maintenance.md), đã duyệt (PD-24):
@@ -244,3 +244,4 @@ Chỉ chạy các test liên quan.
 | 27/10/2026 | Viết từ phân tích maintenance (PD-24). |
 | 27/10/2026 | Chủ dự án duyệt (PD-27), gồm D-MT3-1 đến D-MT3-7. Giao dev-build sau khi MT-S2 đạt review. |
 | 27/10/2026 | Làm rõ khi build (PM/BA): AC-MT3.14 theo BR-MT3-10, không gửi thông báo cho người tự giao cho chính mình. |
+| 27/10/2026 | Review PASS WITH RESIDUE trên `c479925`; merge vào `main` (`ef37aa8`); trạng thái `Đã triển khai`. |
