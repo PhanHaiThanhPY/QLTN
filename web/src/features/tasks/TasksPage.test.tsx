@@ -28,6 +28,7 @@ const board = (overrides: Partial<MyTaskBoard> = {}): MyTaskBoard => ({
     taskRow('SC-020', { label: 'Cần phân công lại', detail: 'Bước BQT duyệt · Nguyễn Văn X (đã khóa)', status: 'PENDING_BOARD_APPROVAL' }),
   ],
   done: [{ id: 'd1', label: 'Xác nhận hồ sơ', result: 'Đã xác nhận cần sửa', at: '2026-11-11T07:20:00.000Z', href: '/records/rec-1', code: 'SC-010', title: 'Sửa đèn', buildingId: 'bld-a' }],
+  doneCount: 1,
   ...overrides,
 });
 
@@ -100,6 +101,14 @@ describe('TasksPage (TK-S1)', () => {
     fireEvent.change(screen.getByLabelText('Tìm kiếm'), { target: { value: 'không có gì như vậy' } });
     expect(screen.getByText('Không có việc phù hợp.')).toBeTruthy();
     expect(screen.queryByLabelText('Nhóm')).toBeNull();
+  });
+
+  it('counts every done task even when the list holds fewer rows (F-TK-S1-01)', () => {
+    load(board({ doneCount: 250 }));
+    renderPage();
+    const card = screen.getAllByRole('button').find((button) => button.textContent?.includes('Đã hoàn thành (30 ngày)'));
+    expect(card?.textContent).toContain('250');
+    expect(screen.getByRole('tab', { name: 'Đã hoàn thành (250)' })).toBeTruthy();
   });
 
   it('offers a retry when loading fails', () => {

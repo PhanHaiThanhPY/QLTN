@@ -48,7 +48,10 @@ export interface MyTaskBoard {
   /** Vietnam date of the read, for "Hôm nay, dd/mm/yyyy" and "Đến hạn hôm nay" (TD-01, TD-02). */
   today: IsoDate;
   open: MyTaskRow[];
+  /** Newest done tasks; the API sends at most 200 rows. */
   done: MyDoneRow[];
+  /** Every task done in the last 30 days, not capped like `done` (F-TK-S1-01). */
+  doneCount: number;
 }
 
 interface ApiTaskRecord {
@@ -75,6 +78,7 @@ interface ApiMyTasks {
     record: ApiTaskRecord;
   }>;
   done: Array<{ id: string; label: string; result: string; at: string; record: Pick<ApiTaskRecord, 'id' | 'code' | 'title' | 'buildingId'> }>;
+  counts: { open: number; overdue: number; dueToday: number; done: number };
 }
 
 const PRIORITIES = new Set<string>(Object.values(PRIORITY));
@@ -113,6 +117,7 @@ const apiBoard = async (): Promise<MyTaskBoard> => {
       title: row.record.title,
       buildingId: row.record.buildingId,
     })),
+    doneCount: body.counts.done,
   };
 };
 
@@ -138,22 +143,24 @@ const mockBoard = async (): Promise<MyTaskBoard> => {
   const recordIds = views.filter((row) => row.task.subjectType === 'REPAIR_RECORD').map((row) => row.task.subjectId);
   const records = new Map((await getDb().records.bulkGet(recordIds)).flatMap((row) => (row ? [[row.id, row] as const] : [])));
   const since = Date.now() - DONE_DAYS_MS;
+  const done = views
+    .filter((row) => row.task.status === 'DONE' && row.task.completedAt && new Date(row.task.completedAt).getTime() >= since)
+    .map((row) => ({
+      id: row.task.id,
+      label: TASK_KIND_LABEL[row.task.kind],
+      result: 'Đã hoàn thành',
+      at: row.task.completedAt as string,
+      href: subjectPath(row.task.subjectType, row.task.subjectId, row.tab),
+      code: row.subjectCode,
+      title: row.subjectTitle,
+      buildingId: row.task.buildingId,
+    }))
+    .sort((a, b) => b.at.localeCompare(a.at));
   return {
     today: todayVn(),
     open: views.filter((row) => row.task.status === 'OPEN').map((row) => toMyTaskRow(row, records.get(row.task.subjectId))),
-    done: views
-      .filter((row) => row.task.status === 'DONE' && row.task.completedAt && new Date(row.task.completedAt).getTime() >= since)
-      .map((row) => ({
-        id: row.task.id,
-        label: TASK_KIND_LABEL[row.task.kind],
-        result: 'Đã hoàn thành',
-        at: row.task.completedAt as string,
-        href: subjectPath(row.task.subjectType, row.task.subjectId, row.tab),
-        code: row.subjectCode,
-        title: row.subjectTitle,
-        buildingId: row.task.buildingId,
-      }))
-      .sort((a, b) => b.at.localeCompare(a.at)),
+    done,
+    doneCount: done.length,
   };
 };
 

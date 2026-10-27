@@ -47,7 +47,9 @@ const TasksPage = () => {
   const now = useMemo(() => new Date(query.dataUpdatedAt || Date.now()), [query.dataUpdatedAt]);
   const open = useMemo(() => [...(board?.open ?? [])].sort(compareTasks), [board?.open]);
   const done = useMemo(() => board?.done ?? [], [board?.done]);
-  const counts = useMemo(() => countTasks(open, done.length, today), [open, done.length, today]);
+  // The API caps the done rows at 200 but counts all of them (F-TK-S1-01).
+  const doneCount = board?.doneCount ?? done.length;
+  const counts = useMemo(() => countTasks(open, doneCount, today), [open, doneCount, today]);
   const labels = useMemo(() => [...new Set(open.map((row) => row.label))].sort((a, b) => a.localeCompare(b, 'vi')), [open]);
   const rows = useMemo(() => open.filter((row) => matchesFilters(row, filters, today)), [open, filters, today]);
   const doneRows = useMemo(() => {
