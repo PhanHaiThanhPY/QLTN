@@ -161,10 +161,13 @@ export class FundsService {
     const inMonth = lines.filter((line) => line.entryDate >= first && line.entryDate <= last);
     const upToEnd = lines.filter((line) => line.entryDate <= last);
     const reversedBy = new Map(lines.filter((line) => line.reversesId).map((line) => [line.reversesId, line.id]));
-    const rows = inMonth
+    const shown = inMonth
       .filter((line) => !query.category || line.category === query.category)
-      .filter((line) => !query.direction || line.direction === query.direction)
-      .map((line) => ledgerRow(line, reversedBy.get(line.id) ?? null));
+      .filter((line) => !query.direction || line.direction === query.direction);
+    const contracts = await this.contractsOf(shown);
+    const rows = shown.map((line) =>
+      ledgerRow(line, reversedBy.get(line.id) ?? null, contracts.get(line.sourceId) ?? null),
+    );
     return {
       fund: view,
       month: query.month,
@@ -208,6 +211,20 @@ export class FundsService {
     assertVersion(fund.version, version);
     if (!fund.pendingOpening) throw conflictWithReason('no_pending_opening', 'Không có thay đổi số dư đầu chờ duyệt.');
     return fund;
+  }
+
+  /** Exploitation receipts and deposits name their contract (the ledger itself stays kind-neutral). */
+  private async contractsOf(lines: readonly FundLedgerEntry[]): Promise<Map<string, string>> {
+    const ids = lines
+      .filter((line) => line.sourceType === 'RECEIPT' || line.sourceType === 'DEPOSIT')
+      .map((line) => line.sourceId);
+    if (!ids.length) return new Map();
+    const rows = await this.dataSource.query<Array<{ id: string; contract_id: string }>>(
+      `SELECT id, contract_id FROM exploitation_receipts WHERE id = ANY($1::uuid[])
+       UNION ALL SELECT id, contract_id FROM exploitation_deposits WHERE id = ANY($1::uuid[])`,
+      [ids],
+    );
+    return new Map(rows.map((row) => [row.id, row.contract_id]));
   }
 
   private async fundsWithLines(manager: EntityManager, ids: readonly string[]): Promise<Set<string>> {

@@ -292,6 +292,13 @@ export const ATTACHMENT_PURPOSE = {
   SELECTION_MINUTES: 'SELECTION_MINUTES',
   ASSEMBLY_DOCUMENT: 'ASSEMBLY_DOCUMENT',
   CONTRACT_DOCUMENT: 'CONTRACT_DOCUMENT',
+  /** F-S3, api mode only: all on the fund. */
+  RECEIPT_PROOF: 'RECEIPT_PROOF',
+  DEPOSIT_PROOF: 'DEPOSIT_PROOF',
+  TAX_FILING: 'TAX_FILING',
+  TAX_PAYMENT_SLIP: 'TAX_PAYMENT_SLIP',
+  VOUCHER_REQUEST: 'VOUCHER_REQUEST',
+  VOUCHER_PROOF: 'VOUCHER_PROOF',
   OTHER: 'OTHER',
 } as const;
 export type AttachmentPurpose = (typeof ATTACHMENT_PURPOSE)[keyof typeof ATTACHMENT_PURPOSE];
@@ -314,6 +321,12 @@ export const ATTACHMENT_PURPOSE_LABEL: Record<AttachmentPurpose, string> = {
   SELECTION_MINUTES: 'Biên bản đánh giá',
   ASSEMBLY_DOCUMENT: 'Tài liệu hội nghị',
   CONTRACT_DOCUMENT: 'Tài liệu hợp đồng',
+  RECEIPT_PROOF: 'Chứng từ khoản thu',
+  DEPOSIT_PROOF: 'Chứng từ nhận cọc',
+  TAX_FILING: 'Hồ sơ kế toán thuế',
+  TAX_PAYMENT_SLIP: 'Giấy nộp tiền thuế',
+  VOUCHER_REQUEST: 'Đề nghị chi',
+  VOUCHER_PROOF: 'Chứng từ chuyển khoản chi',
   OTHER: 'Khác',
 };
 
@@ -331,6 +344,10 @@ export const SUBJECT_TYPE = {
   EXPLOITATION_SELECTION: 'EXPLOITATION_SELECTION',
   EXPLOITATION_ASSEMBLY: 'EXPLOITATION_ASSEMBLY',
   EXPLOITATION_CONTRACT: 'EXPLOITATION_CONTRACT',
+  /** F-S3, api mode only. */
+  FUND: 'FUND',
+  FUND_TAX: 'FUND_TAX',
+  FUND_VOUCHER: 'FUND_VOUCHER',
 } as const;
 export type SubjectType = (typeof SUBJECT_TYPE)[keyof typeof SUBJECT_TYPE];
 export const SUBJECT_TYPE_LABEL: Record<SubjectType, string> = {
@@ -346,6 +363,9 @@ export const SUBJECT_TYPE_LABEL: Record<SubjectType, string> = {
   EXPLOITATION_SELECTION: 'Kết quả chọn đơn vị',
   EXPLOITATION_ASSEMBLY: 'Hồ sơ hội nghị',
   EXPLOITATION_CONTRACT: 'Hợp đồng khai thác',
+  FUND: 'Quỹ khai thác',
+  FUND_TAX: 'Thuế',
+  FUND_VOUCHER: 'Phiếu chi',
 };
 
 export const NOTIFICATION_KIND = {

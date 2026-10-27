@@ -33,6 +33,8 @@ export interface LedgerRow {
   reversesId: string | null;
   reversedById: string | null;
   reconciliation: 'UNRECONCILED' | 'RECONCILED';
+  /** The contract behind an exploitation receipt or deposit, for the code's link. */
+  contractId: string | null;
   createdBy: string;
   createdAt: Date;
 }
@@ -62,7 +64,11 @@ export const fundView = (fund: Fund, hasLines: boolean): FundView => ({
   version: fund.version,
 });
 
-export const ledgerRow = (entry: FundLedgerEntry, reversedById: string | null): LedgerRow => ({
+export const ledgerRow = (
+  entry: FundLedgerEntry,
+  reversedById: string | null,
+  contractId: string | null,
+): LedgerRow => ({
   id: entry.id,
   entryDate: entry.entryDate,
   direction: entry.direction,
@@ -75,6 +81,7 @@ export const ledgerRow = (entry: FundLedgerEntry, reversedById: string | null): 
   reversesId: entry.reversesId,
   reversedById,
   reconciliation: entry.reconciliation,
+  contractId,
   createdBy: entry.createdBy,
   createdAt: entry.createdAt,
 });
