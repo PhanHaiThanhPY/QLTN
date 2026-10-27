@@ -31,6 +31,7 @@ import type {
   WithdrawRecordDto,
 } from './dto/record.dto';
 import { RepairConfirmation, type ConfirmationOutcome } from './entities/repair-confirmation.entity';
+import { MaintenanceOccurrence } from '../maintenance/entities/maintenance-occurrence.entity';
 import { RepairRecord } from './entities/repair-record.entity';
 import { toRecordView, type RepairRecordView } from './record-view';
 import { ConstructionService, type ExecutionHistoryView } from './construction.service';
@@ -148,6 +149,8 @@ export interface RecordDetailView {
   emergencyPolicy: { limitVnd: string; docHours: number } | null;
   /** The record's equipment for the detail line and its link (MT-S1 BR-MT-10); null for "no specific equipment". */
   maintenanceItem: RecordItemSummary | null;
+  /** MT-S3 BR-MT3-08: "Từ lượt bảo trì BT-… · mục «tên mục»". */
+  sourceOccurrence: { id: string; code: string; itemId: string | null; itemLabel: string | null } | null;
   audit: AuditEventView[];
 }
 
@@ -321,6 +324,21 @@ export class RecordsService {
       });
       return saved;
     }
+  }
+
+  private async sourceOccurrenceOf(record: RepairRecord): Promise<RecordDetailView['sourceOccurrence']> {
+    if (!record.sourceOccurrenceId) return null;
+    const occurrence = await this.dataSource
+      .getRepository(MaintenanceOccurrence)
+      .findOneBy({ id: record.sourceOccurrenceId });
+    if (!occurrence) return null;
+    const item = occurrence.checklist.find((row) => row.id === record.sourceChecklistItemId);
+    return {
+      id: occurrence.id,
+      code: occurrence.code,
+      itemId: record.sourceChecklistItemId,
+      itemLabel: item?.label ?? null,
+    };
   }
 
   /** Draft save: only editable fields, version-locked, same audit trail as the demo command. */
@@ -568,6 +586,7 @@ export class RecordsService {
         ? { limitVnd: String(config.emergencyLimitVnd), docHours: config.emergencyDocHours }
         : null,
       maintenanceItem: await recordItemSummary(this.dataSource.manager, record.maintenanceItemId),
+      sourceOccurrence: await this.sourceOccurrenceOf(record),
       audit: audit.data,
     };
   }
