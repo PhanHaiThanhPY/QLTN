@@ -25,6 +25,11 @@ interface UserDialogProps {
 const roleIdOf = (user: User | undefined, roles: RoleDefinition[]): string =>
   user?.roleDefId ?? roles.find((role) => role.isSystem && role.baseRole === user?.role)?.id ?? '';
 
+const dialogTitle = (user: User | undefined, isReadOnly: boolean): string => {
+  if (!user) return 'Thêm tài khoản';
+  return isReadOnly ? `Tài khoản ${user.code}` : `Sửa tài khoản ${user.code}`;
+};
+
 /** Create or edit an employee; scope stays within the administrator's assigned buildings. */
 export const UserDialog = ({ user, departments, roles, onClose }: UserDialogProps) => {
   const { data } = useReferenceData();
@@ -61,7 +66,9 @@ export const UserDialog = ({ user, departments, roles, onClose }: UserDialogProp
   // US-S1: api mode only, on an existing account; a reset never targets the signed-in account (BR-04).
   const viewerCan = (capability: 'ACCOUNT_MANAGE' | 'ADMIN_VIEW'): boolean => Boolean(viewer && hasCapability(viewer, capability));
   const isOtherAccount = Boolean(user && viewer && user.id !== viewer.id);
-  const canResetPassword = IS_API_MODE && isOtherAccount && viewerCan('ACCOUNT_MANAGE');
+  // FX-S1 BR-FX1-04: an account with a building outside the viewer's scope is read-only (the API refuses writes).
+  const isReadOnly = Boolean(user && viewer && user.buildingIds.some((id) => !viewer.buildingIds.includes(id)));
+  const canResetPassword = IS_API_MODE && isOtherAccount && !isReadOnly && viewerCan('ACCOUNT_MANAGE');
   const canSeeHistory = IS_API_MODE && Boolean(user) && viewerCan('ADMIN_VIEW');
   const submit = () => {
     if (createsWithPassword) {
@@ -82,19 +89,26 @@ export const UserDialog = ({ user, departments, roles, onClose }: UserDialogProp
       open
       onOpenChange={(open) => !open && onClose()}
       size="lg"
-      title={user ? `Sửa tài khoản ${user.code}` : 'Thêm tài khoản'}
+      title={dialogTitle(user, isReadOnly)}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
-            Hủy
+            {isReadOnly ? 'Đóng' : 'Hủy'}
           </Button>
-          <Button isLoading={command.isPending} onClick={submit}>
-            {user ? 'Lưu' : 'Tạo tài khoản'}
-          </Button>
+          {isReadOnly ? null : (
+            <Button isLoading={command.isPending} onClick={submit}>
+              {user ? 'Lưu' : 'Tạo tài khoản'}
+            </Button>
+          )}
         </>
       }
     >
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      {isReadOnly ? (
+        <p role="note" className="mb-4 rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-ink-2">
+          Tài khoản có tòa ngoài phạm vi của bạn: chỉ xem.
+        </p>
+      ) : null}
+      <fieldset disabled={isReadOnly} className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Mã tài khoản" htmlFor="usr-code" required error={errors.code} hint={user ? 'Không đổi sau khi tạo.' : 'VD: BQL-C'}>
           <Input id="usr-code" maxLength={20} placeholder="VD: BQL-A" value={code} disabled={Boolean(user)} onChange={(event) => setCode(event.target.value.toUpperCase())} />
         </Field>
@@ -189,7 +203,7 @@ export const UserDialog = ({ user, departments, roles, onClose }: UserDialogProp
             ))}
           </div>
         </Field>
-      </div>
+      </fieldset>
       {user && (canResetPassword || canSeeHistory) ? (
         <div className="mt-5 space-y-3 border-t border-line pt-4">
           {canResetPassword ? (

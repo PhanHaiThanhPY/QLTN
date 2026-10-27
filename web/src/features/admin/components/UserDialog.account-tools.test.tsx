@@ -95,3 +95,29 @@ describe('UserDialog account tools (US-S1)', () => {
     expect(historyToggle()).toBeTruthy();
   });
 });
+
+describe('UserDialog on an account wider than the viewer (FX-S1 BR-FX1-04)', () => {
+  const WIDE: User = { ...EMPLOYEE, id: 'usr-wide', code: 'ADMIN-ALL', role: 'ADMIN', buildingIds: ['bld-a', 'bld-b'] };
+
+  beforeEach(() => {
+    state.isApi = true;
+    state.viewer = ADMIN;
+  });
+
+  it('AC-FX1.5: is read-only, without Lưu or Đặt lại mật khẩu, and says why', () => {
+    renderDialog(WIDE);
+    expect(screen.getByRole('note').textContent).toBe('Tài khoản có tòa ngoài phạm vi của bạn: chỉ xem.');
+    expect(screen.queryByRole('button', { name: 'Lưu' })).toBeNull();
+    expect(resetButton()).toBeNull();
+    expect(screen.getByLabelText(/Họ tên/).closest('fieldset')?.disabled).toBe(true);
+    expect(screen.getAllByRole('button', { name: 'Đóng' })).toHaveLength(2);
+    expect(historyToggle()).toBeTruthy();
+  });
+
+  it('keeps an account inside the scope editable', () => {
+    renderDialog(EMPLOYEE);
+    expect(screen.queryByRole('note')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Lưu' })).toBeTruthy();
+    expect(screen.getByLabelText(/Họ tên/).closest('fieldset')?.disabled).toBe(false);
+  });
+});
