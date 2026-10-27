@@ -1,6 +1,6 @@
 import type { StatusTone } from '@/components/ui/badge';
 import { vndInWords } from '@/domain/payment';
-import type { LedgerCategory, LedgerDirection, VoucherCategory, VoucherStatus } from '@/services/fund-api';
+import type { Fund, LedgerCategory, LedgerDirection, VoucherCategory, VoucherStatus } from '@/services/fund-api';
 import { formatVndText } from '@/utils/money';
 
 /** BR-F3-03 wording: "Thu theo hợp đồng khai thác", never "thanh toán" (FG-05). */
@@ -76,6 +76,9 @@ export const spokenVnd = (amountVnd: string, direction?: LedgerDirection): strin
   if (!direction) return words;
   return `${direction === 'IN' ? 'cộng' : 'trừ'} ${words}`;
 };
+
+/** BR-F3-02: the full number when the API gives it (Kế toán, BQT), else the last four digits. */
+export const accountText = (fund: Pick<Fund, 'accountNo' | 'accountMasked'>): string => fund.accountNo ?? fund.accountMasked ?? '—';
 
 /** "2026-11" → "Tháng 11/2026". */
 export const monthText = (month: string): string => `Tháng ${month.slice(5)}/${month.slice(0, 4)}`;

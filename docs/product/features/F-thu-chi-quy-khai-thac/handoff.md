@@ -83,6 +83,12 @@
 | AC-F3.17 | e2e "AC-F3.17" (seed ra 60, chạy lại không thêm dòng); seed trên `qltn_dev` |
 | AC-F3.18 | ảnh F3-1…F3-10; 375px không cuộn ngang; bảng có `th scope` và `tfoot`; số tiền đọc thành chữ; thanh tiến độ `role="progressbar"`; mất mạng thì khóa nút ghi (chưa giả lập trong trình duyệt). Test F-S1, F-S2 vẫn đạt |
 
+### Sửa sau review (P2 F-S3-01)
+- **Số tài khoản (BR-F3-02):** API chỉ trả số tài khoản đầy đủ (`accountNo`) cho Kế toán và BQT; người khác chỉ nhận `accountMasked` (****0001). Trang "Sổ quỹ" hiện số đầy đủ khi có. Ảnh F3-1 chụp lại ở góc nhìn Kế toán: "Tài khoản 0071000000001".
+- **Test:** unit `fund-views.spec`; e2e AC-F3.1 kiểm Kế toán và BQT đều nhận số đầy đủ; test web `fund-ui.test` (`accountText`).
+- **Thẻ "Khoản thu tiếp theo"** (theo brief đã sửa trên main): nền `--accent-strong`, chữ `--accent-fg`, đậm ở cả hai chế độ. Nhãn trạng thái đặt trên nền sáng để đủ tương phản. Ảnh F3-2 chụp lại.
+- **Gates sau khi sửa:** API format, tsc và eslint sạch; unit 147/147; e2e `exploitation-fund` 13/13. Web `tsc -b` sạch; vitest 597/597. Script trình duyệt đạt.
+
 ### Test đã chạy
 - **API:**
   - `format:check`, `tsc --noEmit`, eslint đều sạch.
@@ -90,11 +96,10 @@
   - e2e `exploitation-fund` 13/13.
   - Hồi quy e2e: `exploitation-fund`, `exploitation-contracts`, `exploitation`, `attachments`, `role-matrix`, `maintenance-execution`, `maintenance-plans`, `records`, `audit-log`: 92/92.
 - **Web:** `tsc -b` sạch; vitest 595/595.
-- **Trình duyệt:** `supporting/f-s3-fund-check.mjs`, ảnh lưu ở `supporting/evidence/`. Mỗi lần chạy, script tạo thêm một phiếu chi `[TEST F3] …` chờ duyệt trên `qltn_dev` (hiện có PC-003, PC-004).
+- **Trình duyệt:** `supporting/f-s3-fund-check.mjs`, ảnh lưu ở `supporting/evidence/`. Mỗi lần chạy, script tạo thêm một phiếu chi `[TEST F3] …` chờ duyệt trên `qltn_dev` (hiện có PC-003 đến PC-006).
 - **Nhật ký:** dòng thời gian trên trang phiếu chi hiện nhãn tiếng Việt cho thao tác và trạng thái của F-S3.
 
 ### Còn lại / ngoài phạm vi
 - Đối soát sao kê (F-S4); hoàn cọc, báo cáo, thanh lý (F-S5).
 - Nhãn nhật ký cho các thao tác của F-S1 và F-S2 vẫn còn thiếu (đã có từ trước); F-S3 đã thêm nhãn cho các thao tác của mình.
-- Ở chế độ sáng, token `--navy` là màu trắng, nên thẻ "Khoản thu tiếp theo" chỉ đậm ở chế độ tối.
 - Nút AI 32px vẫn là residue chung.

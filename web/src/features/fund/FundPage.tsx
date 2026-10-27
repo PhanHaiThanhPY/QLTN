@@ -21,7 +21,7 @@ import { FundSetupForm } from './components/FundSetupForm';
 import { FundToolbar } from './components/FundToolbar';
 import { LedgerTable } from './components/LedgerTable';
 import { PendingOpeningNotice } from './components/PendingOpeningNotice';
-import { CATEGORY_TEXT, DIRECTION_TEXT, monthText } from './fund-ui';
+import { CATEGORY_TEXT, DIRECTION_TEXT, accountText, monthText } from './fund-ui';
 import { useFundScope } from './useFundScope';
 
 const CATEGORIES = Object.entries(CATEGORY_TEXT) as Array<[LedgerCategory, string]>;
@@ -51,7 +51,7 @@ const FundPage = () => {
     <PageHeader
       title="Sổ quỹ khai thác"
       description={
-        fund.openingDate ? `Tài khoản ${fund.accountMasked ?? '—'} · Số liệu theo sổ, chưa đối soát sao kê` : 'Quỹ chưa được thiết lập.'
+        fund.openingDate ? `Tài khoản ${accountText(fund)} · Số liệu theo sổ, chưa đối soát sao kê` : 'Quỹ chưa được thiết lập.'
       }
       actions={canOperate && fund.openingDate ? <Button variant="secondary" onClick={() => setEditing(true)}>Sửa thiết lập</Button> : null}
     />

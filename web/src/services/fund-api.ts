@@ -14,6 +14,7 @@ export interface Fund {
   buildingId: string;
   kind: 'KHAI_THAC' | 'BAO_TRI';
   bankName: string | null;
+  /** BR-F3-02: full for Kế toán and BQT, null for anyone else. */
   accountNo: string | null;
   accountMasked: string | null;
   accountHolder: string | null;

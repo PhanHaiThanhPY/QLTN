@@ -24,6 +24,10 @@ export const validateReason = (errors: FieldErrors, value: string | undefined, f
   errors.when(length > REASON_MAX, field, `Lý do tối đa ${REASON_MAX} ký tự.`);
 };
 
+/** BR-F3-02: the full account number shows to Kế toán and BQT; anyone else sees its last four digits. */
+export const seesFullAccount = (actor: AuthenticatedUser): boolean =>
+  hasCapability(actor, 'FUND_VIEW') || hasCapability(actor, 'FUND_OPERATE');
+
 /** BR-F3-14: Kế toán and BQT read the fund; BQL never (D-F3-6). */
 export const assertFundView = (actor: AuthenticatedUser): void => {
   if (!hasCapability(actor, 'FUND_VIEW')) throw forbidden('Bạn không có quyền xem sổ quỹ.');

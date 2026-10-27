@@ -7,8 +7,9 @@ export interface FundView {
   buildingId: string;
   kind: FundKind;
   bankName: string | null;
+  /** BR-F3-02: the full number for Kế toán and BQT only; null for anyone else. */
   accountNo: string | null;
-  /** "****0001" for headers (BR-F3-02). */
+  /** "****0001": the last four digits, for anyone else. */
   accountMasked: string | null;
   accountHolder: string | null;
   openingDate: string | null;
@@ -49,12 +50,12 @@ export interface LedgerPage {
   rows: LedgerRow[];
 }
 
-export const fundView = (fund: Fund, hasLines: boolean): FundView => ({
+export const fundView = (fund: Fund, hasLines: boolean, fullAccount: boolean): FundView => ({
   id: fund.id,
   buildingId: fund.buildingId,
   kind: fund.kind,
   bankName: fund.bankName,
-  accountNo: fund.accountNo,
+  accountNo: fullAccount ? fund.accountNo : null,
   accountMasked: maskAccount(fund.accountNo),
   accountHolder: fund.accountHolder,
   openingDate: fund.openingDate,

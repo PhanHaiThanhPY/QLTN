@@ -12,7 +12,15 @@ import type { FundReasonDto, FundSetupDto, FundVersionDto, LedgerQueryDto } from
 import { FundLedgerEntry } from './entities/fund-ledger-entry.entity';
 import { Fund, type FundKind } from './entities/fund.entity';
 import { FundLedgerService } from './fund-ledger.service';
-import { assertFundApprove, assertFundOperate, assertFundView, isVnd, validateReason, vnd } from './fund-rules';
+import {
+  assertFundApprove,
+  assertFundOperate,
+  assertFundView,
+  isVnd,
+  seesFullAccount,
+  validateReason,
+  vnd,
+} from './fund-rules';
 import { fundView, ledgerRow, type FundView, type LedgerPage } from './fund-views';
 
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -41,7 +49,7 @@ export class FundsService {
       this.dataSource.manager,
       funds.map((fund) => fund.id),
     );
-    return funds.map((fund) => fundView(fund, withLines.has(fund.id)));
+    return funds.map((fund) => fundView(fund, withLines.has(fund.id), seesFullAccount(actor)));
   }
 
   async get(actor: AuthenticatedUser, id: string): Promise<FundView> {
@@ -49,7 +57,7 @@ export class FundsService {
     if (!fund || !actor.buildingIds.includes(fund.buildingId)) throw notFound('Không tìm thấy quỹ.');
     assertFundView(actor);
     const withLines = await this.fundsWithLines(this.dataSource.manager, [fund.id]);
-    return fundView(fund, withLines.has(fund.id));
+    return fundView(fund, withLines.has(fund.id), seesFullAccount(actor));
   }
 
   /**
@@ -110,7 +118,7 @@ export class FundsService {
         };
       }
       await this.save(manager, actor, fund, action, dto.reason ?? undefined);
-      return fundView(fund, lines.length > 0);
+      return fundView(fund, lines.length > 0, seesFullAccount(actor));
     });
   }
 
@@ -127,7 +135,7 @@ export class FundsService {
         pendingOpening: null,
       });
       await this.save(manager, actor, fund, 'approveFundOpeningChange', pending.reason);
-      return fundView(fund, lines.length > 0);
+      return fundView(fund, lines.length > 0, seesFullAccount(actor));
     });
   }
 
@@ -139,7 +147,7 @@ export class FundsService {
       errors.throwIfAny();
       fund.pendingOpening = null;
       await this.save(manager, actor, fund, 'rejectFundOpeningChange', dto.reason);
-      return fundView(fund, true);
+      return fundView(fund, true, seesFullAccount(actor));
     });
   }
 
@@ -153,7 +161,7 @@ export class FundsService {
     if (!fund || !actor.buildingIds.includes(fund.buildingId)) throw notFound('Không tìm thấy quỹ.');
     assertFundView(actor);
     const lines = await this.ledger.lines(this.dataSource.manager, fund.id);
-    const view = fundView(fund, lines.length > 0);
+    const view = fundView(fund, lines.length > 0, seesFullAccount(actor));
     const { first, last } = monthBounds(query.month);
     if (fund.openingDate === null || fund.openingBalanceVnd === null || last < fund.openingDate)
       return { fund: view, month: query.month, figures: null, openingLine: null, rows: [] };
