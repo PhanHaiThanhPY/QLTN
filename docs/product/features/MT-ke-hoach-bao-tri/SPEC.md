@@ -237,3 +237,4 @@ Chỉ chạy các test liên quan.
 |---|---|
 | 27/10/2026 | Viết từ phân tích maintenance (PD-24). |
 | 27/10/2026 | Chủ dự án duyệt (PD-26), gồm D-MT2-1 đến D-MT2-7. Giao dev-build sau khi MT-S1 đạt review. |
+| 27/10/2026 | Review PASS WITH RESIDUE trên `6e3b32c`; PM/BA đóng slice. Chờ chủ dự án cho merge (migration `2026-10-27e-maintenance-plans.sql`). |
