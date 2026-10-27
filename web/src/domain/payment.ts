@@ -70,6 +70,16 @@ export interface PaymentHistory {
   payments: PaymentInstalment[];
 }
 
+/** FX-S2 BR-FX2-04: a 0-đồng settlement instalment needs no transfer (the advances already covered it). */
+export const NO_TRANSFER_LABEL = 'Không cần chuyển khoản';
+
+export const isNoTransferInstalment = (payment: Pick<PaymentInstalment, 'kind' | 'amountVnd'>): boolean =>
+  payment.kind === 'QUYET_TOAN' && payment.amountVnd === '0';
+
+/** Badge label; a 0-đồng settlement that is done reads "Không cần chuyển khoản" rather than "Đã chuyển khoản". */
+export const instalmentStatusLabel = (payment: Pick<PaymentInstalment, 'kind' | 'amountVnd' | 'status'>): string =>
+  payment.status === 'TRANSFERRED' && isNoTransferInstalment(payment) ? NO_TRANSFER_LABEL : PAYMENT_STATUS_LABEL[payment.status];
+
 /** An advance not yet transferred blocks a new advance and the settlement (BR-S4-02, BR-S4-04). */
 export const isOpenInstalment = (payment: PaymentInstalment): boolean => payment.status !== 'TRANSFERRED';
 

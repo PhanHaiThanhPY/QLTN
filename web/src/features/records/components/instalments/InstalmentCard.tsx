@@ -4,7 +4,7 @@ import { InfoGrid } from '@/components/common/InfoGrid';
 import { Badge } from '@/components/ui/badge';
 import type { BadgeTone } from '@/components/ui/badge';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
-import { PAYMENT_KIND_LABEL, PAYMENT_STATUS_LABEL, vndInWords, type PaymentInstalment, type PaymentStatus } from '@/domain/payment';
+import { NO_TRANSFER_LABEL, PAYMENT_KIND_LABEL, instalmentStatusLabel, isNoTransferInstalment, vndInWords, type PaymentInstalment, type PaymentStatus } from '@/domain/payment';
 import { formatVndString } from '@/domain/quote-proposal';
 import { useReferenceData } from '@/hooks/useReferenceData';
 import { formatDate, formatDateTime } from '@/utils/date';
@@ -23,6 +23,10 @@ const STATUS_TONE: Readonly<Record<PaymentStatus, BadgeTone>> = {
   TRANSFERRED: 'good',
 };
 
+/** The payee may be left out on a 0-đồng settlement (FX-S2 BR-FX2-03). */
+const payeeLine = (payment: PaymentInstalment): string =>
+  [payment.payeeName, payment.accountNo, payment.bankName].filter(Boolean).join(' · ') || '—';
+
 /** One instalment (D5-TDN): amount and how it was computed, payee, files, chain decisions, transfer proof. */
 export const InstalmentCard = ({ payment }: { payment: PaymentInstalment }) => {
   const { detail, viewer } = useRecordContext();
@@ -30,6 +34,7 @@ export const InstalmentCard = ({ payment }: { payment: PaymentInstalment }) => {
   const { record } = detail;
   const [dialog, setDialog] = useState<'approve' | 'update' | 'transfer' | null>(null);
   const stepLabel = payment.currentStepKey ? memberLabel(record, payment.currentStepKey) : '';
+  const noTransfer = isNoTransferInstalment(payment);
   const advancesDeducted =
     payment.settlementAmountVnd !== null ? (BigInt(payment.settlementAmountVnd) - BigInt(payment.amountVnd)).toString() : null;
 
@@ -40,7 +45,7 @@ export const InstalmentCard = ({ payment }: { payment: PaymentInstalment }) => {
         description={<ActorLine prefix={`Lần gửi ${payment.revisionNo} bởi`} actorId={payment.submittedBy} at={payment.submittedAt} />}
         actions={
           <>
-            <Badge tone={STATUS_TONE[payment.status]}>{PAYMENT_STATUS_LABEL[payment.status]}</Badge>
+            <Badge tone={STATUS_TONE[payment.status]}>{instalmentStatusLabel(payment)}</Badge>
             {payment.status === 'PENDING_APPROVAL' ? (
               <>
                 <ActionButton size="sm" variant="secondary" state={decisionState(viewer, record, payment)} onClick={() => setDialog('update')}>
@@ -79,12 +84,13 @@ export const InstalmentCard = ({ payment }: { payment: PaymentInstalment }) => {
                   },
                 ]
               : []),
-            { label: 'Người hưởng', value: `${payment.payeeName} · ${payment.accountNo} · ${payment.bankName}` },
+            { label: 'Người hưởng', value: payeeLine(payment) },
             { label: 'Nội dung chuyển khoản', value: payment.transferContent },
             ...(payment.status === 'PENDING_APPROVAL'
               ? [{ label: 'Đang chờ', value: `${stepLabel} – ${userName(paymentStepHolder(record, payment.currentStepKey))}` }]
               : []),
-            ...(payment.status === 'TRANSFERRED'
+            ...(payment.status === 'TRANSFERRED' && noTransfer ? [{ label: 'Chuyển khoản', value: NO_TRANSFER_LABEL }] : []),
+            ...(payment.status === 'TRANSFERRED' && !noTransfer
               ? [
                   {
                     label: 'Đã chuyển khoản',
