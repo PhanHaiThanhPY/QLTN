@@ -24,4 +24,6 @@ export const CAPABILITY_LABEL: Record<Capability, string> = {
   ACCOUNT_MANAGE: 'Quản lý tài khoản, vai trò',
   EMERGENCY_START: 'Cho sửa chữa khẩn cấp',
   AUDIT_VIEW: 'Xem nhật ký thao tác',
+  EXPLOITATION_VIEW: 'Xem mời thầu khai thác',
+  EXPLOITATION_MANAGE: 'Quản lý mời thầu khai thác',
 };

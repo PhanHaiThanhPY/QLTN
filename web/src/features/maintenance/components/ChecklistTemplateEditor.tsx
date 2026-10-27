@@ -5,20 +5,35 @@ import { Button } from '@/components/ui/button';
 import { Input, NativeSelect } from '@/components/ui/input';
 import type { FieldErrors } from '@/domain/errors';
 import { EMPTY_CHECKLIST_ROW } from './plan-form-schema';
-import type { PlanFormValues } from './plan-form-schema';
+import type { ChecklistFormShape } from './plan-form-schema';
 
-interface ChecklistTemplateEditorProps {
-  control: Control<PlanFormValues>;
-  register: UseFormRegister<PlanFormValues>;
-  errors: FormErrors<PlanFormValues>;
+interface ChecklistTemplateEditorProps<T extends ChecklistFormShape> {
+  control: Control<T>;
+  register: UseFormRegister<T>;
+  errors: FormErrors<T>;
   serverErrors: FieldErrors;
+  /** Server field of list-level errors: `checklistTemplate` (demo) or `checklist` (api). */
+  serverListField?: string;
+  /** MT-S2: a "Cần ảnh" box per item. */
+  showPhoto?: boolean;
 }
 
 /** Add/remove/reorder checklist rows and configure check or measurement input. */
-export const ChecklistTemplateEditor = ({ control, register, errors, serverErrors }: ChecklistTemplateEditorProps) => {
+export const ChecklistTemplateEditor = <T extends ChecklistFormShape>({
+  control: formControl,
+  register: formRegister,
+  errors: formErrors,
+  serverErrors,
+  serverListField = 'checklistTemplate',
+  showPhoto = false,
+}: ChecklistTemplateEditorProps<T>) => {
+  // react-hook-form cannot resolve array paths through a generic form type; the editor only touches `checklist`.
+  const control = formControl as unknown as Control<ChecklistFormShape>;
+  const register = formRegister as unknown as UseFormRegister<ChecklistFormShape>;
+  const errors = formErrors as FormErrors<ChecklistFormShape>;
   const { fields, append, remove, move } = useFieldArray({ control, name: 'checklist' });
   const checklist = useWatch({ control, name: 'checklist' });
-  const listError = errors.checklist?.message ?? errors.checklist?.root?.message ?? serverErrors.checklistTemplate;
+  const listError = errors.checklist?.message ?? errors.checklist?.root?.message ?? serverErrors[serverListField];
   return (
     <div className="space-y-2">
       <ol className="space-y-2">
@@ -44,6 +59,12 @@ export const ChecklistTemplateEditor = ({ control, register, errors, serverError
                     <input type="checkbox" className="h-4 w-4 accent-accent" {...register(`checklist.${index}.required`)} />
                     Bắt buộc
                   </label>
+                  {showPhoto ? (
+                    <label className="flex items-center gap-2 text-sm text-ink">
+                      <input type="checkbox" className="h-4 w-4 accent-accent" {...register(`checklist.${index}.photoRequired`)} />
+                      Cần ảnh
+                    </label>
+                  ) : null}
                   <div className="flex gap-1">
                     <Button variant="ghost" size="icon" aria-label="Chuyển lên" disabled={index === 0} onClick={() => move(index, index - 1)}>
                       <ArrowUp className="h-4 w-4" />

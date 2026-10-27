@@ -33,6 +33,8 @@ import {
 } from './mappers';
 import { toExecutionBody, type ExecutionAction } from './execution-mappers';
 import { MAINTENANCE_ITEM_COMMANDS } from './maintenance-item-mappers';
+import { EXPLOITATION_COMMANDS } from './exploitation-commands';
+import { MAINTENANCE_PLAN_COMMANDS } from './maintenance-plan-commands';
 import { markApiNotificationsRead } from './notifications-api';
 import { PAYMENT_ROUTES, toPaymentBody, type PaymentAction } from './payment-mappers';
 import { toProposalBody, toProposalDecisionBody } from './proposal-mappers';
@@ -412,6 +414,8 @@ const API_COMMANDS: Readonly<Record<string, ApiCommandHandler>> = {
   closePostReviewRejected: emergencyCommand('close-post-review-rejected'),
   markNotificationRead,
   ...MAINTENANCE_ITEM_COMMANDS,
+  ...MAINTENANCE_PLAN_COMMANDS,
+  ...EXPLOITATION_COMMANDS,
   ...(Object.fromEntries(
     (Object.keys(PAYMENT_ROUTES) as PaymentAction[]).map((action) => [action, paymentCommand(action)]),
   ) as Record<PaymentAction, ApiCommandHandler>),

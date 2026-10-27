@@ -247,3 +247,108 @@ export const shiftDate = (today: string, months: number, days = 0): string => {
   const shifted = new Date(Date.UTC(year, month - 1 + months, Math.min(day, lastDay) + days));
   return shifted.toISOString().slice(0, 10);
 };
+
+/**
+ * Demo maintenance plans (SPEC MT-S2 BR-MT2-10), as in web `mock/seed-maintenance.ts`: one running plan per item
+ * below, performed by the item's BQL and reviewed by a KT; the anchor is relative to the seeding day.
+ */
+export interface SeedPlan {
+  itemCode: string;
+  buildingCode: string;
+  everyMonths: number;
+  anchorMonths: number;
+  anchorDays: number;
+  reviewerCode: string;
+  contractor: string;
+  checklist: ReadonlyArray<readonly [label: string, required: boolean]>;
+}
+
+export const DEMO_PLANS: readonly SeedPlan[] = [
+  {
+    itemCode: 'TM-A01',
+    buildingCode: 'A',
+    everyMonths: 1,
+    anchorMonths: -2,
+    anchorDays: -3,
+    reviewerCode: 'KT-A',
+    contractor: 'Công ty TNHH Thang máy & Bảo trì Nam Long',
+    checklist: [
+      ['Kiểm tra phanh và bộ hãm an toàn', true],
+      ['Vệ sinh, tra dầu ray dẫn hướng', true],
+      ['Kiểm tra nút gọi, chuông và điện thoại cứu hộ', true],
+      ['Kiểm tra độ bằng tầng khi dừng', false],
+    ],
+  },
+  {
+    itemCode: 'BOM-A01',
+    buildingCode: 'A',
+    everyMonths: 1,
+    anchorMonths: -1,
+    anchorDays: 5,
+    reviewerCode: 'KT-A',
+    contractor: 'Công ty CP Cơ điện Sao Việt',
+    checklist: [
+      ['Kiểm tra áp lực đầu đẩy', true],
+      ['Kiểm tra rò rỉ phớt và mặt bích', true],
+      ['Đo dòng điện động cơ', true],
+      ['Vệ sinh lưới lọc', false],
+    ],
+  },
+  {
+    itemCode: 'MPD-A01',
+    buildingCode: 'A',
+    everyMonths: 1,
+    anchorMonths: 0,
+    anchorDays: -1,
+    reviewerCode: 'KT-A',
+    contractor: 'Công ty CP Cơ điện Sao Việt',
+    checklist: [
+      ['Chạy thử không tải 15 phút', true],
+      ['Kiểm tra mức nhiên liệu và dầu bôi trơn', true],
+      ['Kiểm tra ắc quy khởi động', true],
+      ['Kiểm tra bộ chuyển nguồn ATS', false],
+    ],
+  },
+  {
+    itemCode: 'BC-A01',
+    buildingCode: 'A',
+    everyMonths: 6,
+    anchorMonths: -6,
+    anchorDays: -2,
+    reviewerCode: 'KT-A2',
+    contractor: 'Công ty TNHH Kỹ thuật Hòa Phát Xanh',
+    checklist: [
+      ['Thử đầu báo khói theo khu vực', true],
+      ['Kiểm tra tủ trung tâm báo cháy', true],
+      ['Thử chuông, đèn báo và nút ấn khẩn', true],
+    ],
+  },
+  {
+    itemCode: 'CS-B01',
+    buildingCode: 'B',
+    everyMonths: 3,
+    anchorMonths: -3,
+    anchorDays: 5,
+    reviewerCode: 'KT-B',
+    contractor: 'Công ty TNHH Điện lạnh Minh Châu',
+    checklist: [
+      ['Kiểm tra đèn sảnh và hành lang', true],
+      ['Kiểm tra đèn sự cố, đèn exit', true],
+      ['Kiểm tra hẹn giờ và cảm biến', false],
+    ],
+  },
+  {
+    itemCode: 'TG-B01',
+    buildingCode: 'B',
+    everyMonths: 12,
+    anchorMonths: 0,
+    anchorDays: -4,
+    reviewerCode: 'KT-B',
+    contractor: 'Công ty TNHH Dịch vụ Kỹ thuật Thiên Phú',
+    checklist: [
+      ['Vệ sinh cánh quạt và lưới chắn', true],
+      ['Kiểm tra dây curoa, ổ bi', true],
+      ['Đo lưu lượng gió tại miệng hút', true],
+    ],
+  },
+];

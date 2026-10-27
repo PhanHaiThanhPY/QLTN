@@ -167,8 +167,8 @@ describe('Role matrix v2, RM-S1 (e2e)', () => {
     await dataSource.query(await fs.readFile(MIGRATION, 'utf8'));
 
     const legacy = (await roles()).find((row) => row.code === 'VT-90') as Role;
-    // AUDIT_VIEW (AD-S1) is also new to a role saved before it existed, and is not granted either.
-    const gained = ['RECORD_CONFIRM', 'ACCEPTANCE_DECIDE', 'PAYMENT_CONFIRM', 'AUDIT_VIEW'];
+    // AUDIT_VIEW (AD-S1) and EXPLOITATION_VIEW (F-S1) are also new to a role saved before they existed, not granted.
+    const gained = ['RECORD_CONFIRM', 'ACCEPTANCE_DECIDE', 'PAYMENT_CONFIRM', 'AUDIT_VIEW', 'EXPLOITATION_VIEW'];
     expect(legacy.newBaseCapabilities).toEqual(gained);
     const holder = await accountWith('BQT-CU', legacy.id, 'BQT');
     const me = dataOf<Profile>(await holder.get('/api/auth/me').expect(200));

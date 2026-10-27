@@ -11,6 +11,7 @@ import { ERROR_CODE, isAppError } from '@/domain/errors';
 import { useServiceQuery } from '@/hooks/useServiceQuery';
 import { cn } from '@/lib/cn';
 import { getApiItemDetail } from '@/services/maintenance-items-api';
+import { listApiPlans } from '@/services/maintenance-plans-api';
 import type { ApiItemDetail } from '@/services/maintenance-items-api';
 import { todayVn } from '@/services/runtime';
 import { formatDate, toVnDate } from '@/utils/date';
@@ -21,21 +22,24 @@ import { ItemDetailHeader } from '../components/item/ItemDetailHeader';
 import { ItemSpecCard } from '../components/item/ItemSpecCard';
 import { TabCount } from '../components/item/TabCount';
 import { useMaintenanceScreen } from '../hooks/useMaintenanceScreen';
+import { capabilityState } from '../utils/maintenance-ui';
 import { ageLabel, warrantyInfo } from '../utils/item-insights';
 import { apiAttentionItems } from './item-api-ui';
 import { ItemApiActions } from './ItemApiActions';
 import { ItemApiFigures } from './ItemApiFigures';
 import { ItemApiRepairTable } from './ItemApiRepairTable';
+import { ItemMaintenanceApiTab } from './ItemMaintenanceApiTab';
 
-const TAB_VALUES = ['overview', 'repairs', 'documents', 'history'] as const;
+const TAB_VALUES = ['overview', 'maintenance', 'repairs', 'documents', 'history'] as const;
 type ItemTab = (typeof TAB_VALUES)[number];
 const RECENT_REPAIRS = 3;
 
 const isItemTab = (value: string | null): value is ItemTab => TAB_VALUES.some((tab) => tab === value);
 
-/** MT-S1 ui-brief §2.2: no "Bảo trì" tab in api mode (plans arrive in MT-S2). */
-const tabItems = (detail: ApiItemDetail): TabItem[] => [
+/** MT-S2 ui-brief §2.4: the "Bảo trì" tab is back in api mode with the item's plans. */
+const tabItems = (detail: ApiItemDetail, plans: number): TabItem[] => [
   { value: 'overview', label: 'Tổng quan' },
+  { value: 'maintenance', label: 'Bảo trì', badge: <TabCount value={plans} /> },
   { value: 'repairs', label: 'Sửa chữa', badge: <TabCount value={detail.repairs.length} /> },
   { value: 'documents', label: 'Tài liệu', badge: <TabCount value={detail.documents.length} /> },
   { value: 'history', label: 'Lịch sử thay đổi' },
@@ -55,6 +59,7 @@ const ItemDetailApiPage = () => {
   const [params, setParams] = useSearchParams();
   const { data, userName, buildingName, locationName } = useMaintenanceScreen();
   const query = useServiceQuery(['maintenance', 'item', 'api', itemId], () => getApiItemDetail(itemId));
+  const plans = useServiceQuery(['maintenance', 'plans', 'api', 'item', itemId], () => listApiPlans({ itemId, includeEnded: true }));
   const tabParam = params.get('tab');
   const tab: ItemTab = isItemTab(tabParam) ? tabParam : 'overview';
 
@@ -77,6 +82,9 @@ const ItemDetailApiPage = () => {
   const { item, repairs, documents, audit } = detail;
   const today = todayVn();
   const lastEditor = audit[0]?.actorId;
+  const itemPlans = plans.data ?? [];
+  const nextDate = itemPlans.flatMap((plan) => (plan.nextDate ? [plan.nextDate] : [])).sort()[0];
+  const canPlan = item.active && capabilityState(data.viewer, 'MAINTENANCE_MANAGE', item.buildingId).allowed;
 
   return (
     <div className="space-y-4">
@@ -96,12 +104,12 @@ const ItemDetailApiPage = () => {
           {item.deactivationReason ? ` Lý do: ${item.deactivationReason}` : ''}
         </Notice>
       )}
-      <ItemApiFigures detail={detail} today={today} />
+      <ItemApiFigures detail={detail} today={today} nextDate={nextDate} />
       <ItemAttentionPanel items={apiAttentionItems(detail)} />
 
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="min-w-0">
-          <Tabs value={tab} onValueChange={setTab} items={tabItems(detail)}>
+          <Tabs value={tab} onValueChange={setTab} items={tabItems(detail, itemPlans.length)}>
             <TabPanel value="overview">
               <Card>
                 <CardHeader
@@ -112,6 +120,13 @@ const ItemDetailApiPage = () => {
                   <ItemApiRepairTable repairs={repairs.slice(0, RECENT_REPAIRS)} />
                 </CardBody>
               </Card>
+            </TabPanel>
+            <TabPanel value="maintenance">
+              {plans.error ? (
+                <ErrorState error={plans.error} onRetry={() => void plans.refetch()} />
+              ) : (
+                <ItemMaintenanceApiTab itemId={item.id} plans={itemPlans} today={today} canCreate={canPlan} userName={userName} />
+              )}
             </TabPanel>
             <TabPanel value="repairs">
               <Card>

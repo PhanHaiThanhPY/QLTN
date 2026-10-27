@@ -44,6 +44,8 @@ export const PERMISSION_ROWS: readonly PermissionRow[] = [
     label: 'Nghiệp vụ tiền của quỹ khai thác và tiền gửi quỹ bảo trì (chưa có màn hình)',
     capability: 'FUND_OPERATE',
   },
+  { group: 'Quỹ', label: 'Xem gói khai thác, đơn vị, hồ sơ dự thầu kèm giá chào và tài liệu', capability: 'EXPLOITATION_VIEW' },
+  { group: 'Quỹ', label: 'Lập, phát hành, ghi nhận hồ sơ, yêu cầu bổ sung, đóng nhận, hủy gói khai thác', capability: 'EXPLOITATION_MANAGE' },
   { group: 'Bảo trì', label: 'Tạo/sửa/vô hiệu hóa hạng mục bảo trì', capability: 'MAINTENANCE_MANAGE' },
   { group: 'Bảo trì', label: 'Tạo/sửa/kích hoạt/tạm dừng/đổi lịch kế hoạch', capability: 'MAINTENANCE_MANAGE' },
   { group: 'Bảo trì', label: 'Kích hoạt sinh lịch tự động khi mở màn hình (chạy dưới danh nghĩa SYSTEM)', capability: 'ALL' },

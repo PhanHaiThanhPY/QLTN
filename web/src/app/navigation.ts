@@ -6,6 +6,7 @@ import {
   CalendarDays,
   CalendarClock,
   ClipboardList,
+  Landmark,
   LayoutDashboard,
   MapPin,
   ScrollText,
@@ -14,6 +15,7 @@ import {
   Settings,
   Workflow,
   Wrench,
+  Store,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { IS_API_MODE } from '@/config/data-source';
@@ -45,6 +47,9 @@ export const ALL_NAV_ITEMS: NavItem[] = [
   { to: '/maintenance/plans', label: 'Kế hoạch bảo trì', icon: ClipboardList, group: 'Bảo trì' },
   { to: '/maintenance/schedule', label: 'Lịch bảo trì', icon: CalendarDays, group: 'Bảo trì' },
 
+  { to: '/exploitation/packages', label: 'Mời thầu khai thác', icon: Landmark, capability: 'EXPLOITATION_VIEW', group: 'Quỹ khai thác', apiOnly: true },
+  { to: '/exploitation/partners', label: 'Đơn vị khai thác', icon: Store, capability: 'EXPLOITATION_VIEW', group: 'Quỹ khai thác', apiOnly: true },
+
   { to: '/space', label: 'Không gian chung cư', icon: Map, group: 'Theo dõi' },
   { to: '/reports', label: 'Báo cáo', icon: BarChart3, capability: 'REPORT_VIEW', group: 'Theo dõi' },
   { to: '/audit', label: 'Nhật ký thao tác', icon: ScrollText, capability: 'AUDIT_VIEW', group: 'Theo dõi', apiOnly: true },
@@ -61,10 +66,21 @@ export const ALL_NAV_ITEMS: NavItem[] = [
 /** Modules that already talk to api-qltn (plan decision D2): entering them in api mode is allowed. */
 const API_READY_GROUPS = new Set(['Hệ thống', 'Quản trị']);
 /**
- * Single entries ready before the rest of their group: my tasks (TK-S1), record list (T4), repair schedule (B4-S1)
- * and equipment (MT-S1); maintenance plans and schedule stay mock-only until MT-S2/S3.
+ * Single entries ready before the rest of their group: my tasks (TK-S1), record list (T4), repair schedule (B4-S1),
+ * equipment (MT-S1), maintenance plans (MT-S2) and the exploitation group (F-S1, api only); the maintenance schedule
+ * stays mock-only until MT-S3.
  */
-const API_READY_PATHS = new Set(['/tasks', '/records', '/records/schedule', '/maintenance/items', '/audit', '/notifications']);
+const API_READY_PATHS = new Set([
+  '/tasks',
+  '/records',
+  '/records/schedule',
+  '/maintenance/items',
+  '/maintenance/plans',
+  '/exploitation/packages',
+  '/exploitation/partners',
+  '/audit',
+  '/notifications',
+]);
 
 /**
  * In api mode only modules backed by the real backend stay in the menu; the rest stay in the code

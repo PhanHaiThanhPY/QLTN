@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In } from 'typeorm';
@@ -11,11 +12,15 @@ import { BuildingConfig } from '../../modules/buildings/entities/building-config
 import { Building } from '../../modules/buildings/entities/building.entity';
 import { Location } from '../../modules/buildings/entities/location.entity';
 import { MaintenanceItem } from '../../modules/maintenance/entities/maintenance-item.entity';
+import { MaintenancePlan } from '../../modules/maintenance/entities/maintenance-plan.entity';
+import { MaintenanceScheduleVersion } from '../../modules/maintenance/entities/maintenance-schedule-version.entity';
 import { Department } from '../../modules/organization/entities/department.entity';
 import { RoleDefinition } from '../../modules/roles/entities/role-definition.entity';
 import { CUSTOM_ROLE_PREFIX, RolesService } from '../../modules/roles/roles.service';
 import { User } from '../../modules/users/entities/user.entity';
-import { DEMO_ITEMS, shiftDate } from './demo-items';
+import { DEMO_ITEMS, DEMO_PLANS, shiftDate } from './demo-items';
+import { ensureExploitationDemo } from './exploitation-seed';
+import { FileStorage } from '../../modules/attachments/file-storage';
 import {
   DEMO_ASSIGNMENT_RULES,
   DEMO_BUILDING_TEMPLATES,
@@ -42,6 +47,7 @@ export class DatabaseSeedService {
     private readonly config: ConfigService,
     private readonly roles: RolesService,
     private readonly codes: CodeCounterService,
+    private readonly storage: FileStorage,
   ) {}
 
   async run(): Promise<void> {
@@ -72,6 +78,16 @@ export class DatabaseSeedService {
     const roles = await this.ensureCustomRole(manager);
     const users = await this.ensureUsers(manager, buildings.byCode, departments.byCode, passwordHash);
     const items = await this.ensureItems(manager, buildings.byCode);
+    const plans = await this.ensurePlans(manager, buildings.byCode);
+    const firstBuilding = buildings.byCode.get('A');
+    const exploitation = firstBuilding
+      ? await ensureExploitationDemo(manager, {
+          codes: this.codes,
+          storage: this.storage,
+          building: firstBuilding,
+          now: new Date(),
+        })
+      : 0;
     return {
       buildings: buildings.created,
       departments: departments.created,
@@ -80,6 +96,8 @@ export class DatabaseSeedService {
       roles,
       users,
       items,
+      plans,
+      exploitation,
     };
   }
 
@@ -212,6 +230,81 @@ export class DatabaseSeedService {
     });
     await repo.save(rows);
     return rows.length;
+  }
+
+  /**
+   * BR-MT2-10: one running plan per demo plan, added when the item has no plan of that name yet. Occurrences come
+   * from the generator (its catch-up run at boot, then daily).
+   */
+  private async ensurePlans(manager: EntityManager, buildings: Map<string, Building>): Promise<number> {
+    const buildingIds = [...buildings.values()].map((b) => b.id);
+    const [items, users, existing] = await Promise.all([
+      manager.getRepository(MaintenanceItem).findBy({ buildingId: In(buildingIds) }),
+      manager
+        .getRepository(User)
+        .findBy({ code: In(['BQL-A', 'BQL-B', 'ADMIN-DEMO', ...DEMO_PLANS.map((p) => p.reviewerCode)]) }),
+      manager.getRepository(MaintenancePlan).findBy({ buildingId: In(buildingIds) }),
+    ]);
+    const userId = (code: string) => users.find((u) => u.code === code)?.id;
+    const today = vnDate(new Date());
+    let created = 0;
+    for (const seed of DEMO_PLANS) {
+      const item = items.find(
+        (row) => row.code === seed.itemCode && row.buildingId === buildings.get(seed.buildingCode)?.id,
+      );
+      const name = `Bảo trì định kỳ ${seed.itemCode}`;
+      const managerId = item ? item.ownerUserId : undefined;
+      const reviewerId = userId(seed.reviewerCode);
+      const creator = userId('ADMIN-DEMO');
+      if (
+        !item ||
+        !managerId ||
+        !reviewerId ||
+        !creator ||
+        existing.some((p) => p.itemId === item.id && p.name === name)
+      )
+        continue;
+      const anchor = shiftDate(today, seed.anchorMonths, seed.anchorDays);
+      const plan = await manager.getRepository(MaintenancePlan).save(
+        manager.getRepository(MaintenancePlan).create({
+          code: await this.codes.next(manager, 'KH', 3),
+          itemId: item.id,
+          buildingId: item.buildingId,
+          name,
+          status: 'ACTIVE',
+          managerUserId: managerId,
+          performerUserId: managerId,
+          reviewerUserId: reviewerId,
+          contractorName: seed.contractor,
+          checklist: seed.checklist.map(([label, required]) => ({
+            id: randomUUID(),
+            label,
+            required,
+            kind: 'CHECK' as const,
+            unit: null,
+            min: null,
+            max: null,
+            photoRequired: false,
+          })),
+          activeSince: today,
+          createdBy: creator,
+          version: 1,
+        }),
+      );
+      await manager.getRepository(MaintenanceScheduleVersion).insert({
+        planId: plan.id,
+        unit: 'MONTH',
+        every: seed.everyMonths,
+        effectiveFrom: anchor,
+        anchorDate: anchor,
+        reason: null,
+        supersededBy: null,
+        supersededAt: null,
+        createdBy: creator,
+      });
+      created += 1;
+    }
+    return created;
   }
 
   private async ensureUsers(

@@ -9,9 +9,14 @@ import { BQL_A, READ_ONLY, detailOf } from './__fixtures__/api-items';
 const mockState = vi.hoisted(() => ({
   query: { data: undefined as unknown, isLoading: false, error: null as unknown, refetch: vi.fn() },
   viewer: undefined as unknown,
+  plans: [] as unknown[],
 }));
 
-vi.mock('@/hooks/useServiceQuery', () => ({ useServiceQuery: () => mockState.query }));
+/** The item detail answers the item query; the MT-S2 plan list answers its own key. */
+vi.mock('@/hooks/useServiceQuery', () => ({
+  useServiceQuery: (key: readonly unknown[]) =>
+    key.includes('plans') ? { data: mockState.plans, isLoading: false, error: null, refetch: vi.fn() } : mockState.query,
+}));
 vi.mock('@/hooks/useReferenceData', () => ({
   useReferenceData: () => ({ data: { viewer: mockState.viewer, users: [], items: [] }, userName: () => 'BQL A' }),
 }));
@@ -40,6 +45,7 @@ describe('ItemDetailApiPage (MT-S1 BR-MT-08)', () => {
   beforeEach(() => {
     mockState.viewer = BQL_A;
     mockState.query = { data: detailOf(), isLoading: false, error: null, refetch: vi.fn() };
+    mockState.plans = [];
   });
 
   it('shows the four figures as a description list, money from the integer string (AC-MT.12)', () => {
@@ -52,15 +58,27 @@ describe('ItemDetailApiPage (MT-S1 BR-MT-08)', () => {
     expect(values).toContain('Còn 20 ngày');
   });
 
-  it('has the four tabs and no "Bảo trì" tab', () => {
+  it('has the "Bảo trì" tab back with the plans (MT-S2 ui-brief §2.4)', () => {
     renderPage();
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent?.replace(/\d+$/, ''))).toEqual([
       'Tổng quan',
+      'Bảo trì',
       'Sửa chữa',
       'Tài liệu',
       'Lịch sử thay đổi',
     ]);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toContain('BOM-A09 · ');
+  });
+
+  it('shows "Lần kế tiếp" only when a plan has a scheduled occurrence (MT-S2 ui-brief §2.4)', () => {
+    const { unmount } = renderPage();
+    expect(screen.queryByText('Lần kế tiếp')).toBeNull();
+    unmount();
+
+    mockState.plans = [{ id: 'pl-1', code: 'KH-001', name: 'Bơm', status: 'ACTIVE', version: 1, nextDate: '2026-11-12', schedule: null }];
+    renderPage();
+    const figures = screen.getByText('Lần kế tiếp').closest('dl') as HTMLElement;
+    expect(within(figures).getAllByRole('definition').map((dd) => dd.textContent)).toContain('12/11/2026');
   });
 
   it('gives a BQL edit, condition and stop actions, and a read-only account none (AC-MT.5)', () => {
