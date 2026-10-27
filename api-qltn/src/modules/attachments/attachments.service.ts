@@ -20,6 +20,8 @@ import {
 } from '../exploitation/exploitation-files';
 import { MaintenanceItem } from '../maintenance/entities/maintenance-item.entity';
 import { MaintenanceOccurrence } from '../maintenance/entities/maintenance-occurrence.entity';
+import { Fund } from '../fund/entities/fund.entity';
+import { CONTRACT_READABLE_PURPOSES, FUND_FILE_PURPOSES, isFundFilePurpose } from '../fund/fund-files';
 import { RepairRecord } from '../records/entities/repair-record.entity';
 import {
   ADVANCE_FOLLOW_UP_STATUSES,
@@ -117,6 +119,7 @@ export const PURPOSE_LABEL: Readonly<Record<string, string>> = {
   SELECTION_MINUTES: 'Biên bản đánh giá',
   ASSEMBLY_DOCUMENT: 'Tài liệu hội nghị',
   CONTRACT_DOCUMENT: 'Tài liệu hợp đồng',
+  ...FUND_FILE_PURPOSES,
 };
 
 /** The subject a file is stored against: its id, building (scope) and version (audit). */
@@ -217,6 +220,14 @@ export class AttachmentsService {
     ) {
       throw forbidden('Vai trò của bạn không xem được tài liệu khai thác.');
     }
+    // F-S3 BR-F3-14: fund documents are for Kế toán and BQT; receipt and deposit proofs also show on the contract.
+    if (
+      attachment.subjectType === SUBJECT_TYPE.FUND &&
+      !hasCapability(actor, 'FUND_VIEW') &&
+      !(CONTRACT_READABLE_PURPOSES.includes(attachment.purpose) && hasCapability(actor, 'EXPLOITATION_CONTRACT_VIEW'))
+    ) {
+      throw forbidden('Bạn không có quyền xem chứng từ quỹ.');
+    }
     try {
       return { attachment, content: await this.storage.read(attachment.contentRef) };
     } catch (error) {
@@ -232,7 +243,8 @@ export class AttachmentsService {
     const supported =
       (dto.subjectType === SUBJECT_TYPE.REPAIR_RECORD && RECORD_PURPOSES.includes(dto.purpose)) ||
       SUBJECT_PURPOSE[dto.subjectType] === dto.purpose ||
-      (dto.subjectType === SUBJECT_TYPE.EXPLOITATION_PACKAGE && Object.hasOwn(PACKAGE_PURPOSE_STATUSES, dto.purpose));
+      (dto.subjectType === SUBJECT_TYPE.EXPLOITATION_PACKAGE && Object.hasOwn(PACKAGE_PURPOSE_STATUSES, dto.purpose)) ||
+      (dto.subjectType === SUBJECT_TYPE.FUND && isFundFilePurpose(dto.purpose));
     if (!supported) {
       throw badRequestWithReason('attachment_purpose_not_supported', 'Mục đích tệp chưa được hỗ trợ.');
     }
@@ -268,9 +280,19 @@ export class AttachmentsService {
         return this.bidSubject(manager, actor, dto.subjectId);
       case SUBJECT_TYPE.MAINTENANCE_OCCURRENCE:
         return this.occurrenceSubject(manager, actor, dto.subjectId);
+      case SUBJECT_TYPE.FUND:
+        return this.fundSubject(manager, actor, dto.subjectId);
       default:
         return this.recordSubject(manager, actor, dto.subjectId, dto.purpose);
     }
+  }
+
+  /** F-S3 BR-F3-14: Kế toán of the fund's building uploads its money documents. */
+  private async fundSubject(manager: EntityManager, actor: AuthenticatedUser, id: string): Promise<UploadSubject> {
+    const fund = await manager.getRepository(Fund).findOneBy({ id });
+    if (!fund || !actor.buildingIds.includes(fund.buildingId)) throw notFound('Không tìm thấy quỹ.');
+    if (!hasCapability(actor, 'FUND_OPERATE')) throw forbiddenWithReason('attachment_step_denied', STEP_DENIED);
+    return { subjectType: SUBJECT_TYPE.FUND, id: fund.id, buildingId: fund.buildingId, version: fund.version };
   }
 
   /** MT-S3 BR-MT3-03: the occurrence's performer, in the item's location, while it is in progress or sent back. */

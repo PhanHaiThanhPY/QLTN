@@ -10,6 +10,15 @@ import { ExploitationAssembly } from '../modules/exploitation/entities/exploitat
 import { ExploitationContract } from '../modules/exploitation/entities/exploitation-contract.entity';
 import { ExploitationContractRevision } from '../modules/exploitation/entities/exploitation-contract-revision.entity';
 import { ExploitationReceivable } from '../modules/exploitation/entities/exploitation-receivable.entity';
+import { ExploitationDeposit } from '../modules/exploitation/entities/exploitation-deposit.entity';
+import { ExploitationReceiptAllocation } from '../modules/exploitation/entities/exploitation-receipt-allocation.entity';
+import { ExploitationReceipt } from '../modules/exploitation/entities/exploitation-receipt.entity';
+import { Fund } from '../modules/fund/entities/fund.entity';
+import { FundLedgerEntry } from '../modules/fund/entities/fund-ledger-entry.entity';
+import { FundTaxObligation } from '../modules/fund/entities/fund-tax-obligation.entity';
+import { FundTaxPayment } from '../modules/fund/entities/fund-tax-payment.entity';
+import { FundVoucherDecision } from '../modules/fund/entities/fund-voucher-decision.entity';
+import { FundVoucher } from '../modules/fund/entities/fund-voucher.entity';
 import { ExploitationBidItem } from '../modules/exploitation/entities/exploitation-bid-item.entity';
 import { ExploitationBid } from '../modules/exploitation/entities/exploitation-bid.entity';
 import { ExploitationPackageRevision } from '../modules/exploitation/entities/exploitation-package-revision.entity';
@@ -81,4 +90,13 @@ export const ALL_ENTITIES = [
   ExploitationContract,
   ExploitationContractRevision,
   ExploitationReceivable,
+  Fund,
+  FundLedgerEntry,
+  FundTaxObligation,
+  FundTaxPayment,
+  FundVoucher,
+  FundVoucherDecision,
+  ExploitationReceipt,
+  ExploitationReceiptAllocation,
+  ExploitationDeposit,
 ];

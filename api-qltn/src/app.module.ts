@@ -18,6 +18,7 @@ import { HealthModule } from './modules/health/health.module';
 import { OrganizationModule } from './modules/organization/organization.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ExploitationModule } from './modules/exploitation/exploitation.module';
+import { FundModule } from './modules/fund/fund.module';
 import { MaintenanceModule } from './modules/maintenance/maintenance.module';
 import { RecordsModule } from './modules/records/records.module';
 import { TasksModule } from './modules/tasks/tasks.module';
@@ -55,6 +56,7 @@ import { UsersModule } from './modules/users/users.module';
     RecordsModule,
     MaintenanceModule,
     TasksModule,
+    FundModule,
     ExploitationModule,
     NotificationsModule,
     AttachmentsModule,

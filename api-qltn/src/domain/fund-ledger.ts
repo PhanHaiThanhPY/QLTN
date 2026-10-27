@@ -30,7 +30,8 @@ export interface Available {
   date: string;
 }
 
-const signed = (line: LedgerLine): bigint => (line.direction === 'IN' ? BigInt(line.amountVnd) : -BigInt(line.amountVnd));
+const signed = (line: LedgerLine): bigint =>
+  line.direction === 'IN' ? BigInt(line.amountVnd) : -BigInt(line.amountVnd);
 
 /** BR-F3-05: opening balance + Σ in − Σ out of every line dated on or before `date` (reversals included). */
 export const balanceAt = (opening: FundOpening, lines: readonly LedgerLine[], date: string): string =>
@@ -84,3 +85,10 @@ export const availableFrom = (opening: FundOpening, lines: readonly LedgerLine[]
 /** Masks an account number to its last four digits ("****0001", BR-F3-02). */
 export const maskAccount = (accountNo: string | null): string | null =>
   accountNo ? `****${accountNo.replace(/\s/g, '').slice(-4)}` : null;
+
+/** "5000000" → "5.000.000" (Vietnamese grouping), for messages. */
+export const groupVnd = (amountVnd: string): string => {
+  const negative = amountVnd.startsWith('-');
+  const digits = negative ? amountVnd.slice(1) : amountVnd;
+  return `${negative ? '−' : ''}${digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`;
+};

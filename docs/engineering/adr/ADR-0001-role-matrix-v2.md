@@ -48,7 +48,7 @@ Vẫn giữ `TECH_CONFIRMER` (KT). KT vẫn kiểm tra bảo trì và vẫn có 
 | Quyền | Ý nghĩa | Ghi chú |
 |---|---|---|
 | `PAYMENT_CONFIRM` | Xác nhận đã chuyển khoản một đợt thanh toán, kèm chứng từ (DF-08) | Tách khỏi `PAYMENT_RECORD`. Từ nay `PAYMENT_RECORD` chỉ còn nghĩa: BQL lập đề nghị và đóng hồ sơ. |
-| `FUND_OPERATE` | Nghiệp vụ tiền của quỹ khai thác (F06–F09) và tiền gửi quỹ bảo trì (T03–T06) | Khai báo trước, chưa có màn hình nào dùng. Mỗi module F/T sẽ dùng khi có SPEC. |
+| `FUND_OPERATE` | Nghiệp vụ tiền của quỹ khai thác (F06–F09) và tiền gửi quỹ bảo trì (T03–T06) | F-S3 dùng cho khoản thu, nhận cọc, thuế, phiếu chi của quỹ khai thác. Nhóm T dùng tiếp cho quỹ bảo trì. |
 | `LOCATION_MANAGE` | Quản lý tầng, khu vực, vị trí của tòa trong phạm vi | Tách khỏi `BUILDING_CONFIG` để BQL vẫn quản lý vị trí sau DF-11. **Cần PM/BA xác nhận (Q7).** |
 
 ### 3. Ma trận v2 (API và web giống nhau)
@@ -82,6 +82,8 @@ Ký hiệu: ✓ = giữ như hiện nay; **+** = thêm; **−** = bỏ.
 | `EXPLOITATION_MANAGE` (mới, F-S1) | | **+** | | | | |
 | `EXPLOITATION_APPROVE` (mới, F-S2) | | | | | **+** | |
 | `EXPLOITATION_CONTRACT_VIEW` (mới, F-S2) | | **+** | | | **+** | **+** |
+| `FUND_VIEW` (mới, F-S3) | | | | | **+** | **+** |
+| `FUND_APPROVE` (mới, F-S3) | | | | | **+** | |
 
 Nguyên tắc cũ vẫn giữ: ADMIN không có quyền quyết định nghiệp vụ.
 

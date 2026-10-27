@@ -11,6 +11,12 @@ const dateFormatter = new Intl.DateTimeFormat('en-CA', {
 /** "2026-10-26" for an instant, in Vietnam time. */
 export const vnDate = (at: Date): string => dateFormatter.format(at);
 
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** A real calendar day written YYYY-MM-DD. */
+export const isIsoDate = (value: string): boolean =>
+  ISO_DATE.test(value) && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
+
 /** "2026-10-26" → "26/10/2026". */
 export const formatVnDate = (isoDate: string): string => isoDate.split('-').reverse().join('/');
 

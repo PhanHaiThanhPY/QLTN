@@ -40,6 +40,10 @@ export const CAPABILITY = {
   EXPLOITATION_APPROVE: 'EXPLOITATION_APPROVE',
   /** See exploitation contracts and their receivable schedule, not the bids (F-S2 BR-F2-13, D-F2-6). */
   EXPLOITATION_CONTRACT_VIEW: 'EXPLOITATION_CONTRACT_VIEW',
+  /** Read a fund's ledger, taxes and payment vouchers (F-S3 BR-F3-14: Kế toán and BQT, never BQL, D-F3-6). */
+  FUND_VIEW: 'FUND_VIEW',
+  /** Approve payment vouchers, a paid voucher's cancellation and a change of the opening balance (F-S3, BQT). */
+  FUND_APPROVE: 'FUND_APPROVE',
 } as const;
 export type Capability = (typeof CAPABILITY)[keyof typeof CAPABILITY];
 
@@ -92,9 +96,11 @@ const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
     'EXPLOITATION_VIEW',
     'EXPLOITATION_APPROVE',
     'EXPLOITATION_CONTRACT_VIEW',
+    'FUND_VIEW',
+    'FUND_APPROVE',
   ],
   // Kế toán on the BQT side: confirms transfers and runs fund money operations (DF-10).
-  ACCOUNTANT: ['VIEW', 'PAYMENT_CONFIRM', 'FUND_OPERATE', 'REPORT_VIEW', 'EXPLOITATION_CONTRACT_VIEW'],
+  ACCOUNTANT: ['VIEW', 'PAYMENT_CONFIRM', 'FUND_OPERATE', 'FUND_VIEW', 'REPORT_VIEW', 'EXPLOITATION_CONTRACT_VIEW'],
 };
 
 /** Capabilities a system role grants; custom roles can only keep a subset of them. */

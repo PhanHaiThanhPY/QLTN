@@ -44,7 +44,7 @@ describe('PermissionMatrixCard (matrix v2)', () => {
       'Được làm',
       'Được làm',
     ]);
-    expect(allowedColumns(rowOf('Nghiệp vụ tiền của quỹ'))).toEqual([
+    expect(allowedColumns(rowOf('Ghi khoản thu, nhận cọc'))).toEqual([
       'Không được làm',
       'Không được làm',
       'Không được làm',
