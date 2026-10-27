@@ -116,8 +116,10 @@ export const readRows = (
   const [header = [], ...data] = table;
   const { index, errors } = readHeader(header);
   if (errors.length) return { rows: [], errors };
-  const cell = (line: readonly Cell[], column: StatementColumn): Cell =>
-    index[column] === undefined ? null : line[index[column] as number];
+  const cell = (line: readonly Cell[], column: StatementColumn): Cell => {
+    const at = index[column];
+    return at === undefined ? null : line[at];
+  };
   const rows: StatementRow[] = [];
   if (data.length > STATEMENT_ROWS_MAX)
     errors.push({ row: 1, column: null, message: `Tệp có quá ${STATEMENT_ROWS_MAX} dòng.` });

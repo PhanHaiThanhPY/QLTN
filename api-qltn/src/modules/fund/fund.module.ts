@@ -14,6 +14,6 @@ import { VouchersService } from './vouchers.service';
   imports: [AttachmentsModule],
   controllers: [FundController, StatementsController],
   providers: [FundLedgerService, FundsService, TaxService, VouchersService, StatementsService, ReconciliationService],
-  exports: [FundLedgerService, FundsService, TaxService, VouchersService],
+  exports: [FundLedgerService, FundsService, TaxService, VouchersService, StatementsService, ReconciliationService],
 })
 export class FundModule {}

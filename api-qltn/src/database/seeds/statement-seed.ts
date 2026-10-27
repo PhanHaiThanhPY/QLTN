@@ -50,7 +50,11 @@ export const ensureStatementDemo = async (deps: Deps): Promise<number> => {
     periodTo: last,
     openingBalanceVnd: '50000000',
     closingBalanceVnd: '60000000',
-    file: { buffer: Buffer.from(`﻿${csv}\r\n`, 'utf8'), originalname: `sao-ke-${month}.csv`, mimetype: 'text/csv' },
+    file: {
+      buffer: Buffer.from(`\uFEFF${csv}\r\n`, 'utf8'),
+      originalname: `sao-ke-${month}.csv`,
+      mimetype: 'text/csv',
+    },
   });
   await deps.reconciliation.confirmSuggestions(accountant, fund.id, month);
   return 1;

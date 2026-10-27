@@ -115,7 +115,7 @@ export const readCsv = (buffer: Buffer): Cell[][] => {
   } catch {
     throw new StatementFileError('Tệp CSV phải mã UTF-8.');
   }
-  text = text.replace(/^﻿/, '');
+  text = text.replace(/^\uFEFF/, '');
   const firstLine = text.split(/\r?\n/, 1)[0] ?? '';
   const separator = firstLine.includes(';') && !firstLine.includes(',') ? ';' : ',';
   const rows: Cell[][] = [];
@@ -158,7 +158,7 @@ export const readStatementFile = (buffer: Buffer): Cell[][] => {
 /** BR-F4-02: the empty template with two example lines (CSV, UTF-8 with BOM so spreadsheets read the accents). */
 export const statementTemplateCsv = (): Buffer =>
   Buffer.from(
-    '﻿Ngày giao dịch,Ghi có,Ghi nợ,Nội dung,Số tham chiếu,Số tài khoản\r\n' +
+    '\uFEFFNgày giao dịch,Ghi có,Ghi nợ,Nội dung,Số tham chiếu,Số tài khoản\r\n' +
       '18/11/2026,10000000,,DV-A chuyển tiền hợp đồng HĐ-001,FT26322001,\r\n' +
       '30/11/2026,,11000,Phí SMS Banking tháng 11,,\r\n',
     'utf8',

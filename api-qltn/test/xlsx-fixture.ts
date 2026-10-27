@@ -57,7 +57,9 @@ export const xlsxOf = (rows: ReadonlyArray<readonly FixtureCell[]>): Buffer => {
         .map((cell, c) => {
           if (cell === null || cell === '') return '';
           const ref = `${column(c)}${r + 1}`;
-          return typeof cell === 'number' ? `<c r="${ref}"><v>${cell}</v></c>` : `<c r="${ref}" t="inlineStr"><is><t>${escape(cell)}</t></is></c>`;
+          return typeof cell === 'number'
+            ? `<c r="${ref}"><v>${cell}</v></c>`
+            : `<c r="${ref}" t="inlineStr"><is><t>${escape(cell)}</t></is></c>`;
         })
         .join('');
       return `<row r="${r + 1}">${cells}</row>`;
