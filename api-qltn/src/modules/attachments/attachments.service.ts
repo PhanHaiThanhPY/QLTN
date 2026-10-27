@@ -1,13 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
-import { DataSource, EntityManager } from 'typeorm';
+import { DataSource, EntityManager, MoreThanOrEqual } from 'typeorm';
 import type { AuthenticatedUser } from '../../common/auth/authenticated-user';
 import { hasCapability } from '../../common/auth/scope';
 import { badRequestWithReason, forbidden, forbiddenWithReason, notFound } from '../../common/errors';
 import { FieldErrors, fieldError } from '../../common/validation/field-errors';
 import { SUBJECT_TYPE, type SubjectType } from '../audit/entities/audit-event.entity';
 import { AuditService } from '../audit/audit.service';
+import { Clock } from '../../common/services/clock.service';
+import { ExploitationBidItem } from '../exploitation/entities/exploitation-bid-item.entity';
+import { ExploitationBid } from '../exploitation/entities/exploitation-bid.entity';
+import { ExploitationPackage } from '../exploitation/entities/exploitation-package.entity';
+import { BID_FILE_PURPOSE, PACKAGE_FILE_PURPOSE } from '../exploitation/exploitation-files';
 import { MaintenanceItem } from '../maintenance/entities/maintenance-item.entity';
 import { RepairRecord } from '../records/entities/repair-record.entity';
 import {
@@ -38,6 +43,14 @@ const MAGIC_LENGTH = 12;
 
 /** The equipment document purpose (MT-S1 BR-MT-05), the only purpose of a MAINTENANCE_ITEM subject. */
 const ITEM_DOCUMENT = 'ITEM_DOCUMENT';
+/** F-S1: the one purpose of each exploitation subject. */
+const SUBJECT_PURPOSE: Readonly<Record<string, string>> = {
+  [SUBJECT_TYPE.MAINTENANCE_ITEM]: ITEM_DOCUMENT,
+  [SUBJECT_TYPE.EXPLOITATION_PACKAGE]: PACKAGE_FILE_PURPOSE,
+  [SUBJECT_TYPE.EXPLOITATION_BID]: BID_FILE_PURPOSE,
+};
+/** Exploitation files are bid material: only EXPLOITATION_VIEW holders read them (F-S1 BR-F1-11, D-F1-5). */
+const EXPLOITATION_SUBJECTS: readonly string[] = [SUBJECT_TYPE.EXPLOITATION_PACKAGE, SUBJECT_TYPE.EXPLOITATION_BID];
 
 const isManagerAt = (actor: AuthenticatedUser, record: RepairRecord, statuses: readonly string[]): boolean =>
   record.managerUserId === actor.id && hasCapability(actor, 'RECORD_EDIT') && statuses.includes(record.status);
@@ -91,6 +104,8 @@ export const PURPOSE_LABEL: Readonly<Record<string, string>> = {
   INVOICE: 'Hóa đơn GTGT',
   PAYMENT_PROOF: 'Chứng từ chuyển khoản',
   ITEM_DOCUMENT: 'Tài liệu thiết bị',
+  EXPLOITATION_DOCUMENT: 'Tài liệu mời thầu khai thác',
+  BID_DOCUMENT: 'Tài liệu dự thầu',
 };
 
 /** The subject a file is stored against: its id, building (scope) and version (audit). */
@@ -126,6 +141,7 @@ export class AttachmentsService {
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly audit: AuditService,
     private readonly storage: FileStorage,
+    private readonly clock: Clock,
   ) {}
 
   /** Validates the file and the step, stores content and metadata + audit in one transaction. */
@@ -140,10 +156,7 @@ export class AttachmentsService {
     const key = randomUUID();
     try {
       return await this.dataSource.transaction(async (manager) => {
-        const subject =
-          dto.subjectType === SUBJECT_TYPE.MAINTENANCE_ITEM
-            ? await this.itemSubject(manager, actor, dto.subjectId)
-            : await this.recordSubject(manager, actor, dto.subjectId, dto.purpose);
+        const subject = await this.subjectOf(manager, actor, dto);
 
         const attachmentRepo = manager.getRepository(Attachment);
         await this.storage.save(key, content);
@@ -183,6 +196,9 @@ export class AttachmentsService {
     if (!attachment || !actor.buildingIds.includes(attachment.buildingId)) {
       throw notFound('Không tìm thấy tệp hoặc tệp ngoài phạm vi.');
     }
+    if (EXPLOITATION_SUBJECTS.includes(attachment.subjectType) && !hasCapability(actor, 'EXPLOITATION_VIEW')) {
+      throw forbidden('Vai trò của bạn không xem được tài liệu khai thác.');
+    }
     try {
       return { attachment, content: await this.storage.read(attachment.contentRef) };
     } catch (error) {
@@ -193,11 +209,11 @@ export class AttachmentsService {
     }
   }
 
-  /** Repair records take the record purposes, equipment only ITEM_DOCUMENT; anything else answers a stable reason. */
+  /** Repair records take the record purposes, other subjects their one purpose; anything else a stable reason. */
   private assertSupported(dto: UploadAttachmentDto): void {
     const supported =
       (dto.subjectType === SUBJECT_TYPE.REPAIR_RECORD && RECORD_PURPOSES.includes(dto.purpose)) ||
-      (dto.subjectType === SUBJECT_TYPE.MAINTENANCE_ITEM && dto.purpose === ITEM_DOCUMENT);
+      SUBJECT_PURPOSE[dto.subjectType] === dto.purpose;
     if (!supported) {
       throw badRequestWithReason('attachment_purpose_not_supported', 'Mục đích tệp chưa được hỗ trợ.');
     }
@@ -217,6 +233,58 @@ export class AttachmentsService {
       throw fieldError('file', 'Nội dung tệp không đúng định dạng JPEG/PNG/WebP/PDF đã khai báo.');
     }
     return file.buffer;
+  }
+
+  private subjectOf(
+    manager: EntityManager,
+    actor: AuthenticatedUser,
+    dto: UploadAttachmentDto,
+  ): Promise<UploadSubject> {
+    switch (dto.subjectType) {
+      case SUBJECT_TYPE.MAINTENANCE_ITEM:
+        return this.itemSubject(manager, actor, dto.subjectId);
+      case SUBJECT_TYPE.EXPLOITATION_PACKAGE:
+        return this.packageSubject(manager, actor, dto.subjectId);
+      case SUBJECT_TYPE.EXPLOITATION_BID:
+        return this.bidSubject(manager, actor, dto.subjectId);
+      default:
+        return this.recordSubject(manager, actor, dto.subjectId, dto.purpose);
+    }
+  }
+
+  /** F-S1: a BQL of the package's building, while it is a draft or open (a corrected issue). */
+  private async packageSubject(manager: EntityManager, actor: AuthenticatedUser, id: string): Promise<UploadSubject> {
+    const pkg = await manager
+      .getRepository(ExploitationPackage)
+      .findOne({ where: { id }, lock: { mode: 'pessimistic_read' } });
+    if (!pkg || !actor.buildingIds.includes(pkg.buildingId)) throw notFound('Không tìm thấy gói khai thác.');
+    if (!hasCapability(actor, 'EXPLOITATION_MANAGE') || (pkg.status !== 'DRAFT' && pkg.status !== 'OPEN')) {
+      throw forbiddenWithReason('attachment_step_denied', STEP_DENIED);
+    }
+    return {
+      subjectType: SUBJECT_TYPE.EXPLOITATION_PACKAGE,
+      id: pkg.id,
+      buildingId: pkg.buildingId,
+      version: pkg.version,
+    };
+  }
+
+  /** F-S1: a BQL of the bid's building while the package is open, or closed with a supplement still in time. */
+  private async bidSubject(manager: EntityManager, actor: AuthenticatedUser, id: string): Promise<UploadSubject> {
+    const bid = await manager
+      .getRepository(ExploitationBid)
+      .findOne({ where: { id }, lock: { mode: 'pessimistic_read' } });
+    if (!bid || !actor.buildingIds.includes(bid.buildingId)) throw notFound('Không tìm thấy hồ sơ dự thầu.');
+    const pkg = await manager.getRepository(ExploitationPackage).findOneBy({ id: bid.packageId });
+    const supplementOpen =
+      pkg?.status === 'CLOSED' &&
+      (await manager.getRepository(ExploitationBidItem).exists({
+        where: { bidId: bid.id, status: 'SUPPLEMENT_REQUIRED', supplementDueAt: MoreThanOrEqual(this.clock.now()) },
+      }));
+    if (!hasCapability(actor, 'EXPLOITATION_MANAGE') || !(pkg?.status === 'OPEN' || supplementOpen)) {
+      throw forbiddenWithReason('attachment_step_denied', STEP_DENIED);
+    }
+    return { subjectType: SUBJECT_TYPE.EXPLOITATION_BID, id: bid.id, buildingId: bid.buildingId, version: bid.version };
   }
 
   /** A repair record in scope whose current step lets the caller add this purpose. */

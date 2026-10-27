@@ -19,6 +19,8 @@ import { RoleDefinition } from '../../modules/roles/entities/role-definition.ent
 import { CUSTOM_ROLE_PREFIX, RolesService } from '../../modules/roles/roles.service';
 import { User } from '../../modules/users/entities/user.entity';
 import { DEMO_ITEMS, DEMO_PLANS, shiftDate } from './demo-items';
+import { ensureExploitationDemo } from './exploitation-seed';
+import { FileStorage } from '../../modules/attachments/file-storage';
 import {
   DEMO_ASSIGNMENT_RULES,
   DEMO_BUILDING_TEMPLATES,
@@ -45,6 +47,7 @@ export class DatabaseSeedService {
     private readonly config: ConfigService,
     private readonly roles: RolesService,
     private readonly codes: CodeCounterService,
+    private readonly storage: FileStorage,
   ) {}
 
   async run(): Promise<void> {
@@ -76,6 +79,15 @@ export class DatabaseSeedService {
     const users = await this.ensureUsers(manager, buildings.byCode, departments.byCode, passwordHash);
     const items = await this.ensureItems(manager, buildings.byCode);
     const plans = await this.ensurePlans(manager, buildings.byCode);
+    const firstBuilding = buildings.byCode.get('A');
+    const exploitation = firstBuilding
+      ? await ensureExploitationDemo(manager, {
+          codes: this.codes,
+          storage: this.storage,
+          building: firstBuilding,
+          now: new Date(),
+        })
+      : 0;
     return {
       buildings: buildings.created,
       departments: departments.created,
@@ -85,6 +97,7 @@ export class DatabaseSeedService {
       users,
       items,
       plans,
+      exploitation,
     };
   }
 

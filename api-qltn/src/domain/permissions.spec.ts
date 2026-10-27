@@ -25,6 +25,14 @@ describe('permissions', () => {
     expect(effectiveCapabilities('BQL', custom)).toEqual([CAPABILITY.VIEW, CAPABILITY.RECORD_EDIT]);
   });
 
+  it('shows exploitation bids to BQL and BQT only, and lets only BQL manage them (F-S1 BR-F1-11)', () => {
+    expect(ROLES.filter((role) => roleCapabilities(role).includes(CAPABILITY.EXPLOITATION_VIEW))).toEqual([
+      'BQL',
+      'OWNERS_BOARD',
+    ]);
+    expect(ROLES.filter((role) => roleCapabilities(role).includes(CAPABILITY.EXPLOITATION_MANAGE))).toEqual(['BQL']);
+  });
+
   describe('matrix v2 (ADR-0001, SPEC RM-S1)', () => {
     it('gives the building configuration to ADMIN only and the locations to ADMIN and BQL (DF-11)', () => {
       const withConfig = ROLES.filter((role) => roleCapabilities(role).includes(CAPABILITY.BUILDING_CONFIG));

@@ -1,7 +1,8 @@
-import { Injectable, Logger, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common';
+import { Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, type EntityManager } from 'typeorm';
 import { CodeCounterService } from '../../common/services/code-counter.service';
+import { JobScheduler } from '../../common/services/job-scheduler.service';
 import { vnDate } from '../../common/utils/vn-date';
 import { addDays, LOOKAHEAD_DAYS, periodsBetween } from '../../domain/maintenance-schedule';
 import { MaintenanceItem } from './entities/maintenance-item.entity';
@@ -11,21 +12,13 @@ import { MaintenanceScheduleVersion } from './entities/maintenance-schedule-vers
 
 export const OCCURRENCE_CODE_PREFIX = 'BT';
 const OCCURRENCE_CODE_WIDTH = 4;
-/** BR-MT2-06 / D-MT2-6: the daily run at 00:15 Vietnam time (UTC+7, no daylight saving). */
-const RUN_MINUTE_UTC = (24 * 60 + 15 - 7 * 60) % (24 * 60);
+/** BR-MT2-06 / D-MT2-6: the daily run at 00:15 Vietnam time. */
+const RUN_MINUTE_VN = 15;
 
 export interface GenerationResult {
   created: number;
   failedPlans: string[];
 }
-
-/** Milliseconds from `now` to the next 00:15 in Vietnam. */
-export const msUntilNextRun = (now: Date): number => {
-  const minuteOfDay = now.getUTCHours() * 60 + now.getUTCMinutes();
-  const startOfMinute = now.getTime() - (now.getUTCSeconds() * 1000 + now.getUTCMilliseconds());
-  const minutes = (RUN_MINUTE_UTC - minuteOfDay + 24 * 60) % (24 * 60) || 24 * 60;
-  return startOfMinute + minutes * 60_000 - now.getTime();
-};
 
 /**
  * Occurrence generation on the server (SPEC MT-S2 BR-MT2-06): every active plan gets its periods up to today + 30
@@ -33,38 +26,18 @@ export const msUntilNextRun = (now: Date): number => {
  * Each plan runs in its own transaction, so one broken plan never stops the others.
  */
 @Injectable()
-export class MaintenanceGenerationService implements OnApplicationBootstrap, OnApplicationShutdown {
+export class MaintenanceGenerationService implements OnModuleInit {
   private readonly logger = new Logger(MaintenanceGenerationService.name);
-  private timer: NodeJS.Timeout | null = null;
 
   constructor(
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly codes: CodeCounterService,
+    private readonly scheduler: JobScheduler,
   ) {}
 
-  /** The boot run and the daily timer are off under tests and when MAINTENANCE_SCHEDULER=off; runDaily stays callable. */
-  onApplicationBootstrap(): void {
-    if (process.env.NODE_ENV === 'test' || process.env.MAINTENANCE_SCHEDULER === 'off') return;
-    // Catch-up at boot: periods missed while the server was down, and plans just seeded, need no wait until 00:15.
-    this.runDaily().catch((error: unknown) =>
-      this.logger.error(`Boot maintenance generation failed: ${(error as Error).message}`),
-    );
-    this.schedule();
-  }
-
-  onApplicationShutdown(): void {
-    if (this.timer) clearTimeout(this.timer);
-  }
-
-  private schedule(): void {
-    this.timer = setTimeout(() => {
-      this.runDaily()
-        .catch((error: unknown) =>
-          this.logger.error(`Daily maintenance generation failed: ${(error as Error).message}`),
-        )
-        .finally(() => this.schedule());
-    }, msUntilNextRun(new Date()));
-    this.timer.unref();
+  /** Daily at 00:15 VN, plus the scheduler's catch-up run at boot (periods missed while down, plans just seeded). */
+  onModuleInit(): void {
+    this.scheduler.daily('maintenance-generation', RUN_MINUTE_VN, () => this.runDaily());
   }
 
   /** The daily run (AC-MT2.8): every active plan, today in Vietnam unless given. */

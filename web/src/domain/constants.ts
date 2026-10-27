@@ -285,6 +285,9 @@ export const ATTACHMENT_PURPOSE = {
   INVOICE: 'INVOICE',
   MAINTENANCE_RESULT: 'MAINTENANCE_RESULT',
   ITEM_DOCUMENT: 'ITEM_DOCUMENT',
+  /** F-S1, api mode only. */
+  EXPLOITATION_DOCUMENT: 'EXPLOITATION_DOCUMENT',
+  BID_DOCUMENT: 'BID_DOCUMENT',
   OTHER: 'OTHER',
 } as const;
 export type AttachmentPurpose = (typeof ATTACHMENT_PURPOSE)[keyof typeof ATTACHMENT_PURPOSE];
@@ -302,6 +305,8 @@ export const ATTACHMENT_PURPOSE_LABEL: Record<AttachmentPurpose, string> = {
   INVOICE: 'Hóa đơn GTGT',
   MAINTENANCE_RESULT: 'Kết quả bảo trì',
   ITEM_DOCUMENT: 'Tài liệu thiết bị',
+  EXPLOITATION_DOCUMENT: 'Tài liệu mời thầu khai thác',
+  BID_DOCUMENT: 'Tài liệu dự thầu',
   OTHER: 'Khác',
 };
 
@@ -312,6 +317,10 @@ export const SUBJECT_TYPE = {
   MAINTENANCE_ITEM: 'MAINTENANCE_ITEM',
   BUILDING: 'BUILDING',
   ACCOUNT: 'ACCOUNT',
+  /** F-S1, api mode only. */
+  EXPLOITATION_PARTNER: 'EXPLOITATION_PARTNER',
+  EXPLOITATION_PACKAGE: 'EXPLOITATION_PACKAGE',
+  EXPLOITATION_BID: 'EXPLOITATION_BID',
 } as const;
 export type SubjectType = (typeof SUBJECT_TYPE)[keyof typeof SUBJECT_TYPE];
 export const SUBJECT_TYPE_LABEL: Record<SubjectType, string> = {
@@ -321,6 +330,9 @@ export const SUBJECT_TYPE_LABEL: Record<SubjectType, string> = {
   MAINTENANCE_ITEM: 'Hạng mục bảo trì',
   BUILDING: 'Tòa nhà',
   ACCOUNT: 'Tài khoản',
+  EXPLOITATION_PARTNER: 'Đơn vị khai thác',
+  EXPLOITATION_PACKAGE: 'Gói khai thác',
+  EXPLOITATION_BID: 'Hồ sơ dự thầu',
 };
 
 export const NOTIFICATION_KIND = {

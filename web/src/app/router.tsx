@@ -28,6 +28,10 @@ const ItemsPage = lazy(() => (IS_API_MODE ? import('@/features/maintenance/api/I
 const ItemDetailPage = lazy(() =>
   IS_API_MODE ? import('@/features/maintenance/api/ItemDetailApiPage') : import('@/features/maintenance/ItemDetailPage'),
 );
+const ExploitationPackagesPage = lazy(() => import('@/features/exploitation/PackagesPage'));
+const ExploitationPackagePage = lazy(() => import('@/features/exploitation/PackageDetailPage'));
+const ExploitationBidPage = lazy(() => import('@/features/exploitation/BidPage'));
+const ExploitationPartnersPage = lazy(() => import('@/features/exploitation/PartnersPage'));
 const OccurrenceDetailPage = lazy(() => import('@/features/maintenance/OccurrenceDetailPage'));
 const ReportsPage = lazy(() => import('@/features/reports'));
 const AuditLogPage = lazy(() => import('@/features/audit'));
@@ -72,6 +76,11 @@ export const router = createBrowserRouter([
       { path: 'maintenance/plans/:planId/edit', element: page(<PlanFormPage />) },
       { path: 'maintenance/items', element: page(<ItemsPage />) },
       { path: 'maintenance/items/:itemId', element: page(<ItemDetailPage />) },
+      // F-S1: api mode only (no demo screens).
+      { path: 'exploitation/packages', element: apiConnected(page(<ExploitationPackagesPage />)) },
+      { path: 'exploitation/packages/:packageId', element: apiConnected(page(<ExploitationPackagePage />)) },
+      { path: 'exploitation/packages/:packageId/bids/:bidId', element: apiConnected(page(<ExploitationBidPage />)) },
+      { path: 'exploitation/partners', element: apiConnected(page(<ExploitationPartnersPage />)) },
       { path: 'maintenance/occurrences/:occurrenceId', element: connected(page(<OccurrenceDetailPage />)) },
       { path: 'reports', element: connected(page(<ReportsPage />)) },
       { path: 'audit', element: apiConnected(page(<AuditLogPage />)) },

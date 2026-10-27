@@ -4,6 +4,12 @@ import { RefreshToken } from '../modules/auth/entities/refresh-token.entity';
 import { BuildingConfig } from '../modules/buildings/entities/building-config.entity';
 import { Building } from '../modules/buildings/entities/building.entity';
 import { Location } from '../modules/buildings/entities/location.entity';
+import { ExploitationBidItem } from '../modules/exploitation/entities/exploitation-bid-item.entity';
+import { ExploitationBid } from '../modules/exploitation/entities/exploitation-bid.entity';
+import { ExploitationPackageRevision } from '../modules/exploitation/entities/exploitation-package-revision.entity';
+import { ExploitationPackage } from '../modules/exploitation/entities/exploitation-package.entity';
+import { ExploitationPartner } from '../modules/exploitation/entities/exploitation-partner.entity';
+import { ExploitationSupplementRequest } from '../modules/exploitation/entities/exploitation-supplement-request.entity';
 import { MaintenanceItem } from '../modules/maintenance/entities/maintenance-item.entity';
 import { MaintenanceOccurrence } from '../modules/maintenance/entities/maintenance-occurrence.entity';
 import { MaintenancePlan } from '../modules/maintenance/entities/maintenance-plan.entity';
@@ -53,4 +59,10 @@ export const ALL_ENTITIES = [
   MaintenanceScheduleVersion,
   MaintenanceOccurrence,
   MaintenanceSkippedPeriod,
+  ExploitationPartner,
+  ExploitationPackage,
+  ExploitationPackageRevision,
+  ExploitationBid,
+  ExploitationBidItem,
+  ExploitationSupplementRequest,
 ];

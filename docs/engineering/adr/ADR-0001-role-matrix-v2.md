@@ -78,6 +78,8 @@ Ký hiệu: ✓ = giữ như hiện nay; **+** = thêm; **−** = bỏ.
 | `LOCATION_MANAGE` (mới, Q7) | **+** | **+** | | | | |
 | `ACCOUNT_MANAGE` | ✓ | | | | | |
 | `EMERGENCY_START` | | ✓ | | | | |
+| `EXPLOITATION_VIEW` (mới, F-S1) | | **+** | | | **+** | |
+| `EXPLOITATION_MANAGE` (mới, F-S1) | | **+** | | | | |
 
 Nguyên tắc cũ vẫn giữ: ADMIN không có quyền quyết định nghiệp vụ.
 
