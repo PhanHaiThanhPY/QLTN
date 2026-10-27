@@ -29,7 +29,7 @@ screens: [fund-ledger, contract-receipts-tab, receipt-dialog, tax, payment-vouch
 | Phiếu chi | `Badge`: Nháp `neutral`, Chờ duyệt `info`, Cần sửa `warn`, Đã duyệt `good`, Đã chi `good` kèm biểu tượng ✓, Bị từ chối `crit`, Đã hủy `neutral` có chữ `text-ink-3` | |
 | Dòng sổ đã hủy hoặc dòng đảo | chữ `text-ink-3` có gạch ngang (dòng gốc); nhãn "Đảo của PT-002" `neutral` | |
 | Đối soát | `Badge` `neutral` "Chưa đối soát" (F-S4 thêm "Đã đối soát") | |
-| Thẻ "Khoản thu tiếp theo" | nền `--navy` (thẻ đậm như D1 tr. 10), chữ `--navy-ink` | |
+| Thẻ "Khoản thu tiếp theo" | nền `--accent-strong`, chữ `--accent-fg` (thẻ đậm như D1 tr. 10, đúng ở cả hai chế độ) | *Làm rõ 27/10 khi review:* bản đầu ghi `--navy`, nhưng ở chế độ sáng `--navy` là `#ffffff`, nên thẻ không đậm |
 | Thanh tiến độ | đã thu `--series-1`, còn lại `--line` | token biểu đồ của B01 §5.3; dev-build thêm vào `index.css` nếu chưa có |
 
 ## 2. Màn hình
@@ -38,7 +38,7 @@ screens: [fund-ledger, contract-receipts-tab, receipt-dialog, tax, payment-vouch
 
 ```
 Sổ quỹ khai thác                    [Tòa: Aqua 1 ▾] [Tháng 11/2026 ▾]
-Aqua 1 · Tài khoản ****0001 · Số liệu theo sổ, chưa đối soát sao kê
+Aqua 1 · Tài khoản «số đầy đủ với kế toán và BQT» · Số liệu theo sổ, chưa đối soát sao kê
 ┌ Đầu kỳ 50 tr ┐ ┌ Thu 15 tr ┐ ┌ Chi 5 tr ┐ ┌ Cuối kỳ 60 tr ┐
   trong đó tiền cọc đang giữ: 0 ₫          Còn phải thu (theo dõi riêng): 5.000.000 ₫ ›
 ┌──────────┬──────────┬───────────────────────────────┬──────────┬─────────────┬──────────────┐
