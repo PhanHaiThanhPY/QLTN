@@ -61,3 +61,21 @@ describe('visibleNavItems', () => {
     }
   });
 });
+
+describe('Quỹ khai thác (SPEC F-S1 ui-brief §0, AC-F1.14)', () => {
+  const GROUP = ['Mời thầu khai thác', 'Đơn vị khai thác'];
+
+  it.each(['BQL', 'OWNERS_BOARD'] as const)('shows the group to %s in api mode', (role) => {
+    expect(visibleNavItems(userOf(role), true).map((item) => item.label)).toEqual(expect.arrayContaining(GROUP));
+  });
+
+  it.each(['TECH_CONFIRMER', 'ACCOUNTANT', 'ADMIN'] as const)('hides it from %s', (role) => {
+    const labels = visibleNavItems(userOf(role), true).map((item) => item.label);
+    for (const label of GROUP) expect(labels).not.toContain(label);
+  });
+
+  it('keeps it hidden in mock mode', () => {
+    const labels = visibleNavItems(userOf('BQL'), false).map((item) => item.label);
+    for (const label of GROUP) expect(labels).not.toContain(label);
+  });
+});
