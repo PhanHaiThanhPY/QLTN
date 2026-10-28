@@ -100,3 +100,21 @@ describe('Quỹ khai thác (SPEC F-S1 ui-brief §0, AC-F1.14)', () => {
     });
   });
 });
+
+describe('Tiền gửi quỹ bảo trì (SPEC T-S1 BR-T1-12, RM-S2 BR-RM2-02)', () => {
+  const GROUP = ['Thư mời chào lãi', 'Ngân hàng'];
+
+  it.each(['BQL', 'OWNERS_BOARD', 'ACCOUNTANT', 'ADMIN'] as const)('shows the group to %s in api mode', (role) => {
+    expect(visibleNavItems(userOf(role), true).map((item) => item.label)).toEqual(expect.arrayContaining(GROUP));
+  });
+
+  it.each(['TECH_CONFIRMER', 'TECH_CONSULTANT'] as const)('hides it from %s', (role) => {
+    const labels = visibleNavItems(userOf(role), true).map((item) => item.label);
+    for (const label of GROUP) expect(labels).not.toContain(label);
+  });
+
+  it('keeps it hidden in mock mode', () => {
+    const labels = visibleNavItems(userOf('BQL'), false).map((item) => item.label);
+    for (const label of GROUP) expect(labels).not.toContain(label);
+  });
+});

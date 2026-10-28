@@ -390,7 +390,7 @@ describe('Deposit rate invitations and the selected bank, T-S1 (e2e)', () => {
     });
   });
 
-  it('AC-T1.15: Kế toán reads but cannot write; KT sees nothing; tòa B gets 404', async () => {
+  it('AC-T1.15: Kế toán and ADMIN read but cannot write; KT sees nothing; tòa B gets 404', async () => {
     const seeded = dataOf<Array<{ id: string; code: string }>>(
       await ktoan.get('/api/deposits/invitations').expect(200),
     );
@@ -408,6 +408,10 @@ describe('Deposit rate invitations and the selected bank, T-S1 (e2e)', () => {
     await kt.get('/api/deposits/invitations').expect(403);
     await kt.get('/api/deposits/banks').expect(403);
     await bqlB.get(`/api/deposits/invitations/${mc001.id}`).expect(404);
+    // RM-S2 BR-RM2-02: ADMIN reads deposits too, and writes nothing.
+    const admin = await signIn(server, 'admin-demo');
+    await admin.get(`/api/deposits/invitations/${mc001.id}`).expect(200);
+    await admin.post('/api/deposits/banks', { name: 'Ngân hàng của quản trị' }).expect(403);
   });
 
   it('AC-T1.16: one maintenance fund per building; the fund list stays the exploitation funds', async () => {
