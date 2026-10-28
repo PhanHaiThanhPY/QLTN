@@ -31,4 +31,7 @@ export const CAPABILITY_LABEL: Record<Capability, string> = {
   FUND_VIEW: 'Xem sổ quỹ, thuế và phiếu chi',
   FUND_APPROVE: 'Duyệt phiếu chi và thay đổi số dư đầu của quỹ',
   FUND_REPORT: 'Xem và xuất báo cáo thu chi quỹ',
+  DEPOSIT_VIEW: 'Xem thư mời chào lãi và kết quả chọn ngân hàng',
+  DEPOSIT_MANAGE: 'Quản lý ngân hàng, thư mời chào lãi và bản chào',
+  DEPOSIT_APPROVE: 'Duyệt kết quả chọn ngân hàng gửi tiền',
 };

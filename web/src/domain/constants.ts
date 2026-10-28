@@ -294,6 +294,10 @@ export const ATTACHMENT_PURPOSE = {
   CONTRACT_DOCUMENT: 'CONTRACT_DOCUMENT',
   /** F-S5, api mode only: handover, minutes and write-off basis, on the package. */
   TERMINATION_DOCUMENT: 'TERMINATION_DOCUMENT',
+  /** T-S1, api mode only: on the rate invitation. */
+  DEPOSIT_INVITATION_LETTER: 'DEPOSIT_INVITATION_LETTER',
+  DEPOSIT_OFFER: 'DEPOSIT_OFFER',
+  DEPOSIT_SELECTION_MINUTES: 'DEPOSIT_SELECTION_MINUTES',
   /** F-S3, api mode only: all on the fund. */
   RECEIPT_PROOF: 'RECEIPT_PROOF',
   DEPOSIT_PROOF: 'DEPOSIT_PROOF',
@@ -324,6 +328,9 @@ export const ATTACHMENT_PURPOSE_LABEL: Record<AttachmentPurpose, string> = {
   ASSEMBLY_DOCUMENT: 'Tài liệu hội nghị',
   CONTRACT_DOCUMENT: 'Tài liệu hợp đồng',
   TERMINATION_DOCUMENT: 'Tài liệu thanh lý',
+  DEPOSIT_INVITATION_LETTER: 'Thư mời chào lãi',
+  DEPOSIT_OFFER: 'Bản chào lãi suất',
+  DEPOSIT_SELECTION_MINUTES: 'Biên bản chọn ngân hàng',
   RECEIPT_PROOF: 'Chứng từ khoản thu',
   DEPOSIT_PROOF: 'Chứng từ nhận cọc',
   TAX_FILING: 'Hồ sơ kế toán thuế',
@@ -351,6 +358,10 @@ export const SUBJECT_TYPE = {
   FUND: 'FUND',
   FUND_TAX: 'FUND_TAX',
   FUND_VOUCHER: 'FUND_VOUCHER',
+  /** T-S1, api mode only. */
+  DEPOSIT_BANK: 'DEPOSIT_BANK',
+  DEPOSIT_INVITATION: 'DEPOSIT_INVITATION',
+  DEPOSIT_SELECTION: 'DEPOSIT_SELECTION',
 } as const;
 export type SubjectType = (typeof SUBJECT_TYPE)[keyof typeof SUBJECT_TYPE];
 export const SUBJECT_TYPE_LABEL: Record<SubjectType, string> = {
@@ -369,6 +380,9 @@ export const SUBJECT_TYPE_LABEL: Record<SubjectType, string> = {
   FUND: 'Quỹ khai thác',
   FUND_TAX: 'Thuế',
   FUND_VOUCHER: 'Phiếu chi',
+  DEPOSIT_BANK: 'Ngân hàng',
+  DEPOSIT_INVITATION: 'Thư mời chào lãi',
+  DEPOSIT_SELECTION: 'Kết quả chọn ngân hàng',
 };
 
 export const NOTIFICATION_KIND = {

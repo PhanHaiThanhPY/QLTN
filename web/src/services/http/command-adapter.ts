@@ -34,6 +34,7 @@ import {
 import { toExecutionBody, type ExecutionAction } from './execution-mappers';
 import { MAINTENANCE_ITEM_COMMANDS } from './maintenance-item-mappers';
 import { EXPLOITATION_COMMANDS } from './exploitation-commands';
+import { DEPOSIT_COMMANDS } from './deposit-commands';
 import { FUND_COMMANDS } from './fund-commands';
 import { MAINTENANCE_PLAN_COMMANDS } from './maintenance-plan-commands';
 import { markApiNotificationsRead } from './notifications-api';
@@ -418,6 +419,7 @@ const API_COMMANDS: Readonly<Record<string, ApiCommandHandler>> = {
   ...MAINTENANCE_PLAN_COMMANDS,
   ...EXPLOITATION_COMMANDS,
   ...FUND_COMMANDS,
+  ...DEPOSIT_COMMANDS,
   ...(Object.fromEntries(
     (Object.keys(PAYMENT_ROUTES) as PaymentAction[]).map((action) => [action, paymentCommand(action)]),
   ) as Record<PaymentAction, ApiCommandHandler>),

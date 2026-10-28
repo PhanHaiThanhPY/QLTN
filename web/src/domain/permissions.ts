@@ -46,6 +46,12 @@ export const CAPABILITY = {
   FUND_APPROVE: 'FUND_APPROVE',
   /** See and export the fund report (F-S5 BR-F5-15: BQT and Kế toán, never BQL, D-F5-5). */
   FUND_REPORT: 'FUND_REPORT',
+  /** See rate invitations, offers, the comparison and the selected bank (T-S1 BR-T1-12: BQL, BQT, Kế toán). */
+  DEPOSIT_VIEW: 'DEPOSIT_VIEW',
+  /** Banks, rate invitations, offers and the proposed result (T-S1 BR-T1-12, BQL). */
+  DEPOSIT_MANAGE: 'DEPOSIT_MANAGE',
+  /** Approve, send back or reject the selected bank (T-S1 BR-T1-10, BQT). */
+  DEPOSIT_APPROVE: 'DEPOSIT_APPROVE',
 } as const;
 export type Capability = (typeof CAPABILITY)[keyof typeof CAPABILITY];
 
@@ -80,6 +86,8 @@ const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
     'EXPLOITATION_VIEW',
     'EXPLOITATION_CONTRACT_VIEW',
     'EXPLOITATION_MANAGE',
+    'DEPOSIT_VIEW',
+    'DEPOSIT_MANAGE',
   ],
   // KT changes item condition only while confirming an occurrence.
   TECH_CONFIRMER: ['VIEW', 'RECORD_CONFIRM', 'PROPOSAL_DECIDE', 'ACCEPTANCE_DECIDE', 'MAINTENANCE_REVIEW'],
@@ -101,9 +109,11 @@ const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
     'FUND_VIEW',
     'FUND_APPROVE',
     'FUND_REPORT',
+    'DEPOSIT_VIEW',
+    'DEPOSIT_APPROVE',
   ],
   // Kế toán on the BQT side: confirms transfers and runs fund money operations (DF-10).
-  ACCOUNTANT: ['VIEW', 'PAYMENT_CONFIRM', 'FUND_OPERATE', 'FUND_VIEW', 'FUND_REPORT', 'REPORT_VIEW', 'EXPLOITATION_CONTRACT_VIEW'],
+  ACCOUNTANT: ['VIEW', 'PAYMENT_CONFIRM', 'FUND_OPERATE', 'FUND_VIEW', 'FUND_REPORT', 'REPORT_VIEW', 'EXPLOITATION_CONTRACT_VIEW', 'DEPOSIT_VIEW'],
 };
 
 /** Capabilities a system role grants; custom roles can only keep a subset of them. */
