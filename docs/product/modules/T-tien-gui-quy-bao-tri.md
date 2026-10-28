@@ -178,7 +178,7 @@ Các câu này chưa có trong phiếu L0; sẽ bổ sung vào phiếu và `DECI
 | Slice | Nội dung | Phụ thuộc |
 |---|---|---|
 | T-S1 ([SPEC](../features/T-chao-lai-chon-ngan-hang/SPEC.md), đã duyệt PD-37, đang build) | Danh mục ngân hàng; T01 thư mời và bản chào; T02 so sánh và chọn | TQ-01–TQ-03; vai trò duyệt (OD-10) |
-| T-S2 | T03 hợp đồng và sinh lịch lãi | OD-06 câu E1; mẫu hợp đồng thật (OD-07) |
+| T-S2 ([SPEC](../features/T-hop-dong-tien-gui/SPEC.md), đã duyệt PD-39, chờ T-S1) | T03 hợp đồng và sinh lịch lãi; quỹ bảo trì, quy chế | OD-06 câu E1; mẫu hợp đồng thật (OD-07) |
 | T-S3 | T04 ghi nhận lãi, trạng thái kỳ, quá hạn | TQ-05; sao kê (TQ-06) |
 | T-S4 | T05 tất toán và T06 tái tục, có khóa loại trừ lẫn nhau | phiếu L0 câu E2, E3 |
 | T-S5 | Dashboard quỹ bảo trì và kịch bản nghiệm thu D1 tr. 39 | toàn bộ các slice trên |
