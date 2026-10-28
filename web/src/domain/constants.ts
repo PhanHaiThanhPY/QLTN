@@ -292,6 +292,8 @@ export const ATTACHMENT_PURPOSE = {
   SELECTION_MINUTES: 'SELECTION_MINUTES',
   ASSEMBLY_DOCUMENT: 'ASSEMBLY_DOCUMENT',
   CONTRACT_DOCUMENT: 'CONTRACT_DOCUMENT',
+  /** F-S5, api mode only: handover, minutes and write-off basis, on the package. */
+  TERMINATION_DOCUMENT: 'TERMINATION_DOCUMENT',
   /** F-S3, api mode only: all on the fund. */
   RECEIPT_PROOF: 'RECEIPT_PROOF',
   DEPOSIT_PROOF: 'DEPOSIT_PROOF',
@@ -321,6 +323,7 @@ export const ATTACHMENT_PURPOSE_LABEL: Record<AttachmentPurpose, string> = {
   SELECTION_MINUTES: 'Biên bản đánh giá',
   ASSEMBLY_DOCUMENT: 'Tài liệu hội nghị',
   CONTRACT_DOCUMENT: 'Tài liệu hợp đồng',
+  TERMINATION_DOCUMENT: 'Tài liệu thanh lý',
   RECEIPT_PROOF: 'Chứng từ khoản thu',
   DEPOSIT_PROOF: 'Chứng từ nhận cọc',
   TAX_FILING: 'Hồ sơ kế toán thuế',

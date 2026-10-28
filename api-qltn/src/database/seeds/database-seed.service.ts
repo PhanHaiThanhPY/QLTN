@@ -23,6 +23,8 @@ import { ensureExploitationContractDemo } from './exploitation-contract-seed';
 import { ensureExploitationDemo } from './exploitation-seed';
 import { ensureFundDemo } from './fund-seed';
 import { ensureStatementDemo } from './statement-seed';
+import { ensureTerminationDemo } from './termination-seed';
+import { TerminationsService } from '../../modules/exploitation/terminations.service';
 import { ReconciliationService } from '../../modules/fund/reconciliation.service';
 import { StatementsService } from '../../modules/fund/statements.service';
 import { ReceiptsService } from '../../modules/exploitation/receipts.service';
@@ -72,6 +74,7 @@ export class DatabaseSeedService {
     private readonly vouchers: VouchersService,
     private readonly statementImports: StatementsService,
     private readonly reconciliation: ReconciliationService,
+    private readonly terminations: TerminationsService,
   ) {}
 
   async run(): Promise<void> {
@@ -116,6 +119,12 @@ export class DatabaseSeedService {
       statements: this.statementImports,
       reconciliation: this.reconciliation,
       now: new Date(),
+    });
+    // F-S5 BR-F5-16: TL-001 on HĐ-001, not closable yet.
+    created.terminations = await ensureTerminationDemo({
+      dataSource: this.dataSource,
+      storage: this.storage,
+      terminations: this.terminations,
     });
     const summary = Object.entries(created)
       .map(([name, count]) => `+${count} ${name}`)

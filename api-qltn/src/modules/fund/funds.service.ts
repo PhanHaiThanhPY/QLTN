@@ -191,7 +191,10 @@ export class FundsService {
       figures: {
         ...monthFigures(opening, lines, query.month),
         incomeVnd: sumSigned(inMonth.filter((line) => line.category === 'CONTRACT_RECEIPT')).toString(),
-        depositHeldVnd: sumSigned(upToEnd.filter((line) => line.category === 'DEPOSIT')).toString(),
+        // F-S5: refunds paid leave the deposits held.
+        depositHeldVnd: sumSigned(
+          upToEnd.filter((line) => line.category === 'DEPOSIT' || line.category === 'DEPOSIT_REFUND'),
+        ).toString(),
       },
       openingLine: fund.openingDate >= first ? { date: fund.openingDate, amountVnd: fund.openingBalanceVnd } : null,
       rows,

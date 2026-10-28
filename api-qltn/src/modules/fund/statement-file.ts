@@ -64,22 +64,22 @@ const columnIndex = (ref: string): number =>
   [...ref.replace(/\d+$/, '')].reduce((total, letter) => total * 26 + (letter.charCodeAt(0) - 64), 0) - 1;
 
 /** Path of the workbook's first sheet, through workbook.xml and its relationships. */
-const firstSheetPath = (files: Map<string, Buffer>): string => {
+const sheetPath = (files: Map<string, Buffer>, index: number): string => {
   const workbook = files.get('xl/workbook.xml')?.toString('utf8') ?? '';
-  const relId = /<sheet\b[^>]*\br:id="([^"]+)"/.exec(workbook)?.[1];
+  const relId = [...workbook.matchAll(/<sheet\b[^>]*\br:id="([^"]+)"/g)][index]?.[1];
   const rels = files.get('xl/_rels/workbook.xml.rels')?.toString('utf8') ?? '';
   const target = relId
     ? [...rels.matchAll(/<Relationship\b[^>]*>/g)].map((match) => match[0]).find((tag) => tag.includes(`Id="${relId}"`))
     : undefined;
   const path = target ? /Target="([^"]+)"/.exec(target)?.[1] : undefined;
-  if (!path) return 'xl/worksheets/sheet1.xml';
+  if (!path) return `xl/worksheets/sheet${index + 1}.xml`;
   return path.startsWith('/') ? path.slice(1) : `xl/${path.replace(/^\.\//, '')}`;
 };
 
 /** The first sheet as rows of cells; row numbers are kept (a missing row stays an empty line). */
-export const readXlsx = (buffer: Buffer): Cell[][] => {
+export const readXlsx = (buffer: Buffer, index = 0): Cell[][] => {
   const files = unzip(buffer);
-  const sheet = files.get(firstSheetPath(files))?.toString('utf8');
+  const sheet = files.get(sheetPath(files, index))?.toString('utf8');
   if (!sheet) throw new StatementFileError('Không tìm thấy trang tính đầu tiên trong tệp XLSX.');
   const shared = [...(files.get('xl/sharedStrings.xml')?.toString('utf8') ?? '').matchAll(/<si>([\s\S]*?)<\/si>/g)].map(
     (match) => textOf(match[1]),

@@ -51,6 +51,11 @@ describe('permissions', () => {
     ]);
     expect(ROLES.filter((role) => roleCapabilities(role).includes(CAPABILITY.FUND_APPROVE))).toEqual(['OWNERS_BOARD']);
     expect(ROLES.filter((role) => roleCapabilities(role).includes(CAPABILITY.FUND_OPERATE))).toEqual(['ACCOUNTANT']);
+    // F-S5 BR-F5-15, D-F5-5: the fund report is for BQT and Kế toán.
+    expect(ROLES.filter((role) => roleCapabilities(role).includes(CAPABILITY.FUND_REPORT))).toEqual([
+      'OWNERS_BOARD',
+      'ACCOUNTANT',
+    ]);
   });
 
   describe('matrix v2 (ADR-0001, SPEC RM-S1)', () => {
@@ -63,7 +68,15 @@ describe('permissions', () => {
 
     it('defines Kế toán with VIEW, REPORT_VIEW, PAYMENT_CONFIRM, FUND_OPERATE (BR-02), contracts (F-S2) and the fund (F-S3)', () => {
       expect([...roleCapabilities('ACCOUNTANT')].sort()).toEqual(
-        ['EXPLOITATION_CONTRACT_VIEW', 'FUND_OPERATE', 'FUND_VIEW', 'PAYMENT_CONFIRM', 'REPORT_VIEW', 'VIEW'].sort(),
+        [
+          'EXPLOITATION_CONTRACT_VIEW',
+          'FUND_OPERATE',
+          'FUND_REPORT',
+          'FUND_VIEW',
+          'PAYMENT_CONFIRM',
+          'REPORT_VIEW',
+          'VIEW',
+        ].sort(),
       );
     });
 

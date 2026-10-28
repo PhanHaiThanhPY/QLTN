@@ -116,6 +116,19 @@ export const AUDIT_ACTION_LABEL: Readonly<Record<string, string>> = {
   matchStatementLine: 'Ghép sao kê với chứng từ',
   unmatchStatementLine: 'Bỏ ghép sao kê',
   recordFromStatement: 'Ghi nhận từ sao kê',
+  // Thanh lý hợp đồng (F-S5)
+  createTermination: 'Lập hồ sơ thanh lý',
+  cancelTermination: 'Hủy hồ sơ thanh lý',
+  recordHandover: 'Ghi bàn giao khu vực',
+  recordTerminationMinutes: 'Tải biên bản thanh lý',
+  recordDepositOffset: 'Cấn trừ cọc',
+  cancelDepositOffset: 'Hủy cấn trừ cọc',
+  proposeWriteOff: 'Đề xuất không thu được',
+  resubmitWriteOff: 'Gửi lại đề xuất không thu được',
+  approveWriteOff: 'Duyệt không thu được',
+  requestWriteOffChanges: 'Yêu cầu sửa đề xuất không thu được',
+  rejectWriteOff: 'Từ chối đề xuất không thu được',
+  closeTermination: 'Đóng hồ sơ thanh lý',
 };
 
 /** Label of a code, or the code itself when none is defined yet (BR-05). */

@@ -169,6 +169,11 @@ export class VoucherFieldsDto {
   @ApiProperty({ description: 'Đề nghị chi (VOUCHER_REQUEST của quỹ)' })
   @IsUUID()
   requestAttachmentId: string;
+
+  @ApiPropertyOptional({ nullable: true, description: 'F-S5: hợp đồng của phiếu hoàn cọc' })
+  @IsOptional()
+  @IsUUID()
+  contractId?: string | null;
 }
 
 export class UpdateVoucherDto extends VoucherFieldsDto {

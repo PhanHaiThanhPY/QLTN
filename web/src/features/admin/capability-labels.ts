@@ -30,4 +30,5 @@ export const CAPABILITY_LABEL: Record<Capability, string> = {
   EXPLOITATION_CONTRACT_VIEW: 'Xem hợp đồng khai thác và lịch phải thu',
   FUND_VIEW: 'Xem sổ quỹ, thuế và phiếu chi',
   FUND_APPROVE: 'Duyệt phiếu chi và thay đổi số dư đầu của quỹ',
+  FUND_REPORT: 'Xem và xuất báo cáo thu chi quỹ',
 };

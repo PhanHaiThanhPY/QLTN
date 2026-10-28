@@ -84,6 +84,7 @@ Ký hiệu: ✓ = giữ như hiện nay; **+** = thêm; **−** = bỏ.
 | `EXPLOITATION_CONTRACT_VIEW` (mới, F-S2) | | **+** | | | **+** | **+** |
 | `FUND_VIEW` (mới, F-S3) | | | | | **+** | **+** |
 | `FUND_APPROVE` (mới, F-S3) | | | | | **+** | |
+| `FUND_REPORT` (mới, F-S5) | | | | | **+** | **+** |
 
 Nguyên tắc cũ vẫn giữ: ADMIN không có quyền quyết định nghiệp vụ.
 

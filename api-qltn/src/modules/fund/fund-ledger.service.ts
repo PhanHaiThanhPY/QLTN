@@ -27,6 +27,8 @@ export interface NewLine {
   sourceId: string;
   sourceCode: string;
   description: string;
+  /** F-S5 BR-F5-10: a deposit offset's lines move no money. */
+  internal?: boolean;
 }
 
 /**
@@ -137,6 +139,7 @@ export class FundLedgerService {
         sourceId: original.sourceId,
         sourceCode: original.sourceCode,
         description: `Đảo của ${original.sourceCode}: ${reason}`,
+        internal: original.internal,
       },
       actorId,
       { date: 'reason', amount: 'reason' },

@@ -1,7 +1,7 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
 import type { LedgerDirection } from '../../../domain/fund-ledger';
 
-/** F-S4 BR-F4-08 adds BANK_FEE (out) and INTEREST (in), recorded from the statement. */
+/** F-S4 BR-F4-08 adds BANK_FEE (out) and INTEREST (in), recorded from the statement; F-S5 DEPOSIT_REFUND. */
 export const LEDGER_CATEGORIES = [
   'CONTRACT_RECEIPT',
   'DEPOSIT',
@@ -11,9 +11,10 @@ export const LEDGER_CATEGORIES = [
   'OTHER',
   'BANK_FEE',
   'INTEREST',
+  'DEPOSIT_REFUND',
 ] as const;
 export type LedgerCategory = (typeof LEDGER_CATEGORIES)[number];
-export type LedgerSourceType = 'RECEIPT' | 'DEPOSIT' | 'TAX_PAYMENT' | 'VOUCHER' | 'STATEMENT';
+export type LedgerSourceType = 'RECEIPT' | 'DEPOSIT' | 'TAX_PAYMENT' | 'VOUCHER' | 'STATEMENT' | 'DEPOSIT_OFFSET';
 
 /**
  * One movement of money in or out of a fund's account (SPEC F-S3 BR-F3-03). Never updated or deleted (a database
@@ -56,6 +57,10 @@ export class FundLedgerEntry {
 
   @Column({ name: 'reverses_id', type: 'uuid', nullable: true })
   reversesId: string | null;
+
+  /** F-S5 BR-F5-10: a deposit offset's two lines move no money; no statement line matches them. */
+  @Column({ type: 'boolean', default: false })
+  internal: boolean;
 
   @Column({ type: 'varchar', length: 20, default: 'UNRECONCILED' })
   reconciliation: 'UNRECONCILED' | 'RECONCILED';

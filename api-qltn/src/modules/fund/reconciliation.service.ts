@@ -60,6 +60,8 @@ export interface EntryView {
   sourceId: string;
   sourceCode: string;
   description: string;
+  /** F-S5: a deposit offset's line ("Nội bộ"). */
+  internal: boolean;
 }
 
 export interface ReconciliationMonth {
@@ -129,6 +131,7 @@ const entryView = (entry: FundLedgerEntry): EntryView => ({
   sourceId: entry.sourceId,
   sourceCode: entry.sourceCode,
   description: entry.description,
+  internal: entry.internal,
 });
 
 const asMatchable = (line: BankStatementLine): MatchableLine => ({
@@ -144,14 +147,19 @@ const entryMatchable = (entry: FundLedgerEntry): MatchableLine => ({
   amountVnd: entry.amountVnd,
 });
 
-/** A reversal and its original cancel out: no bank movement to match (BR-F4-05, "Tự khử"). */
+/**
+ * A reversal and its original cancel out (BR-F4-05, "Tự khử"), and a deposit offset's two lines are internal
+ * (F-S5 BR-F5-10): no bank movement to match, never a gap.
+ */
 const selfCancelledIds = (entries: readonly FundLedgerEntry[]): Set<string> => {
   const ids = new Set<string>();
-  for (const entry of entries)
+  for (const entry of entries) {
+    if (entry.internal) ids.add(entry.id);
     if (entry.reversesId) {
       ids.add(entry.id);
       ids.add(entry.reversesId);
     }
+  }
   return ids;
 };
 

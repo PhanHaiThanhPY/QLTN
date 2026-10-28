@@ -41,6 +41,8 @@ const FundTaxPage = lazy(() => import('@/features/fund/TaxPage'));
 const FundVouchersPage = lazy(() => import('@/features/fund/VouchersPage'));
 const FundVoucherPage = lazy(() => import('@/features/fund/VoucherPage'));
 const FundReconciliationPage = lazy(() => import('@/features/fund/ReconciliationPage'));
+const FundReportPage = lazy(() => import('@/features/fund/ReportPage'));
+const FundReportPrintPage = lazy(() => import('@/features/fund/ReportPrintPage'));
 const OccurrenceDetailPage = lazy(() =>
   IS_API_MODE ? import('@/features/maintenance/api/occurrence/OccurrenceApiPage') : import('@/features/maintenance/OccurrenceDetailPage'),
 );
@@ -68,6 +70,8 @@ export const router = createBrowserRouter([
   { path: '/login', element: page(<LoginPage />), errorElement: <RouteErrorPage /> },
   // B7-S1: D5 paper view outside the app shell, so a print holds only the document (api mode).
   { path: '/records/:recordId/documents/:kind/:docId', element: apiConnected(page(<DocumentPrintPage />)), errorElement: <RouteErrorPage /> },
+  // F-S5 BR-F5-05: the fund report on A4, outside the shell like B7-S1.
+  { path: '/exploitation/report/print', element: apiConnected(page(<FundReportPrintPage />)), errorElement: <RouteErrorPage /> },
   {
     path: '/',
     element: <AppLayout />,
@@ -99,6 +103,7 @@ export const router = createBrowserRouter([
       { path: 'exploitation/vouchers', element: apiConnected(page(<FundVouchersPage />)) },
       { path: 'exploitation/vouchers/:voucherId', element: apiConnected(page(<FundVoucherPage />)) },
       { path: 'exploitation/reconciliation', element: apiConnected(page(<FundReconciliationPage />)) },
+      { path: 'exploitation/report', element: apiConnected(page(<FundReportPage />)) },
       { path: 'maintenance/occurrences/:occurrenceId', element: page(<OccurrenceDetailPage />) },
       { path: 'reports', element: connected(page(<ReportsPage />)) },
       { path: 'audit', element: apiConnected(page(<AuditLogPage />)) },
