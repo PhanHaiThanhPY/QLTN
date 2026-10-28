@@ -58,8 +58,9 @@ describe('permissions', () => {
     ]);
   });
 
-  it('lets BQL, BQT and Kế toán see deposits, BQL write and BQT approve (T-S1 BR-T1-12, D-T1-1, D-T1-6)', () => {
+  it('lets ADMIN, BQL, BQT and Kế toán see deposits, BQL write and BQT approve (T-S1 BR-T1-12, RM-S2 BR-RM2-02)', () => {
     expect(ROLES.filter((role) => roleCapabilities(role).includes(CAPABILITY.DEPOSIT_VIEW))).toEqual([
+      'ADMIN',
       'BQL',
       'OWNERS_BOARD',
       'ACCOUNTANT',

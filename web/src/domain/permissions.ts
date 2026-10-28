@@ -69,6 +69,8 @@ const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
     'LOCATION_MANAGE',
     'ACCOUNT_MANAGE',
     'AUDIT_VIEW',
+    // RM-S2 BR-RM2-02: every new view capability is also ADMIN's (read only).
+    'DEPOSIT_VIEW',
   ],
   BQL: [
     'VIEW',
