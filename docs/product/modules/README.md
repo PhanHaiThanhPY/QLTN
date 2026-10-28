@@ -40,4 +40,4 @@ Mỗi module code có một file `<module>.md`. Mẫu tham chiếu: [auth.md](au
 | 14 | space | — | `space` | S01 | — | Chưa |
 | 15 | assistant | — | `assistant` | A01 | — | Chưa |
 | 16 | Quỹ khai thác | — | — | F01–F10 | [F-quy-khai-thac.md](F-quy-khai-thac.md) | Xong lần 1 (27/10, theo D1, chưa có code), duyệt PD-31; F-S1 đã triển khai 27/10; F-S2 đã triển khai 27/10; F-S1 đến F-S5 đã triển khai (28/10) |
-| 17 | Tiền gửi quỹ bảo trì | — | — | T01–T06 | [T-tien-gui-quy-bao-tri.md](T-tien-gui-quy-bao-tri.md) | Xong lần 1 (theo D1); T-S1 đã duyệt (PD-37), đang build |
+| 17 | Tiền gửi quỹ bảo trì | — | — | T01–T06 | [T-tien-gui-quy-bao-tri.md](T-tien-gui-quy-bao-tri.md) | Xong lần 1 (theo D1); T-S1 đang build; T-S2 đã duyệt (PD-39), chờ T-S1 |
