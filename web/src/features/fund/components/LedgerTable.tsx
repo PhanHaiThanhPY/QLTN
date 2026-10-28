@@ -28,6 +28,8 @@ const Code = ({ row, month, buildingId }: { row: LedgerRow; month: string; build
 /** BR-F3-04: a cancelled line is struck through; its reversal says what it reverses. */
 const Marks = ({ row, codes }: { row: LedgerRow; codes: Map<string, string> }) => (
   <>
+    {/* F-S5 BR-F5-10: a deposit offset moves no money, so it has no bank line to match. */}
+    {row.internal ? <Badge tone="info">Nội bộ</Badge> : null}
     {row.reversedById ? <Badge tone="neutral">Đã hủy</Badge> : null}
     {row.reversesId ? (
       <Badge tone="neutral">
@@ -91,7 +93,7 @@ export const LedgerTable = ({ page }: { page: LedgerPage }) => {
                     <Marks row={row} codes={codes} />
                   </span>
                   <span className="mt-1 block lg:hidden">
-                    <ReconBadge code={row.statementCode} />
+                    {row.internal ? null : <ReconBadge code={row.statementCode} />}
                   </span>
                 </td>
                 <td className="py-2 pr-3">
@@ -102,7 +104,7 @@ export const LedgerTable = ({ page }: { page: LedgerPage }) => {
                   <Amount row={row} />
                 </td>
                 <td className="hidden py-2 lg:table-cell">
-                  <ReconBadge code={row.statementCode} />
+                  {row.internal ? null : <ReconBadge code={row.statementCode} />}
                 </td>
               </tr>
             ))}
@@ -140,7 +142,7 @@ export const LedgerTable = ({ page }: { page: LedgerPage }) => {
             <p className={row.reversedById ? 'line-through' : undefined}>{row.description}</p>
             <p className="mt-1 flex flex-wrap gap-1 text-xs text-ink-2">
               {DIRECTION_TEXT[row.direction]} · {CATEGORY_TEXT[row.category]} <Marks row={row} codes={codes} />
-              <ReconBadge code={row.statementCode} />
+              {row.internal ? null : <ReconBadge code={row.statementCode} />}
             </p>
           </li>
         ))}
