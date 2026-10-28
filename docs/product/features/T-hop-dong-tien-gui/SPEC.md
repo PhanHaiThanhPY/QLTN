@@ -1,7 +1,7 @@
 ---
 id: T.S2
 title: Quỹ bảo trì, quy chế và hợp đồng tiền gửi có lịch lãi
-status: Chờ duyệt
+status: Đã duyệt
 owner: PM/BA
 intent: "Tiền quỹ bảo trì chỉ được gửi có kỳ hạn theo quy chế đã thông qua; mỗi hợp đồng tiền gửi có gốc, lãi suất, quy ước tính lãi và lịch lãi rõ ràng, và gốc đang gửi không bao giờ bị cộng trùng với tiền trên tài khoản."
 depends_on: [T.S1]
@@ -9,7 +9,7 @@ depends_on: [T.S1]
 
 # SPEC: Quỹ bảo trì, quy chế và hợp đồng tiền gửi có lịch lãi (T-S2)
 
-**Chủ sở hữu:** PM/BA · **Cập nhật:** 28/10/2026 · **Trạng thái:** `Chờ duyệt` (chờ chủ dự án duyệt, PD-08)
+**Chủ sở hữu:** PM/BA · **Cập nhật:** 28/10/2026 · **Trạng thái:** `Đã duyệt`, chủ dự án duyệt ngày 28/10/2026 (PD-39), gồm 6 mặc định D-T2-1 đến D-T2-6 ở §6. Bắt đầu build sau khi T-S1 đạt review
 
 **Nguồn:**
 - Phân tích [T-tien-gui-quy-bao-tri.md](../../modules/T-tien-gui-quy-bao-tri.md): §2 T03 (và T04 phần lịch lãi), §3 dữ liệu, §5 slice T-S2.
@@ -300,3 +300,4 @@ Chỉ chạy các test liên quan.
 | Ngày | Thay đổi |
 |---|---|
 | 28/10/2026 | Viết từ phân tích nhóm T và DF-20 đến DF-26 (PD-09), sau T-S1 (PD-37). |
+| 28/10/2026 | Chủ dự án duyệt (PD-39), gồm D-T2-1 đến D-T2-6, và cho giao dev-build (bắt đầu sau khi T-S1 đạt review). Quyền xem của T-S2 cấp cho ADMIN theo BR-RM2-02 (PD-38). |
