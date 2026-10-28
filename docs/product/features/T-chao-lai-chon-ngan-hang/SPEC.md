@@ -1,7 +1,7 @@
 ---
 id: T.S1
 title: Thư mời chào lãi suất và chọn ngân hàng gửi tiền quỹ bảo trì
-status: Đã duyệt
+status: Đã triển khai
 owner: PM/BA
 intent: "Mỗi lần gửi tiền quỹ bảo trì đều bắt đầu bằng một thư mời chào lãi có hạn rõ ràng, các bản chào được so sánh cùng điều kiện, và ngân hàng được chọn có căn cứ do BQT duyệt."
 depends_on: []
@@ -9,7 +9,7 @@ depends_on: []
 
 # SPEC: Thư mời chào lãi suất và chọn ngân hàng gửi tiền quỹ bảo trì (T-S1)
 
-**Chủ sở hữu:** PM/BA · **Cập nhật:** 28/10/2026 · **Trạng thái:** `Đã duyệt`, chủ dự án duyệt ngày 28/10/2026 (PD-37), gồm 6 mặc định D-T1-1 đến D-T1-6 ở §6
+**Chủ sở hữu:** PM/BA · **Cập nhật:** 28/10/2026 · **Trạng thái:** `Đã triển khai` (28/10/2026, merge vào `main`); trước đó `Đã duyệt`, chủ dự án duyệt ngày 28/10/2026 (PD-37), gồm 6 mặc định D-T1-1 đến D-T1-6 ở §6
 
 **Nguồn:**
 - Phân tích [T-tien-gui-quy-bao-tri.md](../../modules/T-tien-gui-quy-bao-tri.md) (26/10/2026): §2 T01, T02; §5 slice T-S1. Các câu hỏi TQ-01 đến TQ-06 (OD-16) đã có mặc định được duyệt ở PD-09: DF-20 đến DF-26.
@@ -236,3 +236,4 @@ Chỉ chạy các test liên quan.
 |---|---|
 | 28/10/2026 | Viết từ phân tích nhóm T (26/10) và các mặc định DF-20 đến DF-26 (PD-09), theo yêu cầu của chủ dự án. |
 | 28/10/2026 | Chủ dự án duyệt (PD-37), gồm D-T1-1 đến D-T1-6, và cho giao dev-build. |
+| 28/10/2026 | Merge vào `main` (`e8183ed`, cùng T-S1 và RM-S2); trạng thái `Đã triển khai`. |

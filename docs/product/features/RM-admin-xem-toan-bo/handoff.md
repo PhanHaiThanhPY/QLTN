@@ -66,3 +66,18 @@
 
 - **API:** `format:check` OK; `tsc` OK; `eslint` OK; unit test domain 98/98; e2e `admin-view-all` 4/4, cùng 9 suite ở trên.
 - **Web:** `tsc -b` OK; `vitest` 626/626 (107 tệp).
+
+## Đóng RM-S2 (PM/BA, 28/10/2026)
+
+- **RM-S2 đóng.** Review PASS WITH RESIDUE trên `f05e77c` (permission unit 15/15, e2e admin-view-all 4/4: ADMIN đọc được, số tài khoản bị che, ghi 403, ngoài phạm vi 404; web 42/42). Reviewer không chạy lại được bộ test đầy đủ vì môi trường treo lúc khởi động. Builder báo API matrix 98/98, web 626/626. PM/BA chạy lại API domain 98/98 trên bản đã merge.
+- **Residue được chấp nhận:**
+  - nút AI dùng chung đè nội dung ở 375px (việc tồn chung);
+  - chưa chạy lại trình duyệt thật, vì môi trường của seat review không có trình duyệt.
+- **Merge vào `main`** (`e8183ed`) theo yêu cầu của chủ dự án; không có xung đột (RM-S2 tách từ T-S1). Kiểm trên bản đã merge:
+  - typecheck API và web;
+  - API domain 98/98;
+  - web tiền gửi, khai thác, quỹ, `app`, domain 103/103.
+
+  Hồi quy e2e sau merge do dev-review chạy.
+- Không có migration.
+

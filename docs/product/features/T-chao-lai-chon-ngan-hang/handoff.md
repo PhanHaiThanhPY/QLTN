@@ -132,3 +132,18 @@
   - Đã chạy lại script trên DB mới và chụp lại ảnh T1-4, T1-4b.
   - Script nay kiểm thêm: ở 375px chỉ có **một** nút "Ghi nhận bản chào" hiện ra, nằm trong thanh `position: fixed`, sát đáy (khoảng cách 0px); không cuộn ngang.
   - Kết quả: `{"position":"fixed","gap":0,"visible":1}`, `PASS`.
+
+## Đóng T-S1 (PM/BA, 28/10/2026)
+
+- **T-S1 đóng.** Review lần 1 FAILED (F-T1-01: trên điện thoại, nút chính không dính đáy màn, AC-T1.18). Bản sửa `e565fcc` qua review lần 2: PASS WITH RESIDUE (e2e 13/13, API unit 169/169, web 40/40). PM/BA tự kiểm AC-T1.5 đến T1.8, T1.11, T1.15. Quyền xem tiền gửi đã cấp cho ADMIN (BR-RM2-02).
+- **Residue được chấp nhận:**
+  - nút AI dùng chung đè nội dung ở 375px (việc tồn chung);
+  - chưa chạy lại trình duyệt thật, vì môi trường của seat review không có trình duyệt.
+- **Merge vào `main`** (`e8183ed`) theo yêu cầu của chủ dự án; không có xung đột (RM-S2 tách từ T-S1). Kiểm trên bản đã merge:
+  - typecheck API và web;
+  - API domain 98/98;
+  - web tiền gửi, khai thác, quỹ, `app`, domain 103/103.
+
+  Hồi quy e2e sau merge do dev-review chạy.
+- **Trước khi chạy code này**, phải áp migration `2026-10-28c-deposit-rate-invitations.sql` lên mọi DB. API tự áp khi khởi động.
+

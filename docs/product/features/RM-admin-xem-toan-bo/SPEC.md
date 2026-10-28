@@ -1,7 +1,7 @@
 ---
 id: RM.S2
 title: Quản trị xem được toàn bộ, không thao tác nghiệp vụ
-status: Đã duyệt
+status: Đã triển khai
 owner: PM/BA
 intent: "Tài khoản Quản trị thấy mọi menu và mọi dữ liệu của mọi module trong phạm vi tòa của mình, nhưng vẫn không duyệt, không ghi tiền và không ký."
 depends_on: []
@@ -9,7 +9,7 @@ depends_on: []
 
 # SPEC: Quản trị xem được toàn bộ, không thao tác nghiệp vụ (RM-S2)
 
-**Chủ sở hữu:** PM/BA · **Cập nhật:** 28/10/2026 · **Trạng thái:** `Đã duyệt`, chủ dự án duyệt ngày 28/10/2026 (PD-38)
+**Chủ sở hữu:** PM/BA · **Cập nhật:** 28/10/2026 · **Trạng thái:** `Đã triển khai` (28/10/2026, merge vào `main`); trước đó `Đã duyệt`, chủ dự án duyệt ngày 28/10/2026 (PD-38)
 
 **Nguồn:**
 - **Yêu cầu của chủ dự án, 28/10/2026.** Chủ dự án vào web bằng `admin-demo` nhưng không thấy nhóm "Quỹ khai thác", và muốn "tài khoản admin sẽ thấy tất cả". Khi được hỏi, chủ dự án chọn **"Chỉ xem tất cả"**: xem mọi thứ, nhưng không duyệt, không ghi tiền, không ký.
@@ -101,3 +101,4 @@ Sau slice này:
 |---|---|
 | 28/10/2026 | Viết theo yêu cầu và lựa chọn "Chỉ xem tất cả" của chủ dự án. |
 | 28/10/2026 | Chủ dự án duyệt (PD-38) và cho giao dev-build. |
+| 28/10/2026 | Merge vào `main` (`e8183ed`, cùng T-S1 và RM-S2); trạng thái `Đã triển khai`. |

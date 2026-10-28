@@ -26,7 +26,7 @@ Mỗi module code có một file `<module>.md`. Mẫu tham chiếu: [auth.md](au
 |---|---|---|---|---|---|---|
 | 1 | auth | `auth` | `auth` | nền tảng (B17) | [auth.md](auth.md) | Xong lần 1 (26/10); AU-S1 đã triển khai (`9de70f3` trên `main`) |
 | 2 | users | `users` | `admin` (nhân viên) | B17 | [users.md](users.md) | Xong lần 1 (26/10); US-S1 đã triển khai (`7577afe` trên `main`); US-S2 chờ ADR-0001 |
-| 3 | roles và phân quyền | `roles`, `domain/permissions.ts` | `admin` (vai trò) | B17 | [roles.md](roles.md) | Xong lần 1 (26/10); ma trận quyền v2 đã triển khai; RM-S2 (ADMIN xem toàn bộ) đã duyệt PD-38, đang build |
+| 3 | roles và phân quyền | `roles`, `domain/permissions.ts` | `admin` (vai trò) | B17 | [roles.md](roles.md) | Xong lần 1 (26/10); ma trận quyền v2 đã triển khai; RM-S2 (ADMIN xem toàn bộ, chỉ xem) đã triển khai 28/10 |
 | 4 | organization (bộ phận) | `organization` | `admin` (bộ phận) | B17 | [organization.md](organization.md) | Xong lần 1 (26/10); không giao riêng, gom vào `buildings` và DF-14 |
 | 5 | buildings, locations, config | `buildings` | `buildings`, `workflow` | B15, B16 | [buildings.md](buildings.md) | Xong lần 1 (26/10); **BG-01 lỗi cao** chuyển vào ADR-0001; RM-S1 chờ ADR |
 | 6 | reference, audit, health | `reference`, `audit`, `health` | dùng chung | nền tảng (B18 nhật ký) | [platform-reference-audit-health.md](platform-reference-audit-health.md) | Xong lần 1 (26/10); AD-S1 đã triển khai (trên `main`); AU-S2 và ADR-0002 chưa chọn |
@@ -40,4 +40,4 @@ Mỗi module code có một file `<module>.md`. Mẫu tham chiếu: [auth.md](au
 | 14 | space | — | `space` | S01 | — | Chưa |
 | 15 | assistant | — | `assistant` | A01 | — | Chưa |
 | 16 | Quỹ khai thác | — | — | F01–F10 | [F-quy-khai-thac.md](F-quy-khai-thac.md) | Xong lần 1 (27/10, theo D1, chưa có code), duyệt PD-31; F-S1 đã triển khai 27/10; F-S2 đã triển khai 27/10; F-S1 đến F-S5 đã triển khai (28/10) |
-| 17 | Tiền gửi quỹ bảo trì | — | — | T01–T06 | [T-tien-gui-quy-bao-tri.md](T-tien-gui-quy-bao-tri.md) | Xong lần 1 (theo D1); T-S1 đang build; T-S2 đã duyệt (PD-39), chờ T-S1 |
+| 17 | Tiền gửi quỹ bảo trì | — | — | T01–T06 | [T-tien-gui-quy-bao-tri.md](T-tien-gui-quy-bao-tri.md) | Xong lần 1 (theo D1); T-S1 đã triển khai 28/10; T-S2 đang dừng (WIP `9f1fb25`, chủ dự án tạm ngưng 28/10) |
