@@ -20,6 +20,8 @@ import {
 } from '../exploitation/exploitation-files';
 import { MaintenanceItem } from '../maintenance/entities/maintenance-item.entity';
 import { MaintenanceOccurrence } from '../maintenance/entities/maintenance-occurrence.entity';
+import { DEPOSIT_FILE_PURPOSES, DEPOSIT_FILE_STATUSES, isDepositFilePurpose } from '../deposit/deposit-files';
+import { DepositInvitation } from '../deposit/entities/deposit-invitation.entity';
 import { Fund } from '../fund/entities/fund.entity';
 import { CONTRACT_READABLE_PURPOSES, FUND_FILE_PURPOSES, isFundFilePurpose } from '../fund/fund-files';
 import { RepairRecord } from '../records/entities/repair-record.entity';
@@ -121,6 +123,7 @@ export const PURPOSE_LABEL: Readonly<Record<string, string>> = {
   CONTRACT_DOCUMENT: 'Tài liệu hợp đồng',
   TERMINATION_DOCUMENT: 'Tài liệu thanh lý',
   ...FUND_FILE_PURPOSES,
+  ...DEPOSIT_FILE_PURPOSES,
 };
 
 /** The subject a file is stored against: its id, building (scope) and version (audit). */
@@ -230,6 +233,10 @@ export class AttachmentsService {
     ) {
       throw forbidden('Bạn không có quyền xem chứng từ quỹ.');
     }
+    // T-S1 BR-T1-12: invitation files for BQL, BQT and Kế toán of the building.
+    if (attachment.subjectType === SUBJECT_TYPE.DEPOSIT_INVITATION && !hasCapability(actor, 'DEPOSIT_VIEW')) {
+      throw forbidden('Vai trò của bạn không xem được tiền gửi quỹ bảo trì.');
+    }
     try {
       return { attachment, content: await this.storage.read(attachment.contentRef) };
     } catch (error) {
@@ -246,7 +253,8 @@ export class AttachmentsService {
       (dto.subjectType === SUBJECT_TYPE.REPAIR_RECORD && RECORD_PURPOSES.includes(dto.purpose)) ||
       SUBJECT_PURPOSE[dto.subjectType] === dto.purpose ||
       (dto.subjectType === SUBJECT_TYPE.EXPLOITATION_PACKAGE && Object.hasOwn(PACKAGE_PURPOSE_STATUSES, dto.purpose)) ||
-      (dto.subjectType === SUBJECT_TYPE.FUND && isFundFilePurpose(dto.purpose));
+      (dto.subjectType === SUBJECT_TYPE.FUND && isFundFilePurpose(dto.purpose)) ||
+      (dto.subjectType === SUBJECT_TYPE.DEPOSIT_INVITATION && isDepositFilePurpose(dto.purpose));
     if (!supported) {
       throw badRequestWithReason('attachment_purpose_not_supported', 'Mục đích tệp chưa được hỗ trợ.');
     }
@@ -284,9 +292,29 @@ export class AttachmentsService {
         return this.occurrenceSubject(manager, actor, dto.subjectId);
       case SUBJECT_TYPE.FUND:
         return this.fundSubject(manager, actor, dto.subjectId);
+      case SUBJECT_TYPE.DEPOSIT_INVITATION:
+        return this.invitationSubject(manager, actor, dto.subjectId);
       default:
         return this.recordSubject(manager, actor, dto.subjectId, dto.purpose);
     }
+  }
+
+  /** T-S1 BR-T1-12: a BQL of the invitation's building, until it is cancelled. */
+  private async invitationSubject(
+    manager: EntityManager,
+    actor: AuthenticatedUser,
+    id: string,
+  ): Promise<UploadSubject> {
+    const invitation = await manager.getRepository(DepositInvitation).findOneBy({ id });
+    if (!invitation || !actor.buildingIds.includes(invitation.buildingId)) throw notFound('Không tìm thấy thư mời.');
+    if (!hasCapability(actor, 'DEPOSIT_MANAGE') || !DEPOSIT_FILE_STATUSES.includes(invitation.status))
+      throw forbiddenWithReason('attachment_step_denied', STEP_DENIED);
+    return {
+      subjectType: SUBJECT_TYPE.DEPOSIT_INVITATION,
+      id: invitation.id,
+      buildingId: invitation.buildingId,
+      version: invitation.version,
+    };
   }
 
   /** F-S3 BR-F3-14: Kế toán of the fund's building uploads its money documents. */

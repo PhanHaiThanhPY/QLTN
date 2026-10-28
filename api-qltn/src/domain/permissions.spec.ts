@@ -58,6 +58,18 @@ describe('permissions', () => {
     ]);
   });
 
+  it('lets BQL, BQT and Kế toán see deposits, BQL write and BQT approve (T-S1 BR-T1-12, D-T1-1, D-T1-6)', () => {
+    expect(ROLES.filter((role) => roleCapabilities(role).includes(CAPABILITY.DEPOSIT_VIEW))).toEqual([
+      'BQL',
+      'OWNERS_BOARD',
+      'ACCOUNTANT',
+    ]);
+    expect(ROLES.filter((role) => roleCapabilities(role).includes(CAPABILITY.DEPOSIT_MANAGE))).toEqual(['BQL']);
+    expect(ROLES.filter((role) => roleCapabilities(role).includes(CAPABILITY.DEPOSIT_APPROVE))).toEqual([
+      'OWNERS_BOARD',
+    ]);
+  });
+
   describe('matrix v2 (ADR-0001, SPEC RM-S1)', () => {
     it('gives the building configuration to ADMIN only and the locations to ADMIN and BQL (DF-11)', () => {
       const withConfig = ROLES.filter((role) => roleCapabilities(role).includes(CAPABILITY.BUILDING_CONFIG));
@@ -69,6 +81,7 @@ describe('permissions', () => {
     it('defines Kế toán with VIEW, REPORT_VIEW, PAYMENT_CONFIRM, FUND_OPERATE (BR-02), contracts (F-S2) and the fund (F-S3)', () => {
       expect([...roleCapabilities('ACCOUNTANT')].sort()).toEqual(
         [
+          'DEPOSIT_VIEW',
           'EXPLOITATION_CONTRACT_VIEW',
           'FUND_OPERATE',
           'FUND_REPORT',

@@ -15,6 +15,10 @@ import { ExploitationDepositOffset } from '../modules/exploitation/entities/expl
 import { ExploitationHandover } from '../modules/exploitation/entities/exploitation-handover.entity';
 import { ExploitationTermination } from '../modules/exploitation/entities/exploitation-termination.entity';
 import { ExploitationWriteOff } from '../modules/exploitation/entities/exploitation-write-off.entity';
+import { DepositBank } from '../modules/deposit/entities/deposit-bank.entity';
+import { DepositInvitation } from '../modules/deposit/entities/deposit-invitation.entity';
+import { DepositOffer } from '../modules/deposit/entities/deposit-offer.entity';
+import { DepositSelection } from '../modules/deposit/entities/deposit-selection.entity';
 import { ExploitationReceiptAllocation } from '../modules/exploitation/entities/exploitation-receipt-allocation.entity';
 import { ExploitationReceipt } from '../modules/exploitation/entities/exploitation-receipt.entity';
 import { BankMatch } from '../modules/fund/entities/bank-match.entity';
@@ -113,4 +117,8 @@ export const ALL_ENTITIES = [
   ExploitationHandover,
   ExploitationDepositOffset,
   ExploitationWriteOff,
+  DepositBank,
+  DepositInvitation,
+  DepositOffer,
+  DepositSelection,
 ];
