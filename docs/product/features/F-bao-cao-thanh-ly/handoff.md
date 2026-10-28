@@ -110,4 +110,3 @@ Cả hai chế độ đều **ALL CHECKS PASS**. Hai bộ đã thử và bị lo
 
 - Web không có prettier, nên các tệp `features/exploitation/termination/*` đang ngắt dòng ở 120 cột. Phần còn lại của web dùng khoảng 160 cột. Chỉ khác về trình bày.
 - Chưa có test component cho các hộp thoại (tạo hồ sơ, bàn giao, biên bản, cấn trừ, không thu được). Luồng của chúng được e2e API và script trình duyệt phủ một phần.
-
