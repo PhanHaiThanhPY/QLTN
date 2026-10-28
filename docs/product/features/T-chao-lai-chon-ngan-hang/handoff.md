@@ -119,5 +119,16 @@
 ### Còn lại / lưu ý cho review
 
 - `beforeAll` của e2e T-S1 có thời hạn 120 giây. Lý do: khởi động (migration và seed) cộng 5 lần đăng nhập vượt 30 giây khi máy tải cao.
-- Ở dưới 768px, nút chính chưa dính đáy màn hình như ui-brief §3; các nút nằm trong đầu trang và tự xuống dòng. Không cuộn ngang.
 - Chưa có test component cho các hộp thoại soạn và gửi thư, bản chào, đề xuất. Luồng của chúng được e2e API và script trình duyệt phủ.
+
+### Sửa sau review (F-T1-01)
+
+- **Lỗi:** ở dưới 768px, nút chính chưa dính đáy màn hình (ui-brief §3).
+- **Đã sửa** ở `InvitationActions.tsx`:
+  - Mỗi trạng thái có một nút chính: Nháp là "Ghi nhận gửi", Đang nhận bản chào là "Ghi nhận bản chào".
+  - Dưới 768px, nút này nằm trong một thanh `fixed` ở đáy màn hình, rộng hết thanh. Từ 768px trở lên, nút vẫn ở đầu trang như trước.
+  - Lề dưới `pb-24` sẵn có của khung trang giữ nội dung không bị thanh che.
+- **Bằng chứng:**
+  - Đã chạy lại script trên DB mới và chụp lại ảnh T1-4, T1-4b.
+  - Script nay kiểm thêm: ở 375px chỉ có **một** nút "Ghi nhận bản chào" hiện ra, nằm trong thanh `position: fixed`, sát đáy (khoảng cách 0px); không cuộn ngang.
+  - Kết quả: `{"position":"fixed","gap":0,"visible":1}`, `PASS`.
