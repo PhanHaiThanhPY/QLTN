@@ -59,6 +59,15 @@ try {
   await browser.send('Emulation.setDeviceMetricsOverride', { width: 375, height: 812, deviceScaleFactor: 2, mobile: true });
   await shot(browser, 'T1-4-mc002-375', page(mc002.id, 'letter'), text('Còn chờ'));
   await noOverflow(browser, 'T1-4-mc002-375');
+  // F-T1-01 / ui-brief §3: below 768px the primary action is stuck to the bottom of the screen.
+  const sticky = await browser.evaluate(`(() => {
+    const button = [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Ghi nhận bản chào' && b.offsetParent !== null);
+    if (!button) return null;
+    const bar = button.closest('div');
+    return { position: getComputedStyle(bar).position, gap: Math.round(innerHeight - bar.getBoundingClientRect().bottom), visible: [...document.querySelectorAll('button')].filter((b) => b.textContent.trim() === 'Ghi nhận bản chào' && b.offsetParent !== null).length };
+  })()`);
+  console.log(`T1-4 primary action at 375px: ${JSON.stringify(sticky)}`);
+  if (!sticky || sticky.position !== 'fixed' || sticky.gap !== 0 || sticky.visible !== 1) throw new Error('the primary action is not stuck to the bottom');
   await shot(browser, 'T1-4b-list-375', `${WEB}/deposits/invitations`, text('MC-002'));
   await noOverflow(browser, 'T1-4b-list-375');
   await browser.send('Emulation.clearDeviceMetricsOverride');

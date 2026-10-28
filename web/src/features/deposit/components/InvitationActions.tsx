@@ -1,15 +1,29 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Plus } from 'lucide-react';
 import { ReasonDialog } from '@/components/common/ReasonDialog';
 import { Button } from '@/components/ui/button';
 import type { useCommand } from '@/hooks/useCommand';
-import type { InvitationDetail } from '@/services/deposit-api';
+import type { InvitationDetail, InvitationStatus } from '@/services/deposit-api';
 import { ExtendDialog } from '@/features/exploitation/components/ExtendDialog';
 import { InvitationFormDialog } from './InvitationFormDialog';
 import { OfferDialog } from './OfferDialog';
 import { SendDialog } from './SendDialog';
 
 type Open = 'edit' | 'send' | 'offer' | 'extend' | 'close' | 'cancel' | null;
+
+/** The one primary action of a state (ui-brief §0); below 768px it sits in a bar stuck to the bottom (§3). */
+const PRIMARY: Partial<Record<InvitationStatus, { label: ReactNode; open: Exclude<Open, null> }>> = {
+  DRAFT: { label: 'Ghi nhận gửi', open: 'send' },
+  OPEN: {
+    label: (
+      <>
+        <Plus className="h-4 w-4" />
+        Ghi nhận bản chào
+      </>
+    ),
+    open: 'offer',
+  },
+};
 
 interface InvitationActionsProps {
   detail: InvitationDetail;
@@ -31,16 +45,17 @@ export const InvitationActions = ({ detail, command, online }: InvitationActions
       .execute({ subjectType: 'DEPOSIT_INVITATION', subjectId: invitation.id, expectedVersion: invitation.version, action, payload: { reason: text } })
       .then((result) => (result ? close() : undefined));
   const status = invitation.status;
+  const primary = PRIMARY[status];
   const everyoneAnswered = detail.progress.invited > 0 && detail.progress.responded === detail.progress.invited;
   return (
     <>
-      {status === 'DRAFT' ? (
-        <Button size="sm" disabled={!online} onClick={() => show('send')}>
-          Ghi nhận gửi
+      {primary ? (
+        <Button size="sm" className="hidden md:inline-flex" disabled={!online} onClick={() => show(primary.open)}>
+          {primary.label}
         </Button>
       ) : null}
-      {status === 'OPEN' || status === 'CLOSED' ? (
-        <Button size="sm" variant={status === 'OPEN' ? 'primary' : 'secondary'} disabled={!online} onClick={() => show('offer')}>
+      {status === 'CLOSED' ? (
+        <Button size="sm" variant="secondary" disabled={!online} onClick={() => show('offer')}>
           <Plus className="h-4 w-4" />
           Ghi nhận bản chào
         </Button>
@@ -64,6 +79,13 @@ export const InvitationActions = ({ detail, command, online }: InvitationActions
         <Button size="sm" variant="ghost" disabled={!online} onClick={() => show('cancel')}>
           Hủy thư
         </Button>
+      ) : null}
+      {primary ? (
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface px-4 py-3 shadow-card md:hidden">
+          <Button className="w-full" disabled={!online} onClick={() => show(primary.open)}>
+            {primary.label}
+          </Button>
+        </div>
       ) : null}
       {open === 'edit' ? <InvitationFormDialog detail={detail} onClose={close} /> : null}
       {open === 'send' ? <SendDialog detail={detail} onEdit={() => show('edit')} onClose={close} /> : null}
