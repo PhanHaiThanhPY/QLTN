@@ -33,7 +33,8 @@ const ReportPage = () => {
   const [exporting, setExporting] = useState(false);
   const fund = scope.fund;
   const query = { fundId: fund?.id ?? '', kind: period.kind, value: period.value };
-  const report = useServiceQuery(['fund', 'report', query], () => (fund ? getFundReport(query) : Promise.resolve(null)));
+  const ready = Boolean(fund?.openingDate);
+  const report = useServiceQuery(['fund', 'report', query], () => (fund && ready ? getFundReport(query) : Promise.resolve(null)));
   if (scope.isLoading) return <LoadingState rows={4} />;
   if (scope.error) return <ErrorState error={scope.error} onRetry={scope.refetch} />;
   if (!fund) return <EmptyState title="Không có quỹ khai thác trong phạm vi của bạn." />;
@@ -58,6 +59,7 @@ const ReportPage = () => {
     }
   };
   const body = () => {
+    if (!ready) return <EmptyState title="Kế toán chưa thiết lập quỹ khai thác của tòa này." />;
     if (report.isLoading) return <LoadingState rows={6} />;
     if (report.error) return <ErrorState error={report.error} onRetry={() => void report.refetch()} />;
     if (!view) return null;

@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  ChartColumn,
   ArrowLeftRight,
   Banknote,
   Bell,
@@ -75,6 +76,8 @@ export const ALL_NAV_ITEMS: NavItem[] = [
     group: 'Quỹ khai thác',
     apiOnly: true,
   },
+  // F-S5 BR-F5-01: BQT and Kế toán.
+  { to: '/exploitation/report', label: 'Báo cáo thu chi', icon: ChartColumn, capability: 'FUND_REPORT', group: 'Quỹ khai thác', apiOnly: true },
 
   { to: '/space', label: 'Không gian chung cư', icon: Map, group: 'Theo dõi' },
   { to: '/reports', label: 'Báo cáo', icon: BarChart3, capability: 'REPORT_VIEW', group: 'Theo dõi' },
@@ -110,6 +113,7 @@ const API_READY_PATHS = new Set([
   '/exploitation/tax',
   '/exploitation/vouchers',
   '/exploitation/reconciliation',
+  '/exploitation/report',
   '/audit',
   '/notifications',
 ]);

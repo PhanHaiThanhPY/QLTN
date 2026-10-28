@@ -50,6 +50,7 @@ export interface Termination {
   note: string;
   terminationDate: string;
   status: 'OPEN' | 'CANCELLED' | 'CLOSED';
+  cancelReason: string | null;
   minutesAttachmentId: string | null;
   minutesSignedOn: string | null;
   minutesHistory: Array<{ attachmentId: string; signedOn: string; replacedAt: string; replacedBy: string }>;
@@ -72,16 +73,20 @@ export interface Settlement {
   code: string;
   amountVnd: string;
   allocations: Array<{ receivableId: string; amountVnd: string }>;
-  status: string;
   version: number;
 }
 
 export interface DepositOffset extends Settlement {
   offsetOn: string;
   note: string | null;
+  status: 'RECORDED' | 'CANCELLED';
+  createdBy: string;
 }
 
+export type WriteOffStatus = 'PENDING' | 'NEEDS_CHANGES' | 'APPROVED' | 'REJECTED';
+
 export interface WriteOff extends Settlement {
+  status: WriteOffStatus;
   reason: string;
   attachmentId: string | null;
   approvedOn: string | null;

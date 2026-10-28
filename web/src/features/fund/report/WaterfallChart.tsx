@@ -67,11 +67,14 @@ export const WaterfallChart = ({ figures, variant = 'screen' }: WaterfallChartPr
   const step = (WIDTH - LEFT * 2) / bars.length;
   const summary = `Đầu kỳ ${millions(figures.openingVnd)} triệu, thu ${millions(figures.inVnd)} triệu, chi ${millions(figures.outVnd)} triệu, cuối kỳ ${millions(figures.closingVnd)} triệu đồng`;
   const tooltip = bars.find((bar) => bar.key === hover);
+  // The table is always rendered for screens and shown by CSS below 640px.
+  const narrow = variant === 'screen';
   const ink = variant === 'print' ? '#000' : 'var(--ink)';
   const muted = variant === 'print' ? '#000' : 'var(--ink-2)';
   return (
     <div className="space-y-2">
-      <div className="relative">
+      {/* Below 640px the bars become the table (ui-brief §3); print always draws them. */}
+      <div className={variant === 'print' ? 'relative' : 'relative hidden sm:block'}>
         <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="h-auto w-full" role="img" aria-label={summary}>
           <line x1={LEFT} x2={WIDTH - LEFT} y1={y(0n)} y2={y(0n)} stroke={variant === 'print' ? '#000' : 'var(--line)'} strokeWidth={1} />
           {bars.map((bar, index) => {
@@ -100,16 +103,16 @@ export const WaterfallChart = ({ figures, variant = 'screen' }: WaterfallChartPr
           </div>
         ) : null}
       </div>
-      <p className="text-xs" style={{ color: muted }}>
+      <p className={variant === 'print' ? 'text-xs' : 'hidden text-xs sm:block'} style={{ color: muted }}>
         Đơn vị: triệu đồng · {checkLine(figures)}
       </p>
       {variant === 'screen' ? (
-        <Button size="sm" variant="ghost" aria-expanded={table} onClick={() => setTable(!table)}>
+        <Button className="hidden sm:inline-flex" size="sm" variant="ghost" aria-expanded={table} onClick={() => setTable(!table)}>
           {table ? 'Ẩn bảng' : 'Xem dạng bảng'}
         </Button>
       ) : null}
-      {table || variant === 'print' ? (
-        <table className="w-full text-sm">
+      {table || variant === 'print' || narrow ? (
+        <table className={table || variant === 'print' ? 'w-full text-sm' : 'w-full text-sm sm:hidden'}>
           <caption className="sr-only">Dòng tiền quỹ khai thác, đơn vị đồng</caption>
           <tbody>
             {bars.map((bar) => (
@@ -117,6 +120,11 @@ export const WaterfallChart = ({ figures, variant = 'screen' }: WaterfallChartPr
                 <th scope="row" className="py-1 pr-3 text-left font-normal">
                   {bar.label}
                 </th>
+                {variant === 'screen' ? (
+                  <td className="w-1/3 py-1 pr-3" aria-hidden>
+                    <span className="block h-2 rounded-sm" style={{ width: `${Number(((bar.to - bar.from) * 100n) / top)}%`, background: bar.fill }} />
+                  </td>
+                ) : null}
                 <td className="py-1 text-right tabular-nums">
                   {bar.key === 'in' ? '+' : ''}
                   {bar.key === 'out' ? '−' : ''}
