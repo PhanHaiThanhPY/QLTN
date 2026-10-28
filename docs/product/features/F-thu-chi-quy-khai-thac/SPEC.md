@@ -1,7 +1,7 @@
 ---
 id: F.S3
 title: Sổ quỹ khai thác, khoản thu, thuế và phiếu chi
-status: Đã duyệt
+status: Đã triển khai
 owner: PM/BA
 intent: "Mọi đồng tiền vào ra quỹ khai thác của một tòa đều có chứng từ và được ghi đúng một lần vào sổ quỹ, nên kế toán biết chính xác kỳ nào còn phải thu, thuế còn phải nộp bao nhiêu và số dư quỹ là bao nhiêu."
 depends_on: [F.S2]
@@ -9,7 +9,7 @@ depends_on: [F.S2]
 
 # SPEC: Sổ quỹ khai thác, khoản thu, thuế và phiếu chi (F-S3)
 
-**Chủ sở hữu:** PM/BA · **Cập nhật:** 27/10/2026 · **Trạng thái:** `Đã duyệt`, chủ dự án duyệt ngày 27/10/2026 (PD-34), gồm 7 mặc định D-F3-1 đến D-F3-7 ở §6. Bắt đầu build sau khi F-S2 đạt review
+**Chủ sở hữu:** PM/BA · **Cập nhật:** 27/10/2026 · **Trạng thái:** `Đã triển khai` (28/10/2026, merge vào `main`); trước đó `Đã duyệt`, chủ dự án duyệt ngày 27/10/2026 (PD-34), gồm 7 mặc định D-F3-1 đến D-F3-7 ở §6. Bắt đầu build sau khi F-S2 đạt review
 
 **Nguồn:**
 - Phân tích [F-quy-khai-thac.md](../../modules/F-quy-khai-thac.md), đã duyệt (PD-31): §2 F06, F07; §1 "ví dụ xuyên suốt"; FG-02 (mô hình tiền), FG-03 (phiếu chi), FG-04 (mã giấy nộp thuế), FG-05 (chữ "thanh toán"), FG-07 (tiền cọc), FG-08 ("đã thu" tính từ lúc nào); mặc định FQ-06, FQ-07, FQ-08, FQ-10 (OD-26).
@@ -304,3 +304,4 @@ Chỉ chạy các test liên quan.
 | 27/10/2026 | Viết từ phân tích nhóm F (PD-31), sau F-S2 (PD-33). |
 | 27/10/2026 | Chủ dự án duyệt (PD-34), gồm D-F3-1 đến D-F3-7, và cho giao dev-build (bắt đầu sau khi F-S2 đạt review). |
 | 27/10/2026 | Review lần 1 FAILED (F3-1: số tài khoản luôn bị che, trái BR-F3-02). Làm rõ brief: thẻ "Khoản thu tiếp theo" dùng `--accent-strong` / `--accent-fg` thay cho `--navy`. |
+| 28/10/2026 | Merge vào `main` (`3b08be1`, cùng F-S3 và F-S4); trạng thái `Đã triển khai`. |

@@ -91,3 +91,13 @@
 ### Còn lại / ngoài phạm vi
 - Chưa đọc định dạng sao kê riêng của từng ngân hàng (D-F4-6); chưa có khóa tháng (D-F4-5).
 - Chưa giả lập mất mạng trong trình duyệt. Nhãn nhật ký của F-S1 và F-S2 vẫn thiếu. Nút AI 32px vẫn là residue chung.
+
+## Đóng F-S4 (PM/BA, 28/10/2026)
+
+- **F-S4 đóng.** Review PASS WITH RESIDUE trên `a9b36dd` (e2e 11/11, F-S3 13/13, hợp đồng 10/10, API 156/156). PM/BA tự kiểm AC-F4.1 đến F4.4, F4.6 (4/4, chênh lệch 0) và F4.9; chấp nhận cách đọc tháng đang chạy "đến dd/mm".
+- **Residue được chấp nhận:**
+  - Chưa chạy lại trình duyệt và chưa giả lập offline trên đúng bản ứng viên, vì môi trường của seat review không có trình duyệt.
+  - Các việc tồn ngoài slice: nút AI dùng chung cao 32px; nhãn nhật ký của F-S1, F-S2; một test web chập chờn do bước dựng dữ liệu quá thời gian (không liên quan).
+- **Merge vào `main`** (`3b08be1`) theo yêu cầu của chủ dự án; không có xung đột. Kiểm trên bản đã merge: typecheck API và web; test web khai thác và `app` 44/44.
+- **Trước khi chạy code này**, phải áp migration `2026-10-28a-bank-statements.sql` lên mọi DB. API tự áp khi khởi động.
+

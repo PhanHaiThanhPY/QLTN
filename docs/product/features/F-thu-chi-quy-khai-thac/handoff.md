@@ -103,3 +103,13 @@
 - Đối soát sao kê (F-S4); hoàn cọc, báo cáo, thanh lý (F-S5).
 - Nhãn nhật ký cho các thao tác của F-S1 và F-S2 vẫn còn thiếu (đã có từ trước); F-S3 đã thêm nhãn cho các thao tác của mình.
 - Nút AI 32px vẫn là residue chung.
+
+## Đóng F-S3 (PM/BA, 28/10/2026)
+
+- **F-S3 đóng.** Review lần 1 FAILED (F3-1: số tài khoản luôn bị che, trái BR-F3-02; kèm lỗi brief `--navy` ở chế độ sáng, đã làm rõ ở `eb8f7a2`). Bản sửa `f40bb34` qua review lần 2: PASS WITH RESIDUE (API 147/147, e2e 13/13, web 597/597). PM/BA tự kiểm AC-F3.2 (ví dụ D1 ra 60), AC-F3.3 (trigger chặn sửa và xóa dòng sổ), BR-F3-13 (khóa quỹ, e2e hai lệnh chi song song).
+- **Residue được chấp nhận:**
+  - Chưa chạy lại trình duyệt và chưa giả lập offline trên đúng bản ứng viên, vì môi trường của seat review không có trình duyệt.
+  - Các việc tồn ngoài slice: nút AI dùng chung cao 32px; nhãn nhật ký của F-S1, F-S2; một test web chập chờn do bước dựng dữ liệu quá thời gian (không liên quan).
+- **Merge vào `main`** (`3b08be1`) theo yêu cầu của chủ dự án; không có xung đột. Kiểm trên bản đã merge: typecheck API và web; test web khai thác và `app` 44/44.
+- **Trước khi chạy code này**, phải áp migration `2026-10-27i-exploitation-fund.sql` lên mọi DB. API tự áp khi khởi động.
+

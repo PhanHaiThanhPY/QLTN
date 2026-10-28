@@ -1,7 +1,7 @@
 ---
 id: F.S4
 title: Nhập sao kê tài khoản quỹ và đối soát với sổ quỹ
-status: Đã duyệt
+status: Đã triển khai
 owner: PM/BA
 intent: "Kế toán nhập sao kê ngân hàng của tài khoản quỹ, ghép từng giao dịch với đúng một chứng từ trong sổ, và biết ngay sổ có khớp ngân hàng không, lệch ở dòng nào."
 depends_on: [F.S3]
@@ -9,7 +9,7 @@ depends_on: [F.S3]
 
 # SPEC: Nhập sao kê tài khoản quỹ và đối soát với sổ quỹ (F-S4)
 
-**Chủ sở hữu:** PM/BA · **Cập nhật:** 27/10/2026 · **Trạng thái:** `Đã duyệt`, chủ dự án duyệt ngày 27/10/2026 (PD-35), gồm 6 mặc định D-F4-1 đến D-F4-6 ở §6. Bắt đầu build sau khi F-S3 đạt review
+**Chủ sở hữu:** PM/BA · **Cập nhật:** 27/10/2026 · **Trạng thái:** `Đã triển khai` (28/10/2026, merge vào `main`); trước đó `Đã duyệt`, chủ dự án duyệt ngày 27/10/2026 (PD-35), gồm 6 mặc định D-F4-1 đến D-F4-6 ở §6. Bắt đầu build sau khi F-S3 đạt review
 
 **Nguồn:**
 - Phân tích [F-quy-khai-thac.md](../../modules/F-quy-khai-thac.md), đã duyệt (PD-31): §2 F08, F07 (cờ "Đã đối chiếu"); FG-08, FG-09; mặc định FQ-09, FQ-10 (OD-26).
@@ -222,3 +222,4 @@ Chỉ chạy các test liên quan.
 |---|---|
 | 27/10/2026 | Viết từ phân tích nhóm F (PD-31), sau F-S3 (PD-34). |
 | 27/10/2026 | Chủ dự án duyệt (PD-35), gồm D-F4-1 đến D-F4-6, và cho giao dev-build (bắt đầu sau khi F-S3 đạt review). |
+| 28/10/2026 | Merge vào `main` (`3b08be1`, cùng F-S3 và F-S4); trạng thái `Đã triển khai`. |
