@@ -78,13 +78,13 @@ Ký hiệu: ✓ = giữ như hiện nay; **+** = thêm; **−** = bỏ.
 | `LOCATION_MANAGE` (mới, Q7) | **+** | **+** | | | | |
 | `ACCOUNT_MANAGE` | ✓ | | | | | |
 | `EMERGENCY_START` | | ✓ | | | | |
-| `EXPLOITATION_VIEW` (mới, F-S1) | | **+** | | | **+** | |
+| `EXPLOITATION_VIEW` (mới, F-S1) | **+** (RM-S2, chỉ xem) | **+** | | | **+** | |
 | `EXPLOITATION_MANAGE` (mới, F-S1) | | **+** | | | | |
 | `EXPLOITATION_APPROVE` (mới, F-S2) | | | | | **+** | |
-| `EXPLOITATION_CONTRACT_VIEW` (mới, F-S2) | | **+** | | | **+** | **+** |
-| `FUND_VIEW` (mới, F-S3) | | | | | **+** | **+** |
+| `EXPLOITATION_CONTRACT_VIEW` (mới, F-S2) | **+** (RM-S2, chỉ xem) | **+** | | | **+** | **+** |
+| `FUND_VIEW` (mới, F-S3) | **+** (RM-S2, chỉ xem) | | | | **+** | **+** |
 | `FUND_APPROVE` (mới, F-S3) | | | | | **+** | |
-| `FUND_REPORT` (mới, F-S5) | | | | | **+** | **+** |
+| `FUND_REPORT` (mới, F-S5) | **+** (RM-S2, chỉ xem) | | | | **+** | **+** |
 | `DEPOSIT_VIEW` (mới, T-S1) | **+** (RM-S2, chỉ xem) | **+** | | | **+** | **+** |
 | `DEPOSIT_MANAGE` (mới, T-S1) | | **+** | | | | |
 | `DEPOSIT_APPROVE` (mới, T-S1) | | | | | **+** | |

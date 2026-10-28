@@ -97,11 +97,15 @@ describe('ADMIN sees everything, does nothing, RM-S2 (e2e)', () => {
         content: 'Quản trị thử lập phiếu chi',
         payeeName: 'X',
         amountVnd: '1',
+        requestAttachmentId: hd001.id,
       }),
       admin.post(`/api/funds/vouchers/${vouchers[0].id}/approve`, { version: vouchers[0].version }),
       admin.post(`/api/funds/${fund.id}/reconciliation/confirm`, { month }),
       admin.post(`/api/records/${records[0].id}/approve-proposal`, { version: records[0].version }),
-      admin.post(`/api/maintenance-occurrences/${occurrences[0].id}/confirm`, { version: occurrences[0].version }),
+      admin.post(`/api/maintenance-occurrences/${occurrences[0].id}/confirm`, {
+        version: occurrences[0].version,
+        round: 1,
+      }),
       admin.post('/api/deposits/banks', { name: 'Ngân hàng của quản trị' }),
     ];
     const statuses = (await Promise.all(writes)).map((res) => res.status);
