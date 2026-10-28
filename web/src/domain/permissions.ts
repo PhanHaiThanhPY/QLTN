@@ -69,7 +69,11 @@ const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
     'LOCATION_MANAGE',
     'ACCOUNT_MANAGE',
     'AUDIT_VIEW',
-    // RM-S2 BR-RM2-02: every new view capability is also ADMIN's (read only).
+    // RM-S2 BR-RM2-01/02 (PD-38): ADMIN reads every module, never writes, approves or moves money.
+    'EXPLOITATION_VIEW',
+    'EXPLOITATION_CONTRACT_VIEW',
+    'FUND_VIEW',
+    'FUND_REPORT',
     'DEPOSIT_VIEW',
   ],
   BQL: [
@@ -117,6 +121,30 @@ const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
   // Kế toán on the BQT side: confirms transfers and runs fund money operations (DF-10).
   ACCOUNTANT: ['VIEW', 'PAYMENT_CONFIRM', 'FUND_OPERATE', 'FUND_VIEW', 'FUND_REPORT', 'REPORT_VIEW', 'EXPLOITATION_CONTRACT_VIEW', 'DEPOSIT_VIEW'],
 };
+
+/** RM-S2 BR-RM2-01: what ADMIN held before, kept as its administration (some names contain MANAGE). */
+export const ADMIN_ADMINISTRATION: readonly string[] = [
+  'VIEW',
+  'REPORT_VIEW',
+  'AUDIT_VIEW',
+  'ADMIN_VIEW',
+  'BUILDING_CONFIG',
+  'LOCATION_MANAGE',
+  'ACCOUNT_MANAGE',
+  'REPLACE_MANAGER',
+];
+const WRITE_WORDS = ['MANAGE', 'APPROVE', 'OPERATE', 'DECIDE', 'RECORD', 'CONFIRM', 'EDIT'] as const;
+
+/**
+ * RM-S2 BR-RM2-02: every `*_VIEW` and `*_REPORT` capability is ADMIN's, and no write, approve or money capability is,
+ * apart from its administration. Returns what breaks the rule (empty when the matrix is right).
+ */
+export const adminMatrixProblems = (all: readonly string[], admin: readonly string[]): string[] => [
+  ...all.filter((name) => /_(VIEW|REPORT)$/.test(name) && !admin.includes(name)).map((name) => `ADMIN thiếu ${name}`),
+  ...admin
+    .filter((name) => !ADMIN_ADMINISTRATION.includes(name) && WRITE_WORDS.some((word) => name.includes(word)))
+    .map((name) => `ADMIN không được có ${name}`),
+];
 
 /** Capabilities a system role grants; custom roles can only keep a subset of them. */
 export const roleCapabilities = (role: Role): readonly Capability[] => ROLE_CAPABILITIES[role];
