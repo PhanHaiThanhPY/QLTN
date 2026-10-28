@@ -1,7 +1,7 @@
 ---
 id: F.S5
 title: Báo cáo thu chi quỹ khai thác, chấm dứt và thanh lý hợp đồng
-status: Đã duyệt
+status: Đã triển khai
 owner: PM/BA
 intent: "BQT xem được dòng tiền quỹ khai thác của một tòa trong kỳ, kèm nguồn hình thành và công nợ tách riêng; mỗi hợp đồng chỉ được đóng khi đã bàn giao, có biên bản thanh lý và không còn nghĩa vụ tiền nào mở."
 depends_on: [F.S4]
@@ -9,7 +9,7 @@ depends_on: [F.S4]
 
 # SPEC: Báo cáo thu chi quỹ khai thác, chấm dứt và thanh lý hợp đồng (F-S5)
 
-**Chủ sở hữu:** PM/BA · **Cập nhật:** 27/10/2026 · **Trạng thái:** `Đã duyệt`, chủ dự án duyệt ngày 27/10/2026 (PD-36), gồm 7 mặc định D-F5-1 đến D-F5-7 ở §6. Bắt đầu build sau khi F-S4 đạt review
+**Chủ sở hữu:** PM/BA · **Cập nhật:** 27/10/2026 · **Trạng thái:** `Đã triển khai` (28/10/2026, merge vào `main`); trước đó `Đã duyệt`, chủ dự án duyệt ngày 27/10/2026 (PD-36), gồm 7 mặc định D-F5-1 đến D-F5-7 ở §6. Bắt đầu build sau khi F-S4 đạt review
 
 **Nguồn:**
 - Phân tích [F-quy-khai-thac.md](../../modules/F-quy-khai-thac.md), đã duyệt (PD-31): §2 F09, F10; FG-07 (cọc), FG-08 (số theo sao kê), FG-10 (công nợ không thu được); mặc định FQ-06, FQ-10, FQ-13 (OD-26).
@@ -262,3 +262,4 @@ Chỉ chạy các test liên quan.
 |---|---|
 | 27/10/2026 | Viết từ phân tích nhóm F (PD-31), sau F-S4 (PD-35). |
 | 27/10/2026 | Chủ dự án duyệt (PD-36), gồm D-F5-1 đến D-F5-7, và cho giao dev-build (bắt đầu sau khi F-S4 đạt review). |
+| 28/10/2026 | Review PASS WITH RESIDUE trên `0fe124f`; merge vào `main` (`08b09e5`, cùng commit dọn tài liệu `c0950ed`); trạng thái `Đã triển khai`. |

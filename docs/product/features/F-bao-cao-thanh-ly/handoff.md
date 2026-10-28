@@ -110,3 +110,20 @@ Cả hai chế độ đều **ALL CHECKS PASS**. Hai bộ đã thử và bị lo
 
 - Web không có prettier, nên các tệp `features/exploitation/termination/*` đang ngắt dòng ở 120 cột. Phần còn lại của web dùng khoảng 160 cột. Chỉ khác về trình bày.
 - Chưa có test component cho các hộp thoại (tạo hồ sơ, bàn giao, biên bản, cấn trừ, không thu được). Luồng của chúng được e2e API và script trình duyệt phủ một phần.
+
+## Đóng F-S5 (PM/BA, 28/10/2026)
+
+- **F-S5 đóng.** Review trên đúng bản ứng viên `0fe124f`: PASS WITH RESIDUE, không có lỗi sản phẩm.
+  - e2e 9/9; chạy thẳng seed cho AC-F5.7 và AC-F5.8; chạy lại các phần liên quan 40/40; API unit 162/162; web 605/605.
+- **Màu thác nước:** PM/BA tự chạy lại `validate_palette.js` với đúng các token, và đạt cả 5 bước kiểm ở cả hai chế độ:
+  - sáng `#00929b`, `#6a4fd6`, `#eb6834` trên nền `#ffffff`;
+  - tối `#1ba59f`, `#8f78ec`, `#d95926` trên nền `#102f41`.
+- **Lệch seed được chấp nhận:** TL-001 mở bằng "Chấm dứt sớm"; báo cáo tháng mở sổ có "còn phải thu" 0, đúng BR-F5-04. Số D1 đầy đủ được kiểm trong e2e.
+- **Residue chuyển vào việc tồn:**
+  - nút AI dùng chung đè nội dung ở 375px;
+  - thanh tab cuộn ngang, bị che một phần ở 375px;
+  - chưa chạy lại trình duyệt thật và chưa giả lập offline, vì môi trường không có trình duyệt.
+- **Merge vào `main`** (`08b09e5`, rồi `9ba349d` cho commit dọn tài liệu `c0950ed`); không có xung đột. Kiểm trên bản đã merge: typecheck API và web; test web khai thác và `app` 49/49.
+- **Trước khi chạy code này**, phải áp migration `2026-10-28b-fund-report-termination.sql` lên mọi DB. API tự áp khi khởi động; seed sẽ chuyển HĐ-001 demo sang "Đang thanh lý".
+- **Với F-S5, nhóm F (F01–F10) đã triển khai đủ 5 slice.**
+
