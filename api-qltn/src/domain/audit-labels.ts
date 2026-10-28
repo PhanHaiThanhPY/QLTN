@@ -12,6 +12,10 @@ export const AUDIT_SUBJECT_LABEL: Readonly<Record<string, string>> = {
   MAINTENANCE_ITEM: 'Thiết bị',
   MAINTENANCE_PLAN: 'Kế hoạch bảo trì',
   MAINTENANCE_OCCURRENCE: 'Lượt bảo trì',
+  EXPLOITATION_CONTRACT: 'Hợp đồng khai thác',
+  FUND: 'Quỹ khai thác',
+  FUND_TAX: 'Thuế quỹ khai thác',
+  FUND_VOUCHER: 'Phiếu chi',
 };
 
 export const AUDIT_ACTION_LABEL: Readonly<Record<string, string>> = {
@@ -80,6 +84,38 @@ export const AUDIT_ACTION_LABEL: Readonly<Record<string, string>> = {
   updateDepartment: 'Sửa bộ phận',
   // Nhật ký
   exportAuditLog: 'Xuất nhật ký thao tác',
+  // Quỹ khai thác (F-S3)
+  openFund: 'Bắt đầu sổ quỹ',
+  updateFundAccount: 'Sửa tài khoản quỹ',
+  changeFundOpening: 'Đổi số dư đầu',
+  requestFundOpeningChange: 'Đề nghị đổi số dư đầu',
+  approveFundOpeningChange: 'Duyệt đổi số dư đầu',
+  rejectFundOpeningChange: 'Từ chối đổi số dư đầu',
+  recordExploitationReceipt: 'Ghi nhận khoản thu',
+  cancelExploitationReceipt: 'Hủy khoản thu',
+  recordExploitationDeposit: 'Ghi nhận tiền cọc',
+  cancelExploitationDeposit: 'Hủy phiếu nhận cọc',
+  createTaxObligation: 'Ghi nghĩa vụ thuế',
+  adjustTaxObligation: 'Điều chỉnh số thuế',
+  recordTaxPayment: 'Ghi giấy nộp thuế',
+  cancelTaxPayment: 'Hủy giấy nộp thuế',
+  createFundVoucher: 'Lập phiếu chi',
+  updateFundVoucher: 'Sửa phiếu chi',
+  submitFundVoucher: 'Gửi duyệt phiếu chi',
+  approveFundVoucher: 'Duyệt phiếu chi',
+  requestFundVoucherChanges: 'Yêu cầu sửa phiếu chi',
+  rejectFundVoucher: 'Từ chối phiếu chi',
+  payFundVoucher: 'Ghi đã chi',
+  cancelFundVoucher: 'Hủy phiếu chi',
+  requestFundVoucherCancel: 'Đề nghị hủy phiếu đã chi',
+  approveFundVoucherCancel: 'Duyệt hủy phiếu đã chi',
+  rejectFundVoucherCancel: 'Từ chối hủy phiếu đã chi',
+  // Sao kê và đối soát (F-S4)
+  importStatement: 'Nhập sao kê',
+  deleteStatementImport: 'Xóa lần nhập sao kê',
+  matchStatementLine: 'Ghép sao kê với chứng từ',
+  unmatchStatementLine: 'Bỏ ghép sao kê',
+  recordFromStatement: 'Ghi nhận từ sao kê',
 };
 
 /** Label of a code, or the code itself when none is defined yet (BR-05). */

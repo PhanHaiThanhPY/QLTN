@@ -27,6 +27,9 @@
   --navy-ink: #17324d;
   --navy-ink-2: #56758b;
   --info: #2588c4;
+  /* Chart series (B01 §5.3): never mixed with status colours in one chart. */
+  --series-1: #00929b;
+  --series-2: #6a4fd6;
   --info-soft: rgba(37, 136, 196, 0.1);
   --good: #12826e;
   --good-soft: rgba(18, 130, 110, 0.1);
@@ -58,6 +61,8 @@
   --navy-ink: #effaff;
   --navy-ink-2: #a5ccdc;
   --info: #74c7ee;
+  --series-1: #1ba59f;
+  --series-2: #8f78ec;
   --info-soft: rgba(116, 199, 238, 0.16);
   --good: #55c9af;
   --good-soft: rgba(85, 201, 175, 0.15);
@@ -91,6 +96,8 @@
   --color-navy-ink: var(--navy-ink);
   --color-navy-ink-2: var(--navy-ink-2);
   --color-info: var(--info);
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
   --color-info-soft: var(--info-soft);
   --color-good: var(--good);
   --color-good-soft: var(--good-soft);

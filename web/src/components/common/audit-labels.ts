@@ -75,9 +75,23 @@ export const ACTION_LABEL: Record<string, string> = {
   reassignMaintenance: 'Giao lại người xác nhận',
 };
 
+/** F-S3 payment vouchers and recorded money documents (the last fallback, after the record and maintenance labels). */
+const FUND_STATUS_LABEL: Readonly<Record<string, string>> = {
+  DRAFT: 'Nháp',
+  PENDING: 'Chờ duyệt',
+  NEEDS_CHANGES: 'Cần sửa',
+  APPROVED: 'Đã duyệt',
+  REJECTED: 'Bị từ chối',
+  PAID: 'Đã chi',
+  CANCELLED: 'Đã hủy',
+  ACTIVE: 'Hiệu lực',
+  SIGNED: 'Đã ký',
+};
+
 export const statusText = (status: string): string =>
   (REPAIR_STATUS_LABEL as Record<string, string>)[status] ??
   (OCCURRENCE_STATUS_LABEL as Record<string, string>)[status] ??
   (PLAN_STATUS_LABEL as Record<string, string>)[status] ??
   (ITEM_CONDITION_LABEL as Record<string, string>)[status] ??
+  FUND_STATUS_LABEL[status] ??
   status;

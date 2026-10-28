@@ -35,7 +35,7 @@ export const CAPABILITY = {
   PAYMENT_RECORD: 'PAYMENT_RECORD',
   /** Confirm that a payment instalment was transferred, with its proof (BQT or Kế toán, DF-08). */
   PAYMENT_CONFIRM: 'PAYMENT_CONFIRM',
-  /** Money operations of the operating fund (F06–F09) and maintenance-fund deposits (T03–T06); reserved. */
+  /** Money operations of the exploitation fund (F-S3: receipts, deposits, taxes, vouchers) and later group T. */
   FUND_OPERATE: 'FUND_OPERATE',
   MAINTENANCE_MANAGE: 'MAINTENANCE_MANAGE',
   MAINTENANCE_REVIEW: 'MAINTENANCE_REVIEW',
@@ -62,6 +62,10 @@ export const CAPABILITY = {
   EXPLOITATION_APPROVE: 'EXPLOITATION_APPROVE',
   /** See exploitation contracts and their receivable schedule, not the bids (F-S2 BR-F2-13, D-F2-6). */
   EXPLOITATION_CONTRACT_VIEW: 'EXPLOITATION_CONTRACT_VIEW',
+  /** Read a fund's ledger, taxes and payment vouchers (F-S3 BR-F3-14: Kế toán and BQT, never BQL, D-F3-6). */
+  FUND_VIEW: 'FUND_VIEW',
+  /** Approve payment vouchers, a paid voucher's cancellation and a change of the opening balance (F-S3, BQT). */
+  FUND_APPROVE: 'FUND_APPROVE',
 } as const;
 export type Capability = (typeof CAPABILITY)[keyof typeof CAPABILITY];
 export const CAPABILITIES = Object.values(CAPABILITY);
@@ -115,9 +119,11 @@ const ROLE_CAPABILITIES: Readonly<Record<Role, readonly Capability[]>> = {
     'EXPLOITATION_VIEW',
     'EXPLOITATION_APPROVE',
     'EXPLOITATION_CONTRACT_VIEW',
+    'FUND_VIEW',
+    'FUND_APPROVE',
   ],
   // Kế toán on the BQT side: confirms transfers and runs fund money operations (DF-10).
-  ACCOUNTANT: ['VIEW', 'PAYMENT_CONFIRM', 'FUND_OPERATE', 'REPORT_VIEW', 'EXPLOITATION_CONTRACT_VIEW'],
+  ACCOUNTANT: ['VIEW', 'PAYMENT_CONFIRM', 'FUND_OPERATE', 'FUND_VIEW', 'REPORT_VIEW', 'EXPLOITATION_CONTRACT_VIEW'],
 };
 
 export const isRole = (value: unknown): value is Role => typeof value === 'string' && ROLES.includes(value as Role);

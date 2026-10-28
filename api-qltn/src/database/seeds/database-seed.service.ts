@@ -21,6 +21,14 @@ import { User } from '../../modules/users/entities/user.entity';
 import { DEMO_ITEMS, DEMO_PLANS, shiftDate } from './demo-items';
 import { ensureExploitationContractDemo } from './exploitation-contract-seed';
 import { ensureExploitationDemo } from './exploitation-seed';
+import { ensureFundDemo } from './fund-seed';
+import { ensureStatementDemo } from './statement-seed';
+import { ReconciliationService } from '../../modules/fund/reconciliation.service';
+import { StatementsService } from '../../modules/fund/statements.service';
+import { ReceiptsService } from '../../modules/exploitation/receipts.service';
+import { FundsService } from '../../modules/fund/funds.service';
+import { TaxService } from '../../modules/fund/tax.service';
+import { VouchersService } from '../../modules/fund/vouchers.service';
 import { ensureMaintenanceExecutionDemo } from './maintenance-execution-seed';
 import { RecordsService } from '../../modules/records/records.service';
 import { AssembliesService } from '../../modules/exploitation/assemblies.service';
@@ -58,6 +66,12 @@ export class DatabaseSeedService {
     private readonly selections: SelectionsService,
     private readonly assemblies: AssembliesService,
     private readonly contracts: ContractsService,
+    private readonly receipts: ReceiptsService,
+    private readonly funds: FundsService,
+    private readonly taxes: TaxService,
+    private readonly vouchers: VouchersService,
+    private readonly statementImports: StatementsService,
+    private readonly reconciliation: ReconciliationService,
   ) {}
 
   async run(): Promise<void> {
@@ -84,6 +98,23 @@ export class DatabaseSeedService {
       selections: this.selections,
       assemblies: this.assemblies,
       contracts: this.contracts,
+      now: new Date(),
+    });
+    // F-S3 BR-F3-15 continues HĐ-001 on the fund, also through its services.
+    created.fund = await ensureFundDemo({
+      dataSource: this.dataSource,
+      storage: this.storage,
+      funds: this.funds,
+      receipts: this.receipts,
+      taxes: this.taxes,
+      vouchers: this.vouchers,
+      now: new Date(),
+    });
+    // F-S4 BR-F4-13 reconciles that month with its bank statement.
+    created.statements = await ensureStatementDemo({
+      dataSource: this.dataSource,
+      statements: this.statementImports,
+      reconciliation: this.reconciliation,
       now: new Date(),
     });
     const summary = Object.entries(created)
