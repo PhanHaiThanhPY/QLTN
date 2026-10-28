@@ -121,4 +121,3 @@
 - `beforeAll` của e2e T-S1 có thời hạn 120 giây. Lý do: khởi động (migration và seed) cộng 5 lần đăng nhập vượt 30 giây khi máy tải cao.
 - Ở dưới 768px, nút chính chưa dính đáy màn hình như ui-brief §3; các nút nằm trong đầu trang và tự xuống dòng. Không cuộn ngang.
 - Chưa có test component cho các hộp thoại soạn và gửi thư, bản chào, đề xuất. Luồng của chúng được e2e API và script trình duyệt phủ.
-
