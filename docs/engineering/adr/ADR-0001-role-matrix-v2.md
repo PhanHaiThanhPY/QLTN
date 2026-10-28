@@ -85,6 +85,9 @@ Ký hiệu: ✓ = giữ như hiện nay; **+** = thêm; **−** = bỏ.
 | `FUND_VIEW` (mới, F-S3) | | | | | **+** | **+** |
 | `FUND_APPROVE` (mới, F-S3) | | | | | **+** | |
 | `FUND_REPORT` (mới, F-S5) | | | | | **+** | **+** |
+| `DEPOSIT_VIEW` (mới, T-S1) | **+** (RM-S2, chỉ xem) | **+** | | | **+** | **+** |
+| `DEPOSIT_MANAGE` (mới, T-S1) | | **+** | | | | |
+| `DEPOSIT_APPROVE` (mới, T-S1) | | | | | **+** | |
 
 Nguyên tắc cũ vẫn giữ: ADMIN không có quyền quyết định nghiệp vụ.
 
