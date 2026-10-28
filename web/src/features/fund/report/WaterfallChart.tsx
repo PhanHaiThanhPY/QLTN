@@ -68,7 +68,7 @@ export const WaterfallChart = ({ figures, variant = 'screen' }: WaterfallChartPr
   const summary = `Đầu kỳ ${millions(figures.openingVnd)} triệu, thu ${millions(figures.inVnd)} triệu, chi ${millions(figures.outVnd)} triệu, cuối kỳ ${millions(figures.closingVnd)} triệu đồng`;
   const tooltip = bars.find((bar) => bar.key === hover);
   // The table is always rendered for screens and shown by CSS below 640px.
-  const narrow = variant === 'screen';
+  const onScreen = variant === 'screen';
   const ink = variant === 'print' ? '#000' : 'var(--ink)';
   const muted = variant === 'print' ? '#000' : 'var(--ink-2)';
   return (
@@ -111,8 +111,9 @@ export const WaterfallChart = ({ figures, variant = 'screen' }: WaterfallChartPr
           {table ? 'Ẩn bảng' : 'Xem dạng bảng'}
         </Button>
       ) : null}
-      {table || variant === 'print' || narrow ? (
-        <table className={table || variant === 'print' ? 'w-full text-sm' : 'w-full text-sm sm:hidden'}>
+      {/* Print has the figures table above the chart already. */}
+      {onScreen ? (
+        <table className={table ? 'w-full text-sm' : 'w-full text-sm sm:hidden'}>
           <caption className="sr-only">Dòng tiền quỹ khai thác, đơn vị đồng</caption>
           <tbody>
             {bars.map((bar) => (
