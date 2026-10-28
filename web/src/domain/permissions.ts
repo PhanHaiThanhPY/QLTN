@@ -46,6 +46,12 @@ export const CAPABILITY = {
   FUND_APPROVE: 'FUND_APPROVE',
   /** See and export the fund report (F-S5 BR-F5-15: BQT and Kế toán, never BQL, D-F5-5). */
   FUND_REPORT: 'FUND_REPORT',
+  /** See rate invitations, offers, the comparison and the selected bank (T-S1 BR-T1-12: BQL, BQT, Kế toán). */
+  DEPOSIT_VIEW: 'DEPOSIT_VIEW',
+  /** Banks, rate invitations, offers and the proposed result (T-S1 BR-T1-12, BQL). */
+  DEPOSIT_MANAGE: 'DEPOSIT_MANAGE',
+  /** Approve, send back or reject the selected bank (T-S1 BR-T1-10, BQT). */
+  DEPOSIT_APPROVE: 'DEPOSIT_APPROVE',
 } as const;
 export type Capability = (typeof CAPABILITY)[keyof typeof CAPABILITY];
 
@@ -63,6 +69,12 @@ const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
     'LOCATION_MANAGE',
     'ACCOUNT_MANAGE',
     'AUDIT_VIEW',
+    // RM-S2 BR-RM2-01/02 (PD-38): ADMIN reads every module, never writes, approves or moves money.
+    'EXPLOITATION_VIEW',
+    'EXPLOITATION_CONTRACT_VIEW',
+    'FUND_VIEW',
+    'FUND_REPORT',
+    'DEPOSIT_VIEW',
   ],
   BQL: [
     'VIEW',
@@ -80,6 +92,8 @@ const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
     'EXPLOITATION_VIEW',
     'EXPLOITATION_CONTRACT_VIEW',
     'EXPLOITATION_MANAGE',
+    'DEPOSIT_VIEW',
+    'DEPOSIT_MANAGE',
   ],
   // KT changes item condition only while confirming an occurrence.
   TECH_CONFIRMER: ['VIEW', 'RECORD_CONFIRM', 'PROPOSAL_DECIDE', 'ACCEPTANCE_DECIDE', 'MAINTENANCE_REVIEW'],
@@ -101,10 +115,36 @@ const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
     'FUND_VIEW',
     'FUND_APPROVE',
     'FUND_REPORT',
+    'DEPOSIT_VIEW',
+    'DEPOSIT_APPROVE',
   ],
   // Kế toán on the BQT side: confirms transfers and runs fund money operations (DF-10).
-  ACCOUNTANT: ['VIEW', 'PAYMENT_CONFIRM', 'FUND_OPERATE', 'FUND_VIEW', 'FUND_REPORT', 'REPORT_VIEW', 'EXPLOITATION_CONTRACT_VIEW'],
+  ACCOUNTANT: ['VIEW', 'PAYMENT_CONFIRM', 'FUND_OPERATE', 'FUND_VIEW', 'FUND_REPORT', 'REPORT_VIEW', 'EXPLOITATION_CONTRACT_VIEW', 'DEPOSIT_VIEW'],
 };
+
+/** RM-S2 BR-RM2-01: what ADMIN held before, kept as its administration (some names contain MANAGE). */
+export const ADMIN_ADMINISTRATION: readonly string[] = [
+  'VIEW',
+  'REPORT_VIEW',
+  'AUDIT_VIEW',
+  'ADMIN_VIEW',
+  'BUILDING_CONFIG',
+  'LOCATION_MANAGE',
+  'ACCOUNT_MANAGE',
+  'REPLACE_MANAGER',
+];
+const WRITE_WORDS = ['MANAGE', 'APPROVE', 'OPERATE', 'DECIDE', 'RECORD', 'CONFIRM', 'EDIT'] as const;
+
+/**
+ * RM-S2 BR-RM2-02: every `*_VIEW` and `*_REPORT` capability is ADMIN's, and no write, approve or money capability is,
+ * apart from its administration. Returns what breaks the rule (empty when the matrix is right).
+ */
+export const adminMatrixProblems = (all: readonly string[], admin: readonly string[]): string[] => [
+  ...all.filter((name) => /_(VIEW|REPORT)$/.test(name) && !admin.includes(name)).map((name) => `ADMIN thiếu ${name}`),
+  ...admin
+    .filter((name) => !ADMIN_ADMINISTRATION.includes(name) && WRITE_WORDS.some((word) => name.includes(word)))
+    .map((name) => `ADMIN không được có ${name}`),
+];
 
 /** Capabilities a system role grants; custom roles can only keep a subset of them. */
 export const roleCapabilities = (role: Role): readonly Capability[] => ROLE_CAPABILITIES[role];

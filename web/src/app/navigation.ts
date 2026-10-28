@@ -1,6 +1,7 @@
 import {
   BarChart3,
   ChartColumn,
+  PiggyBank,
   ArrowLeftRight,
   Banknote,
   Bell,
@@ -78,6 +79,9 @@ export const ALL_NAV_ITEMS: NavItem[] = [
   },
   // F-S5 BR-F5-01: BQT and Kế toán.
   { to: '/exploitation/report', label: 'Báo cáo thu chi', icon: ChartColumn, capability: 'FUND_REPORT', group: 'Quỹ khai thác', apiOnly: true },
+  // T-S1 BR-T1-12: BQL, BQT, Kế toán (and ADMIN, read only, BR-RM2-02).
+  { to: '/deposits/invitations', label: 'Thư mời chào lãi', icon: PiggyBank, capability: 'DEPOSIT_VIEW', group: 'Tiền gửi quỹ bảo trì', apiOnly: true },
+  { to: '/deposits/banks', label: 'Ngân hàng', icon: Landmark, capability: 'DEPOSIT_VIEW', group: 'Tiền gửi quỹ bảo trì', apiOnly: true },
 
   { to: '/space', label: 'Không gian chung cư', icon: Map, group: 'Theo dõi' },
   { to: '/reports', label: 'Báo cáo', icon: BarChart3, capability: 'REPORT_VIEW', group: 'Theo dõi' },
@@ -114,6 +118,8 @@ const API_READY_PATHS = new Set([
   '/exploitation/vouchers',
   '/exploitation/reconciliation',
   '/exploitation/report',
+  '/deposits/invitations',
+  '/deposits/banks',
   '/audit',
   '/notifications',
 ]);

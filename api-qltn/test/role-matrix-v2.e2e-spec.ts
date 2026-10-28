@@ -86,11 +86,12 @@ describe('Role matrix v2, RM-S1 (e2e)', () => {
     await app.close();
   });
 
-  // F-S2 BR-F2-13 adds EXPLOITATION_CONTRACT_VIEW and F-S3 BR-F3-14 adds FUND_VIEW to the 4 capabilities of RM-S1.
+  // F-S2 BR-F2-13 adds EXPLOITATION_CONTRACT_VIEW, F-S3 BR-F3-14 FUND_VIEW and T-S1 BR-T1-12 DEPOSIT_VIEW to RM-S1's 4.
   it('AC-1.2: seeds the Kế toán system role with exactly its capabilities and the KTOAN-A account', async () => {
     const accountant = (await roles()).find((row) => row.code === 'KTOAN') as Role;
     expect(accountant).toMatchObject({ name: 'Kế toán', baseRole: 'ACCOUNTANT', isSystem: true });
     expect([...accountant.capabilities].sort()).toEqual([
+      'DEPOSIT_VIEW',
       'EXPLOITATION_CONTRACT_VIEW',
       'FUND_OPERATE',
       'FUND_REPORT',
@@ -188,6 +189,8 @@ describe('Role matrix v2, RM-S1 (e2e)', () => {
       'FUND_VIEW',
       'FUND_APPROVE',
       'FUND_REPORT',
+      'DEPOSIT_VIEW',
+      'DEPOSIT_APPROVE',
     ];
     expect(legacy.newBaseCapabilities).toEqual(gained);
     const holder = await accountWith('BQT-CU', legacy.id, 'BQT');

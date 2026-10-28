@@ -42,6 +42,9 @@ const FundVouchersPage = lazy(() => import('@/features/fund/VouchersPage'));
 const FundVoucherPage = lazy(() => import('@/features/fund/VoucherPage'));
 const FundReconciliationPage = lazy(() => import('@/features/fund/ReconciliationPage'));
 const FundReportPage = lazy(() => import('@/features/fund/ReportPage'));
+const DepositInvitationsPage = lazy(() => import('@/features/deposit/InvitationsPage'));
+const DepositInvitationPage = lazy(() => import('@/features/deposit/InvitationPage'));
+const DepositBanksPage = lazy(() => import('@/features/deposit/BanksPage'));
 const FundReportPrintPage = lazy(() => import('@/features/fund/ReportPrintPage'));
 const OccurrenceDetailPage = lazy(() =>
   IS_API_MODE ? import('@/features/maintenance/api/occurrence/OccurrenceApiPage') : import('@/features/maintenance/OccurrenceDetailPage'),
@@ -98,6 +101,9 @@ export const router = createBrowserRouter([
       { path: 'exploitation/partners', element: apiConnected(page(<ExploitationPartnersPage />)) },
       { path: 'exploitation/contracts', element: apiConnected(page(<ExploitationContractsPage />)) },
       { path: 'exploitation/contracts/:contractId', element: apiConnected(page(<ExploitationContractPage />)) },
+      { path: 'deposits/invitations', element: apiConnected(page(<DepositInvitationsPage />)) },
+      { path: 'deposits/invitations/:invitationId', element: apiConnected(page(<DepositInvitationPage />)) },
+      { path: 'deposits/banks', element: apiConnected(page(<DepositBanksPage />)) },
       { path: 'exploitation/fund', element: apiConnected(page(<FundPage />)) },
       { path: 'exploitation/tax', element: apiConnected(page(<FundTaxPage />)) },
       { path: 'exploitation/vouchers', element: apiConnected(page(<FundVouchersPage />)) },

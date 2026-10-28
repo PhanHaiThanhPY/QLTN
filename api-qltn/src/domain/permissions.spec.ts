@@ -1,4 +1,13 @@
-import { CAPABILITY, type Capability, effectiveCapabilities, isRole, ROLES, roleCapabilities } from './permissions';
+import {
+  adminMatrixProblems,
+  CAPABILITIES,
+  CAPABILITY,
+  type Capability,
+  effectiveCapabilities,
+  isRole,
+  ROLES,
+  roleCapabilities,
+} from './permissions';
 
 describe('permissions', () => {
   it('never gives ADMIN a business decision capability', () => {
@@ -10,6 +19,15 @@ describe('permissions', () => {
       CAPABILITY.MAINTENANCE_REVIEW,
     ];
     expect(roleCapabilities('ADMIN').filter((c) => decisions.includes(c))).toEqual([]);
+  });
+
+  it('gives ADMIN every view and report capability and nothing that writes, approves or moves money (RM-S2 BR-RM2-02)', () => {
+    expect(adminMatrixProblems(CAPABILITIES, roleCapabilities('ADMIN'))).toEqual([]);
+    // AC-RM2.5: a new view capability left off ADMIN, or a write one put on it, turns this red.
+    expect(adminMatrixProblems([...CAPABILITIES, 'X_VIEW'], roleCapabilities('ADMIN'))).toEqual(['ADMIN thiếu X_VIEW']);
+    expect(adminMatrixProblems(CAPABILITIES, [...roleCapabilities('ADMIN'), 'FUND_APPROVE'])).toEqual([
+      'ADMIN không được có FUND_APPROVE',
+    ]);
   });
 
   it('grants every role VIEW', () => {
@@ -25,8 +43,9 @@ describe('permissions', () => {
     expect(effectiveCapabilities('BQL', custom)).toEqual([CAPABILITY.VIEW, CAPABILITY.RECORD_EDIT]);
   });
 
-  it('shows exploitation bids to BQL and BQT only, and lets only BQL manage them (F-S1 BR-F1-11)', () => {
+  it('shows exploitation bids to BQL, BQT (and ADMIN, read only, RM-S2) and lets only BQL manage them (F-S1 BR-F1-11)', () => {
     expect(ROLES.filter((role) => roleCapabilities(role).includes(CAPABILITY.EXPLOITATION_VIEW))).toEqual([
+      'ADMIN',
       'BQL',
       'OWNERS_BOARD',
     ]);
@@ -38,14 +57,16 @@ describe('permissions', () => {
       'OWNERS_BOARD',
     ]);
     expect(ROLES.filter((role) => roleCapabilities(role).includes(CAPABILITY.EXPLOITATION_CONTRACT_VIEW))).toEqual([
+      'ADMIN',
       'BQL',
       'OWNERS_BOARD',
       'ACCOUNTANT',
     ]);
   });
 
-  it('lets Kế toán and BQT read the fund and only BQT approve (F-S3 BR-F3-14, D-F3-6)', () => {
+  it('lets Kế toán, BQT (and ADMIN, read only, RM-S2) read the fund and only BQT approve (F-S3 BR-F3-14, D-F3-6)', () => {
     expect(ROLES.filter((role) => roleCapabilities(role).includes(CAPABILITY.FUND_VIEW))).toEqual([
+      'ADMIN',
       'OWNERS_BOARD',
       'ACCOUNTANT',
     ]);
@@ -53,8 +74,22 @@ describe('permissions', () => {
     expect(ROLES.filter((role) => roleCapabilities(role).includes(CAPABILITY.FUND_OPERATE))).toEqual(['ACCOUNTANT']);
     // F-S5 BR-F5-15, D-F5-5: the fund report is for BQT and Kế toán.
     expect(ROLES.filter((role) => roleCapabilities(role).includes(CAPABILITY.FUND_REPORT))).toEqual([
+      'ADMIN',
       'OWNERS_BOARD',
       'ACCOUNTANT',
+    ]);
+  });
+
+  it('lets ADMIN, BQL, BQT and Kế toán see deposits, BQL write and BQT approve (T-S1 BR-T1-12, RM-S2 BR-RM2-02)', () => {
+    expect(ROLES.filter((role) => roleCapabilities(role).includes(CAPABILITY.DEPOSIT_VIEW))).toEqual([
+      'ADMIN',
+      'BQL',
+      'OWNERS_BOARD',
+      'ACCOUNTANT',
+    ]);
+    expect(ROLES.filter((role) => roleCapabilities(role).includes(CAPABILITY.DEPOSIT_MANAGE))).toEqual(['BQL']);
+    expect(ROLES.filter((role) => roleCapabilities(role).includes(CAPABILITY.DEPOSIT_APPROVE))).toEqual([
+      'OWNERS_BOARD',
     ]);
   });
 
@@ -69,6 +104,7 @@ describe('permissions', () => {
     it('defines Kế toán with VIEW, REPORT_VIEW, PAYMENT_CONFIRM, FUND_OPERATE (BR-02), contracts (F-S2) and the fund (F-S3)', () => {
       expect([...roleCapabilities('ACCOUNTANT')].sort()).toEqual(
         [
+          'DEPOSIT_VIEW',
           'EXPLOITATION_CONTRACT_VIEW',
           'FUND_OPERATE',
           'FUND_REPORT',

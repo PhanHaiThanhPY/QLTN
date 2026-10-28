@@ -65,11 +65,12 @@ describe('visibleNavItems', () => {
 describe('Quỹ khai thác (SPEC F-S1 ui-brief §0, AC-F1.14)', () => {
   const GROUP = ['Mời thầu khai thác', 'Đơn vị khai thác'];
 
-  it.each(['BQL', 'OWNERS_BOARD'] as const)('shows the group to %s in api mode', (role) => {
+  // RM-S2 BR-RM2-01: ADMIN reads every module.
+  it.each(['BQL', 'OWNERS_BOARD', 'ADMIN'] as const)('shows the group to %s in api mode', (role) => {
     expect(visibleNavItems(userOf(role), true).map((item) => item.label)).toEqual(expect.arrayContaining(GROUP));
   });
 
-  it.each(['TECH_CONFIRMER', 'ACCOUNTANT', 'ADMIN'] as const)('hides the bid entries from %s', (role) => {
+  it.each(['TECH_CONFIRMER', 'ACCOUNTANT'] as const)('hides the bid entries from %s', (role) => {
     const labels = visibleNavItems(userOf(role), true).map((item) => item.label);
     for (const label of GROUP) expect(labels).not.toContain(label);
   });
@@ -89,14 +90,32 @@ describe('Quỹ khai thác (SPEC F-S1 ui-brief §0, AC-F1.14)', () => {
     // F-S5 BR-F5-01 adds the report (FUND_REPORT: BQT and Kế toán).
     const FUND = ['Sổ quỹ', 'Thuế', 'Phiếu chi', 'Sao kê và đối soát', 'Báo cáo thu chi'];
 
-    it.each(['ACCOUNTANT', 'OWNERS_BOARD'] as const)('shows them to %s in api mode', (role) => {
+    it.each(['ACCOUNTANT', 'OWNERS_BOARD', 'ADMIN'] as const)('shows them to %s in api mode', (role) => {
       const labels = visibleNavItems(userOf(role), true).map((item) => item.label);
       expect(labels).toEqual(expect.arrayContaining(FUND));
     });
 
-    it.each(['BQL', 'TECH_CONFIRMER', 'ADMIN'] as const)('hides them from %s', (role) => {
+    it.each(['BQL', 'TECH_CONFIRMER'] as const)('hides them from %s', (role) => {
       const labels = visibleNavItems(userOf(role), true).map((item) => item.label);
       for (const label of FUND) expect(labels).not.toContain(label);
     });
+  });
+});
+
+describe('Tiền gửi quỹ bảo trì (SPEC T-S1 BR-T1-12, RM-S2 BR-RM2-02)', () => {
+  const GROUP = ['Thư mời chào lãi', 'Ngân hàng'];
+
+  it.each(['BQL', 'OWNERS_BOARD', 'ACCOUNTANT', 'ADMIN'] as const)('shows the group to %s in api mode', (role) => {
+    expect(visibleNavItems(userOf(role), true).map((item) => item.label)).toEqual(expect.arrayContaining(GROUP));
+  });
+
+  it.each(['TECH_CONFIRMER', 'TECH_CONSULTANT'] as const)('hides it from %s', (role) => {
+    const labels = visibleNavItems(userOf(role), true).map((item) => item.label);
+    for (const label of GROUP) expect(labels).not.toContain(label);
+  });
+
+  it('keeps it hidden in mock mode', () => {
+    const labels = visibleNavItems(userOf('BQL'), false).map((item) => item.label);
+    for (const label of GROUP) expect(labels).not.toContain(label);
   });
 });

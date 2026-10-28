@@ -24,9 +24,15 @@ export const validateReason = (errors: FieldErrors, value: string | undefined, f
   errors.when(length > REASON_MAX, field, `Lý do tối đa ${REASON_MAX} ký tự.`);
 };
 
-/** BR-F3-02: the full account number shows to Kế toán and BQT; anyone else sees its last four digits. */
+/**
+ * BR-F3-02 / RM-S2 BR-RM2-03: the full account number shows to Kế toán and BQT (by role, or by the fund's write and
+ * approve capabilities); anyone else — ADMIN included, who now reads the fund — sees its last four digits.
+ */
 export const seesFullAccount = (actor: AuthenticatedUser): boolean =>
-  hasCapability(actor, 'FUND_VIEW') || hasCapability(actor, 'FUND_OPERATE');
+  actor.role === 'ACCOUNTANT' ||
+  actor.role === 'OWNERS_BOARD' ||
+  hasCapability(actor, 'FUND_OPERATE') ||
+  hasCapability(actor, 'FUND_APPROVE');
 
 /** BR-F3-14: Kế toán and BQT read the fund; BQL never (D-F3-6). */
 export const assertFundView = (actor: AuthenticatedUser): void => {

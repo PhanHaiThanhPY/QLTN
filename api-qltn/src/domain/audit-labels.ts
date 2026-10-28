@@ -16,6 +16,9 @@ export const AUDIT_SUBJECT_LABEL: Readonly<Record<string, string>> = {
   FUND: 'Quỹ khai thác',
   FUND_TAX: 'Thuế quỹ khai thác',
   FUND_VOUCHER: 'Phiếu chi',
+  DEPOSIT_BANK: 'Ngân hàng',
+  DEPOSIT_INVITATION: 'Thư mời chào lãi',
+  DEPOSIT_SELECTION: 'Kết quả chọn ngân hàng',
 };
 
 export const AUDIT_ACTION_LABEL: Readonly<Record<string, string>> = {
@@ -129,6 +132,27 @@ export const AUDIT_ACTION_LABEL: Readonly<Record<string, string>> = {
   requestWriteOffChanges: 'Yêu cầu sửa đề xuất không thu được',
   rejectWriteOff: 'Từ chối đề xuất không thu được',
   closeTermination: 'Đóng hồ sơ thanh lý',
+  // Tiền gửi quỹ bảo trì (T-S1)
+  createDepositBank: 'Thêm ngân hàng',
+  updateDepositBank: 'Sửa ngân hàng',
+  deactivateDepositBank: 'Ngừng dùng ngân hàng',
+  createDepositInvitation: 'Soạn thư mời chào lãi',
+  updateDepositInvitation: 'Sửa thư mời chào lãi',
+  deleteDepositInvitation: 'Xóa thư mời nháp',
+  sendDepositInvitation: 'Ghi nhận gửi thư mời',
+  extendDepositInvitation: 'Gia hạn phản hồi',
+  closeDepositInvitation: 'Hết hạn nhận bản chào',
+  closeDepositInvitationEarly: 'Đóng sớm nhận bản chào',
+  cancelDepositInvitation: 'Hủy thư mời chào lãi',
+  recordDepositOffer: 'Ghi nhận bản chào',
+  updateDepositOffer: 'Sửa bản chào',
+  proposeDepositSelection: 'Đề xuất kết quả chọn ngân hàng',
+  proposeDepositSelectionChange: 'Đề xuất đổi kết quả chọn ngân hàng',
+  resubmitDepositSelection: 'Gửi lại kết quả chọn ngân hàng',
+  approveDepositSelection: 'Duyệt kết quả chọn ngân hàng',
+  requestDepositSelectionChanges: 'Yêu cầu sửa kết quả chọn ngân hàng',
+  rejectDepositSelection: 'Từ chối kết quả chọn ngân hàng',
+  supersedeDepositSelection: 'Kết quả chọn ngân hàng bị thay thế',
 };
 
 /** Label of a code, or the code itself when none is defined yet (BR-05). */

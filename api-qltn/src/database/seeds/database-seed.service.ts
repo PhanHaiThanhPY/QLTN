@@ -1,3 +1,7 @@
+import { DepositBanksService } from '../../modules/deposit/deposit-banks.service';
+import { DepositInvitationsService } from '../../modules/deposit/deposit-invitations.service';
+import { DepositOffersService } from '../../modules/deposit/deposit-offers.service';
+import { DepositSelectionsService } from '../../modules/deposit/deposit-selections.service';
 import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { ConfigService } from '@nestjs/config';
@@ -24,6 +28,7 @@ import { ensureExploitationDemo } from './exploitation-seed';
 import { ensureFundDemo } from './fund-seed';
 import { ensureStatementDemo } from './statement-seed';
 import { ensureTerminationDemo } from './termination-seed';
+import { ensureDepositDemo } from './deposit-seed';
 import { TerminationsService } from '../../modules/exploitation/terminations.service';
 import { ReconciliationService } from '../../modules/fund/reconciliation.service';
 import { StatementsService } from '../../modules/fund/statements.service';
@@ -75,6 +80,10 @@ export class DatabaseSeedService {
     private readonly statementImports: StatementsService,
     private readonly reconciliation: ReconciliationService,
     private readonly terminations: TerminationsService,
+    private readonly depositBanks: DepositBanksService,
+    private readonly depositInvitations: DepositInvitationsService,
+    private readonly depositOffers: DepositOffersService,
+    private readonly depositSelections: DepositSelectionsService,
   ) {}
 
   async run(): Promise<void> {
@@ -125,6 +134,15 @@ export class DatabaseSeedService {
       dataSource: this.dataSource,
       storage: this.storage,
       terminations: this.terminations,
+    });
+    // T-S1 BR-T1-13: banks A–C, MC-001 with KQ-TG01 approved and MC-002 taking offers.
+    created.deposits = await ensureDepositDemo({
+      dataSource: this.dataSource,
+      storage: this.storage,
+      banks: this.depositBanks,
+      invitations: this.depositInvitations,
+      offers: this.depositOffers,
+      selections: this.depositSelections,
     });
     const summary = Object.entries(created)
       .map(([name, count]) => `+${count} ${name}`)

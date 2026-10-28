@@ -4,6 +4,7 @@ import { useReferenceData } from '@/hooks/useReferenceData';
 import { cn } from '@/lib/cn';
 import { useSessionStore } from '@/store/session-store';
 import { useUiStore } from '@/store/ui-store';
+import { AdminViewNotice } from './AdminViewNotice';
 import { AppHeader } from './AppHeader';
 import { Sidebar } from './Sidebar';
 import { AssistantPanel } from '@/components/assistant/AssistantPanel';
@@ -42,6 +43,7 @@ export const AppLayout = () => {
           <main className="min-w-0 flex-1 overflow-y-auto px-4 pb-24 pt-5 sm:px-6 sm:pb-24 lg:px-8 lg:pb-5">
             <div className="mx-auto w-full max-w-[112rem]">
               <AssistantRouteHint />
+              <AdminViewNotice user={data?.viewer} />
               <Outlet />
             </div>
           </main>
